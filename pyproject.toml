@@ -47,14 +47,19 @@ dev = [
     "mypy>=1.8",
     "types-Pillow",
 ]
+api = [
+    "flask>=3.0",
+]
 all = [
-    "puzzle-reconstruction[ocr,yaml,pdf,dev]",
+    "puzzle-reconstruction[ocr,yaml,pdf,api,dev]",
 ]
 
 [project.scripts]
 puzzle-reconstruct = "main:main"
 puzzle-benchmark   = "tools.benchmark:main"
 puzzle-generate    = "tools.tear_generator:main"
+puzzle-mix         = "tools.mix_documents:main"
+puzzle-server      = "tools.server:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -4,6 +4,7 @@
 Модули:
     ocr      — OCR-верификация текстовой связности (pytesseract)
     metrics  — Количественные метрики качества сборки (NA, DC, RMSE, ...)
+    report   — Генератор отчётов (JSON / Markdown / HTML)
 """
 from .ocr import verify_full_assembly, render_assembly_image
 from .metrics import (
@@ -12,6 +13,7 @@ from .metrics import (
     ReconstructionMetrics,
     BenchmarkResult,
 )
+from .report import build_report, Report
 
 __all__ = [
     "verify_full_assembly",
@@ -20,4 +22,6 @@ __all__ = [
     "compare_methods",
     "ReconstructionMetrics",
     "BenchmarkResult",
+    "build_report",
+    "Report",
 ]
