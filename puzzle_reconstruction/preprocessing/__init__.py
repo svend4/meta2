@@ -7,6 +7,7 @@
     orientation   — оценка и коррекция угла поворота
     color_norm    — нормализация цвета (CLAHE, Gray World, гамма)
     denoise       — шумоподавление (Gaussian, Median, Bilateral, NLM, auto)
+    augment       — аугментация данных (crop, rotate, noise, jitter, JPEG)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -27,6 +28,16 @@ from .denoise import (
     auto_denoise,
     denoise_batch,
 )
+from .augment import (
+    random_crop,
+    random_rotate,
+    add_gaussian_noise,
+    add_salt_pepper,
+    brightness_jitter,
+    simulate_scan_noise,
+    jpeg_compress,
+    augment_batch,
+)
 
 __all__ = [
     "segment_fragment",
@@ -45,4 +56,12 @@ __all__ = [
     "nlmeans_denoise",
     "auto_denoise",
     "denoise_batch",
+    "random_crop",
+    "random_rotate",
+    "add_gaussian_noise",
+    "add_salt_pepper",
+    "brightness_jitter",
+    "simulate_scan_noise",
+    "jpeg_compress",
+    "augment_batch",
 ]

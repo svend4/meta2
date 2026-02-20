@@ -1,9 +1,10 @@
 """
-Утилиты: логирование, геометрия.
+Утилиты: логирование, геометрия, кэш дескрипторов.
 
 Модули:
     logger   — структурированное логирование с цветами (get_logger, stage, PipelineTimer)
     geometry — геометрические операции (rotation_matrix_2d, polygon_area, poly_iou, …)
+    cache    — LRU-кэш и дисковый кэш дескрипторов (DescriptorCache, DiskCache, @cached)
 """
 from .logger import (
     get_logger,
@@ -26,6 +27,14 @@ from .geometry import (
     smooth_contour,
     curvature,
 )
+from .cache import (
+    DescriptorCache,
+    DiskCache,
+    descriptor_key,
+    cached,
+    get_default_cache,
+    clear_default_cache,
+)
 
 __all__ = [
     # Логирование
@@ -47,4 +56,11 @@ __all__ = [
     "normalize_contour",
     "smooth_contour",
     "curvature",
+    # Кэш
+    "DescriptorCache",
+    "DiskCache",
+    "descriptor_key",
+    "cached",
+    "get_default_cache",
+    "clear_default_cache",
 ]
