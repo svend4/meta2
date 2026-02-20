@@ -10,6 +10,7 @@
     exhaustive_assembly   — Точный Branch & Bound (N ≤ 8)
     ant_colony_assembly   — Муравьиный алгоритм (феромонная матрица + эвристика)
     mcts_assembly         — Monte Carlo Tree Search (UCB1 + случайные роллауты)
+    run_all_methods       — параллельный запуск нескольких методов с выбором лучшего
 
 Выбор метода:
     - ≤8 фрагментов:    exhaustive (точный, Branch & Bound)
@@ -25,6 +26,17 @@ from .exhaustive import exhaustive_assembly
 from .genetic import genetic_assembly
 from .ant_colony import ant_colony_assembly
 from .mcts import mcts_assembly, MCTSNode
+from .parallel import (
+    run_all_methods,
+    run_selected,
+    pick_best,
+    pick_best_k,
+    summary_table,
+    MethodResult,
+    AssemblyRacer,
+    ALL_METHODS,
+    DEFAULT_METHODS,
+)
 
 __all__ = [
     "greedy_assembly",
@@ -37,4 +49,13 @@ __all__ = [
     "ant_colony_assembly",
     "mcts_assembly",
     "MCTSNode",
+    "run_all_methods",
+    "run_selected",
+    "pick_best",
+    "pick_best_k",
+    "summary_table",
+    "MethodResult",
+    "AssemblyRacer",
+    "ALL_METHODS",
+    "DEFAULT_METHODS",
 ]

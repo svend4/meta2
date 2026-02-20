@@ -7,6 +7,7 @@
     compat_matrix — построение полной матрицы совместимости
     icp           — Iterative Closest Point для точного выравнивания контуров
     consensus     — консенсусное голосование по результатам нескольких методов
+    graph_match   — графовый анализ (MST, спектральный порядок, random walk)
 """
 from .dtw import dtw_distance, dtw_distance_mirror
 from .pairwise import match_score
@@ -18,6 +19,16 @@ from .consensus import (
     vote_on_pairs,
     consensus_score_matrix,
     ConsensusResult,
+)
+from .graph_match import (
+    FragmentGraph,
+    GraphMatchResult,
+    build_fragment_graph,
+    mst_ordering,
+    spectral_ordering,
+    random_walk_similarity,
+    degree_centrality,
+    analyze_graph,
 )
 
 __all__ = [
@@ -34,4 +45,12 @@ __all__ = [
     "vote_on_pairs",
     "consensus_score_matrix",
     "ConsensusResult",
+    "FragmentGraph",
+    "GraphMatchResult",
+    "build_fragment_graph",
+    "mst_ordering",
+    "spectral_ordering",
+    "random_walk_similarity",
+    "degree_centrality",
+    "analyze_graph",
 ]
