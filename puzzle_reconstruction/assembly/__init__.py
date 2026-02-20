@@ -9,11 +9,12 @@
     genetic_assembly      — Генетический алгоритм (OX crossover, элитизм)
     exhaustive_assembly   — Точный Branch & Bound (N ≤ 8)
     ant_colony_assembly   — Муравьиный алгоритм (феромонная матрица + эвристика)
+    mcts_assembly         — Monte Carlo Tree Search (UCB1 + случайные роллауты)
 
 Выбор метода:
     - ≤8 фрагментов:    exhaustive (точный, Branch & Bound)
-    - 6-15 фрагментов:  beam или sa
-    - 15–30 фрагментов: genetic, ant_colony или gamma
+    - 6-15 фрагментов:  beam, sa или mcts
+    - 15–30 фрагментов: genetic, ant_colony, mcts или gamma
     - 30+ фрагментов:   gamma или sa с большим числом итераций
 """
 from .greedy import greedy_assembly
@@ -23,6 +24,7 @@ from .gamma_optimizer import gamma_optimizer, GammaEdgeModel
 from .exhaustive import exhaustive_assembly
 from .genetic import genetic_assembly
 from .ant_colony import ant_colony_assembly
+from .mcts import mcts_assembly, MCTSNode
 
 __all__ = [
     "greedy_assembly",
@@ -33,4 +35,6 @@ __all__ = [
     "exhaustive_assembly",
     "genetic_assembly",
     "ant_colony_assembly",
+    "mcts_assembly",
+    "MCTSNode",
 ]
