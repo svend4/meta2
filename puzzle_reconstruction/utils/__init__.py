@@ -1,10 +1,11 @@
 """
-Утилиты: логирование, геометрия, кэш дескрипторов.
+Утилиты: логирование, геометрия, кэш дескрипторов, ввод-вывод.
 
 Модули:
     logger   — структурированное логирование с цветами (get_logger, stage, PipelineTimer)
     geometry — геометрические операции (rotation_matrix_2d, polygon_area, poly_iou, …)
     cache    — LRU-кэш и дисковый кэш дескрипторов (DescriptorCache, DiskCache, @cached)
+    io       — загрузка/сохранение фрагментов и Assembly (load_image_dir, save_assembly_json, …)
 """
 from .logger import (
     get_logger,
@@ -35,6 +36,15 @@ from .cache import (
     get_default_cache,
     clear_default_cache,
 )
+from .io import (
+    load_image_dir,
+    fragments_from_images,
+    save_assembly_json,
+    load_assembly_json,
+    save_fragments_npz,
+    load_fragments_npz,
+    FragmentSetInfo,
+)
 
 __all__ = [
     # Логирование
@@ -63,4 +73,12 @@ __all__ = [
     "cached",
     "get_default_cache",
     "clear_default_cache",
+    # Ввод-вывод
+    "load_image_dir",
+    "fragments_from_images",
+    "save_assembly_json",
+    "load_assembly_json",
+    "save_fragments_npz",
+    "load_fragments_npz",
+    "FragmentSetInfo",
 ]
