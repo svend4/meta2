@@ -8,7 +8,7 @@
     gamma_optimizer     — Гамма-распределение (статья 2026, лучший SOTA)
 
 Выбор метода:
-    - ≤6 фрагментов:   любой (greedy обычно достаточно)
+    - ≤8 фрагментов:   exhaustive (точный, Branch & Bound)
     - 6-15 фрагментов:  beam или sa
     - 15+ фрагментов:  gamma или sa с большим числом итераций
 """
@@ -16,6 +16,7 @@ from .greedy import greedy_assembly
 from .annealing import simulated_annealing
 from .beam_search import beam_search
 from .gamma_optimizer import gamma_optimizer, GammaEdgeModel
+from .exhaustive import exhaustive_assembly
 
 __all__ = [
     "greedy_assembly",
@@ -23,4 +24,5 @@ __all__ = [
     "beam_search",
     "gamma_optimizer",
     "GammaEdgeModel",
+    "exhaustive_assembly",
 ]
