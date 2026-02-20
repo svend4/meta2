@@ -4,7 +4,7 @@ build-backend = "setuptools.backends.legacy:build"
 
 [project]
 name            = "puzzle-reconstruction"
-version         = "0.2.0"
+version         = "0.3.0"
 description     = "Reconstruction of shredded/torn documents from scanned fragments"
 readme          = "README.md"
 requires-python = ">=3.11"
@@ -60,6 +60,8 @@ puzzle-benchmark   = "tools.benchmark:main"
 puzzle-generate    = "tools.tear_generator:main"
 puzzle-mix         = "tools.mix_documents:main"
 puzzle-server      = "tools.server:main"
+puzzle-evaluate    = "tools.evaluate:main"
+puzzle-profile     = "tools.profile:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
