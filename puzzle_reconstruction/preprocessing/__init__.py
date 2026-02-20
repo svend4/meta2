@@ -2,12 +2,13 @@
 Предобработка фрагментов документа.
 
 Модули:
-    segmentation  — выделение маски фрагмента (Otsu / Adaptive / GrabCut)
-    contour       — извлечение и нормализация внешнего контура
-    orientation   — оценка и коррекция угла поворота
-    color_norm    — нормализация цвета (CLAHE, Gray World, гамма)
-    denoise       — шумоподавление (Gaussian, Median, Bilateral, NLM, auto)
-    augment       — аугментация данных (crop, rotate, noise, jitter, JPEG)
+    segmentation   — выделение маски фрагмента (Otsu / Adaptive / GrabCut)
+    contour        — извлечение и нормализация внешнего контура
+    orientation    — оценка и коррекция угла поворота
+    color_norm     — нормализация цвета (CLAHE, Gray World, гамма)
+    denoise        — шумоподавление (Gaussian, Median, Bilateral, NLM, auto)
+    augment        — аугментация данных (crop, rotate, noise, jitter, JPEG)
+    edge_detector  — специализированное детектирование краёв (Canny, Sobel, LoG)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -38,6 +39,16 @@ from .augment import (
     jpeg_compress,
     augment_batch,
 )
+from .edge_detector import (
+    detect_edges,
+    adaptive_canny,
+    sobel_edges,
+    laplacian_edges,
+    refine_edge_contour,
+    edge_density,
+    edge_orientation_hist,
+    EdgeDetectionResult,
+)
 
 __all__ = [
     "segment_fragment",
@@ -64,4 +75,12 @@ __all__ = [
     "simulate_scan_noise",
     "jpeg_compress",
     "augment_batch",
+    "detect_edges",
+    "adaptive_canny",
+    "sobel_edges",
+    "laplacian_edges",
+    "refine_edge_contour",
+    "edge_density",
+    "edge_orientation_hist",
+    "EdgeDetectionResult",
 ]

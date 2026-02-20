@@ -2,11 +2,12 @@
 Алгоритмы описания и синтеза подписей краёв фрагментов.
 
 Подпакеты:
-    tangram/   — геометрическое описание внутреннего многоугольника
-    fractal/   — фрактальные характеристики края (Box, Divider, IFS, CSS)
+    tangram/       — геометрическое описание внутреннего многоугольника
+    fractal/       — фрактальные характеристики края (Box, Divider, IFS, CSS)
 
 Модули:
-    synthesis  — синтез EdgeSignature из танграма и фрактала
+    synthesis      — синтез EdgeSignature из танграма и фрактала
+    shape_context  — Shape Context дескриптор (Belongie et al., 2002)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -18,6 +19,16 @@ from .fractal.box_counting import box_counting_fd
 from .fractal.divider import divider_fd
 from .fractal.css import css_similarity_mirror
 from .fractal.ifs import fit_ifs
+
+from .shape_context import (
+    compute_shape_context,
+    shape_context_distance,
+    match_shape_contexts,
+    normalize_shape_context,
+    log_polar_histogram,
+    contour_similarity,
+    ShapeContextResult,
+)
 
 __all__ = [
     # Синтез
@@ -35,4 +46,12 @@ __all__ = [
     "divider_fd",
     "css_similarity_mirror",
     "fit_ifs",
+    # Shape Context
+    "compute_shape_context",
+    "shape_context_distance",
+    "match_shape_contexts",
+    "normalize_shape_context",
+    "log_polar_histogram",
+    "contour_similarity",
+    "ShapeContextResult",
 ]
