@@ -22,6 +22,9 @@
     color_utils     — цветовые утилиты (to_gray, to_lab, to_hsv, from_lab,
                       compute_histogram, compare_histograms, dominant_colors,
                       color_distance, strip_histogram)
+    mask_utils      — утилиты масок (create_alpha_mask, apply_mask, erode_mask,
+                      dilate_mask, mask_from_contour, combine_masks,
+                      crop_to_mask, invert_mask)
 """
 from .logger import (
     get_logger,
@@ -141,6 +144,16 @@ from .color_utils import (
     color_distance,
     strip_histogram,
 )
+from .mask_utils import (
+    create_alpha_mask,
+    apply_mask,
+    erode_mask,
+    dilate_mask,
+    mask_from_contour,
+    combine_masks,
+    crop_to_mask,
+    invert_mask,
+)
 
 __all__ = [
     # Логирование
@@ -249,4 +262,13 @@ __all__ = [
     "dominant_colors",
     "color_distance",
     "strip_histogram",
+    # Утилиты масок
+    "create_alpha_mask",
+    "apply_mask",
+    "erode_mask",
+    "dilate_mask",
+    "mask_from_contour",
+    "combine_masks",
+    "crop_to_mask",
+    "invert_mask",
 ]

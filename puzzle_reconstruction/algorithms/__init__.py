@@ -14,6 +14,9 @@
     line_detector        — обнаружение строк текста (проекция, Хаф, auto)
     fragment_aligner     — субпиксельное выравнивание краёв (фазовая корр., шаблон)
     score_aggregator     — агрегация оценок совместимости (weighted_avg, harmonic, min, max)
+    edge_scorer          — многоканальная оценка совместимости краёв (EdgeScore,
+                           score_color_compat, score_gradient_compat,
+                           score_texture_compat, score_edge_pair, batch_score_edges)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -96,6 +99,14 @@ from .score_aggregator import (
     top_k_pairs,
     batch_aggregate,
 )
+from .edge_scorer import (
+    EdgeScore,
+    score_color_compat,
+    score_gradient_compat,
+    score_texture_compat,
+    score_edge_pair,
+    batch_score_edges,
+)
 
 __all__ = [
     # Синтез
@@ -176,4 +187,11 @@ __all__ = [
     "threshold_filter",
     "top_k_pairs",
     "batch_aggregate",
+    # Многоканальная оценка краёв
+    "EdgeScore",
+    "score_color_compat",
+    "score_gradient_compat",
+    "score_texture_compat",
+    "score_edge_pair",
+    "batch_score_edges",
 ]
