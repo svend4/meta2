@@ -33,6 +33,10 @@
                            compute_divergence, compute_curl, flow_along_boundary,
                            compare_gradient_fields, batch_gradient_fields,
                            compute_gradient_stats)
+    region_segmenter     — сегментация на регионы (RegionProps, SegmentationResult,
+                           label_connected, compute_region_props, filter_regions,
+                           merge_close_regions, region_adjacency, largest_region,
+                           regions_to_mask, batch_segment)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -161,6 +165,18 @@ from .gradient_flow import (
     batch_gradient_fields,
     compute_gradient_stats,
 )
+from .region_segmenter import (
+    RegionProps,
+    SegmentationResult,
+    label_connected,
+    compute_region_props,
+    filter_regions,
+    merge_close_regions,
+    region_adjacency,
+    largest_region,
+    regions_to_mask,
+    batch_segment,
+)
 
 __all__ = [
     # Синтез
@@ -282,4 +298,15 @@ __all__ = [
     "compare_gradient_fields",
     "batch_gradient_fields",
     "compute_gradient_stats",
+    # Сегментация на регионы
+    "RegionProps",
+    "SegmentationResult",
+    "label_connected",
+    "compute_region_props",
+    "filter_regions",
+    "merge_close_regions",
+    "region_adjacency",
+    "largest_region",
+    "regions_to_mask",
+    "batch_segment",
 ]

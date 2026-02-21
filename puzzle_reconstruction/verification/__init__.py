@@ -25,6 +25,11 @@
                           validate_dimensions, validate_aspect_ratio,
                           validate_content_coverage, validate_contour,
                           validate_fragment, batch_validate, filter_valid)
+    assembly_scorer     — итоговая оценка сборки (ScoreComponent,
+                          AssemblyScoreReport, AssemblyScorerParams,
+                          score_geometry, score_coverage, score_seam_quality,
+                          score_uniqueness, compute_assembly_score,
+                          compare_assemblies, rank_assemblies)
 """
 from .ocr import verify_full_assembly, render_assembly_image
 from .metrics import (
@@ -133,6 +138,18 @@ from .fragment_validator import (
     batch_validate,
     filter_valid,
 )
+from .assembly_scorer import (
+    ScoreComponent,
+    AssemblyScoreReport,
+    AssemblyScorerParams,
+    score_geometry,
+    score_coverage,
+    score_seam_quality as score_seam_avg,
+    score_uniqueness,
+    compute_assembly_score,
+    compare_assemblies,
+    rank_assemblies,
+)
 
 __all__ = [
     "verify_full_assembly",
@@ -230,4 +247,15 @@ __all__ = [
     "validate_fragment",
     "batch_validate",
     "filter_valid",
+    # Итоговая оценка сборки
+    "ScoreComponent",
+    "AssemblyScoreReport",
+    "AssemblyScorerParams",
+    "score_geometry",
+    "score_coverage",
+    "score_seam_avg",
+    "score_uniqueness",
+    "compute_assembly_score",
+    "compare_assemblies",
+    "rank_assemblies",
 ]
