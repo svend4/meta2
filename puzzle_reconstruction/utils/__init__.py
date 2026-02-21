@@ -32,6 +32,10 @@
                       contour_area, contour_perimeter, contour_bbox,
                       contour_centroid, contour_iou, align_contour_orientation,
                       contours_to_mask, mask_to_contour)
+    histogram_utils — утилиты гистограмм (compute_1d_histogram, compute_2d_histogram,
+                      histogram_equalization, histogram_specification,
+                      earth_mover_distance, chi_squared_distance,
+                      histogram_intersection, backproject, joint_histogram)
 """
 from .logger import (
     get_logger,
@@ -184,6 +188,17 @@ from .contour_utils import (
     contours_to_mask,
     mask_to_contour,
 )
+from .histogram_utils import (
+    compute_1d_histogram,
+    compute_2d_histogram,
+    histogram_equalization,
+    histogram_specification,
+    earth_mover_distance,
+    chi_squared_distance,
+    histogram_intersection,
+    backproject,
+    joint_histogram,
+)
 
 __all__ = [
     # Логирование
@@ -322,4 +337,14 @@ __all__ = [
     "align_contour_orientation",
     "contours_to_mask",
     "mask_to_contour",
+    # Утилиты гистограмм
+    "compute_1d_histogram",
+    "compute_2d_histogram",
+    "histogram_equalization",
+    "histogram_specification",
+    "earth_mover_distance",
+    "chi_squared_distance",
+    "histogram_intersection",
+    "backproject",
+    "joint_histogram",
 ]

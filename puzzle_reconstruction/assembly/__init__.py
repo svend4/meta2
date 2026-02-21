@@ -33,6 +33,10 @@
     score_tracker       — отслеживание эволюции оценок (ScoreSnapshot, ScoreTracker,
                           create_tracker, record_snapshot, detect_convergence,
                           extract_best_iteration, summarize_tracker, smooth_scores)
+    layout_builder      — построение 2D-компоновки (LayoutCell, AssemblyLayout,
+                          create_layout, add_cell, remove_cell,
+                          compute_bounding_box, snap_to_grid, render_layout_image,
+                          layout_to_dict, dict_to_layout)
 """
 from .greedy import greedy_assembly
 from .annealing import simulated_annealing
@@ -94,6 +98,18 @@ from .score_tracker import (
     summarize_tracker,
     smooth_scores,
 )
+from .layout_builder import (
+    LayoutCell,
+    AssemblyLayout,
+    create_layout,
+    add_cell,
+    remove_cell,
+    compute_bounding_box,
+    snap_to_grid,
+    render_layout_image,
+    layout_to_dict,
+    dict_to_layout,
+)
 
 __all__ = [
     "greedy_assembly",
@@ -152,4 +168,15 @@ __all__ = [
     "extract_best_iteration",
     "summarize_tracker",
     "smooth_scores",
+    # Построение 2D-компоновки
+    "LayoutCell",
+    "AssemblyLayout",
+    "create_layout",
+    "add_cell",
+    "remove_cell",
+    "compute_bounding_box",
+    "snap_to_grid",
+    "render_layout_image",
+    "layout_to_dict",
+    "dict_to_layout",
 ]
