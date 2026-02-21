@@ -47,6 +47,10 @@
                        extract_edge_sample, compare_edge_intensity,
                        compare_edge_gradient, compare_edge_texture,
                        score_edge_comparison, compare_edge_pair, batch_compare_edges)
+    orient_matcher   — сопоставление по ориентации краёв
+                       (OrientConfig, OrientProfile, OrientMatchResult,
+                       compute_orient_profile, orient_similarity,
+                       best_orient_angle, match_orient_pair, batch_orient_match)
 """
 from .dtw import dtw_distance, dtw_distance_mirror
 from .pairwise import match_score
@@ -214,6 +218,16 @@ from .edge_comparator import (
     compare_edge_pair,
     batch_compare_edges,
 )
+from .orient_matcher import (
+    OrientConfig,
+    OrientProfile,
+    OrientMatchResult,
+    compute_orient_profile,
+    orient_similarity,
+    best_orient_angle,
+    match_orient_pair,
+    batch_orient_match,
+)
 
 __all__ = [
     "dtw_distance",
@@ -366,4 +380,13 @@ __all__ = [
     "score_edge_comparison",
     "compare_edge_pair",
     "batch_compare_edges",
+    # Сопоставление по ориентации краёв
+    "OrientConfig",
+    "OrientProfile",
+    "OrientMatchResult",
+    "compute_orient_profile",
+    "orient_similarity",
+    "best_orient_angle",
+    "match_orient_pair",
+    "batch_orient_match",
 ]

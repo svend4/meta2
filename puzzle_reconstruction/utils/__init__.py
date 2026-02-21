@@ -93,6 +93,8 @@
                        BatchSummary, make_processor, process_items,
                        filter_successful, retry_failed_items, split_batch,
                        merge_batch_results)
+    event_bus        — шина событий pub/sub (BusConfig, EventRecord, BusSummary,
+                       EventBus, make_event_bus, collect_events, drain_bus)
 """
 from .logger import (
     get_logger,
@@ -433,6 +435,15 @@ from .batch_processor import (
     split_batch,
     merge_batch_results,
 )
+from .event_bus import (
+    BusConfig,
+    EventRecord,
+    BusSummary,
+    EventBus,
+    make_event_bus,
+    collect_events,
+    drain_bus,
+)
 
 __all__ = [
     # Логирование
@@ -742,4 +753,12 @@ __all__ = [
     "retry_failed_items",
     "split_batch",
     "merge_batch_results",
+    # Шина событий pub/sub
+    "BusConfig",
+    "EventRecord",
+    "BusSummary",
+    "EventBus",
+    "make_event_bus",
+    "collect_events",
+    "drain_bus",
 ]
