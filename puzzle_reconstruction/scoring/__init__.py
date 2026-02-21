@@ -38,6 +38,10 @@
                           GapMeasure, GapReport, score_gap, measure_gap,
                           build_gap_report, filter_gap_measures,
                           worst_gap_pairs, gap_score_matrix)
+    match_scorer        — оценка совместимости пар фрагментов (ScorerConfig,
+                          ChannelScore, MatchScore, score_channel,
+                          compute_match_score, aggregate_match_scores,
+                          build_score_table, filter_confident_pairs)
 """
 from .consistency_checker import (
     ConsistencyIssue,
@@ -142,6 +146,16 @@ from .gap_scorer import (
     worst_gap_pairs,
     gap_score_matrix,
 )
+from .match_scorer import (
+    ScorerConfig,
+    ChannelScore,
+    MatchScore,
+    score_channel,
+    compute_match_score,
+    aggregate_match_scores,
+    build_score_table,
+    filter_confident_pairs,
+)
 
 __all__ = [
     # Проверка согласованности
@@ -238,4 +252,13 @@ __all__ = [
     "filter_gap_measures",
     "worst_gap_pairs",
     "gap_score_matrix",
+    # Оценка совместимости пар фрагментов
+    "ScorerConfig",
+    "ChannelScore",
+    "MatchScore",
+    "score_channel",
+    "compute_match_score",
+    "aggregate_match_scores",
+    "build_score_table",
+    "filter_confident_pairs",
 ]

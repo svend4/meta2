@@ -93,6 +93,12 @@
                               EnhanceResult, equalize_histogram,
                               stretch_contrast, apply_gamma, clahe_enhance,
                               enhance_contrast, batch_enhance)
+    contour_processor       — обработка контуров фрагментов (ContourConfig,
+                              ContourStats, ContourResult, resample_contour,
+                              smooth_contour, rdp_simplify, normalize_contour,
+                              contour_area, contour_perimeter,
+                              compute_contour_stats, process_contour,
+                              batch_process_contours)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -409,6 +415,20 @@ from .contrast_enhancer import (
     enhance_contrast,
     batch_enhance,
 )
+from .contour_processor import (
+    ContourConfig,
+    ContourStats,
+    ContourResult,
+    resample_contour,
+    smooth_contour,
+    rdp_simplify,
+    normalize_contour,
+    contour_area,
+    contour_perimeter,
+    compute_contour_stats,
+    process_contour,
+    batch_process_contours,
+)
 
 __all__ = [
     "segment_fragment",
@@ -690,4 +710,17 @@ __all__ = [
     "clahe_enhance",
     "enhance_contrast",
     "batch_enhance",
+    # Обработка контуров фрагментов
+    "ContourConfig",
+    "ContourStats",
+    "ContourResult",
+    "resample_contour",
+    "smooth_contour",
+    "rdp_simplify",
+    "normalize_contour",
+    "contour_area",
+    "contour_perimeter",
+    "compute_contour_stats",
+    "process_contour",
+    "batch_process_contours",
 ]
