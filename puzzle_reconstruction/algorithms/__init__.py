@@ -6,9 +6,10 @@
     fractal/       — фрактальные характеристики края (Box, Divider, IFS, CSS)
 
 Модули:
-    synthesis         — синтез EdgeSignature из танграма и фрактала
-    shape_context     — Shape Context дескриптор (Belongie et al., 2002)
-    word_segmentation — сегментация слов/строк (морфология, без OCR)
+    synthesis            — синтез EdgeSignature из танграма и фрактала
+    shape_context        — Shape Context дескриптор (Belongie et al., 2002)
+    word_segmentation    — сегментация слов/строк (морфология, без OCR)
+    fragment_classifier  — классификация типов фрагментов (угол/край/внутр.)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -39,6 +40,18 @@ from .word_segmentation import (
     merge_line_words,
     segment_lines,
     segment_document,
+)
+from .fragment_classifier import (
+    FragmentType,
+    FragmentFeatures,
+    ClassifyResult,
+    compute_texture_features,
+    compute_edge_features,
+    compute_shape_features,
+    detect_text_presence,
+    classify_fragment_type,
+    classify_fragment,
+    batch_classify,
 )
 
 __all__ = [
@@ -74,4 +87,15 @@ __all__ = [
     "merge_line_words",
     "segment_lines",
     "segment_document",
+    # Классификатор фрагментов
+    "FragmentType",
+    "FragmentFeatures",
+    "ClassifyResult",
+    "compute_texture_features",
+    "compute_edge_features",
+    "compute_shape_features",
+    "detect_text_presence",
+    "classify_fragment_type",
+    "classify_fragment",
+    "batch_classify",
 ]

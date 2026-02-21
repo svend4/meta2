@@ -2,15 +2,17 @@
 Предобработка фрагментов документа.
 
 Модули:
-    segmentation   — выделение маски фрагмента (Otsu / Adaptive / GrabCut)
-    contour        — извлечение и нормализация внешнего контура
-    orientation    — оценка и коррекция угла поворота
-    color_norm     — нормализация цвета (CLAHE, Gray World, гамма)
-    denoise        — шумоподавление (Gaussian, Median, Bilateral, NLM, auto)
-    augment        — аугментация данных (crop, rotate, noise, jitter, JPEG)
-    edge_detector    — специализированное детектирование краёв (Canny, Sobel, LoG)
-    skew_correction  — коррекция наклона (Hough, projection, FFT)
-    perspective      — коррекция перспективных искажений (contour, Hough)
+    segmentation    — выделение маски фрагмента (Otsu / Adaptive / GrabCut)
+    contour         — извлечение и нормализация внешнего контура
+    orientation     — оценка и коррекция угла поворота
+    color_norm      — нормализация цвета (CLAHE, Gray World, гамма)
+    denoise         — шумоподавление (Gaussian, Median, Bilateral, NLM, auto)
+    augment         — аугментация данных (crop, rotate, noise, jitter, JPEG)
+    edge_detector   — специализированное детектирование краёв (Canny, Sobel, LoG)
+    skew_correction — коррекция наклона (Hough, projection, FFT)
+    perspective     — коррекция перспективных искажений (contour, Hough)
+    noise_reduction — расширенное шумоподавление (DenoiseResult, NLM, bilateral,
+                      morphological, smart_denoise, batch_denoise)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -71,6 +73,17 @@ from .perspective import (
     auto_correct_perspective,
     batch_correct_perspective,
 )
+from .noise_reduction import (
+    DenoiseResult,
+    estimate_noise_level,
+    denoise_gaussian,
+    denoise_median,
+    denoise_nlm,
+    denoise_bilateral,
+    denoise_morphological,
+    smart_denoise,
+    batch_denoise,
+)
 
 __all__ = [
     "segment_fragment",
@@ -121,4 +134,14 @@ __all__ = [
     "correct_perspective",
     "auto_correct_perspective",
     "batch_correct_perspective",
+    # Расширенное шумоподавление
+    "DenoiseResult",
+    "estimate_noise_level",
+    "denoise_gaussian",
+    "denoise_median",
+    "denoise_nlm",
+    "denoise_bilateral",
+    "denoise_morphological",
+    "smart_denoise",
+    "batch_denoise",
 ]
