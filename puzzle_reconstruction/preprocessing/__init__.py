@@ -15,6 +15,8 @@
                       morphological, smart_denoise, batch_denoise)
     contrast        — улучшение контраста (ContrastResult, CLAHE, histeq,
                       gamma, stretch, retinex, auto_enhance, batch_enhance)
+    binarizer       — бинаризация изображений (BinarizeResult, Otsu, Sauvola,
+                      Niblack, Bernsen, adaptive, auto_binarize, batch_binarize)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -97,6 +99,16 @@ from .contrast import (
     auto_enhance,
     batch_enhance,
 )
+from .binarizer import (
+    BinarizeResult,
+    binarize_otsu,
+    binarize_adaptive,
+    binarize_sauvola,
+    binarize_niblack,
+    binarize_bernsen,
+    auto_binarize,
+    batch_binarize,
+)
 
 __all__ = [
     "segment_fragment",
@@ -167,4 +179,13 @@ __all__ = [
     "enhance_retinex",
     "auto_enhance",
     "batch_enhance",
+    # Бинаризация
+    "BinarizeResult",
+    "binarize_otsu",
+    "binarize_adaptive",
+    "binarize_sauvola",
+    "binarize_niblack",
+    "binarize_bernsen",
+    "auto_binarize",
+    "batch_binarize",
 ]

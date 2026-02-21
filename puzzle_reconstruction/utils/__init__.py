@@ -10,6 +10,8 @@
     visualizer — утилиты визуализации (word boxes, contours, matches, confidence bar)
     metrics    — метрики качества восстановления (ReconstructionMetrics, IoU, Kendall τ,
                  permutation distance, precision/recall, placement accuracy)
+    image_stats — статистический анализ изображений (ImageStats, энтропия, резкость,
+                  гистограммные моменты, градиентные статистики, compare_images)
 """
 from .logger import (
     get_logger,
@@ -77,6 +79,16 @@ from .metrics import (
     fragment_placement_accuracy,
     compute_reconstruction_metrics,
 )
+from .image_stats import (
+    ImageStats,
+    compute_entropy,
+    compute_sharpness,
+    compute_histogram_stats,
+    compute_gradient_stats,
+    compute_image_stats,
+    compare_images,
+    batch_stats,
+)
 
 __all__ = [
     # Логирование
@@ -138,4 +150,13 @@ __all__ = [
     "assembly_precision_recall",
     "fragment_placement_accuracy",
     "compute_reconstruction_metrics",
+    # Статистический анализ изображений
+    "ImageStats",
+    "compute_entropy",
+    "compute_sharpness",
+    "compute_histogram_stats",
+    "compute_gradient_stats",
+    "compute_image_stats",
+    "compare_images",
+    "batch_stats",
 ]
