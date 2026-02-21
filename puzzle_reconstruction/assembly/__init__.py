@@ -26,6 +26,10 @@
     placement_optimizer — оптимизация порядка размещения (PlacementResult,
                           score_placement, find_best_next, greedy_place,
                           remove_worst_placed, iterative_place)
+    cost_matrix         — матрицы стоимостей для алгоритмов сборки (CostMatrix,
+                          build_from_scores, build_from_distances, build_combined,
+                          apply_forbidden_mask, normalize_costs,
+                          to_assignment_matrix, top_k_candidates)
 """
 from .greedy import greedy_assembly
 from .annealing import simulated_annealing
@@ -67,6 +71,16 @@ from .placement_optimizer import (
     remove_worst_placed,
     iterative_place,
 )
+from .cost_matrix import (
+    CostMatrix,
+    build_from_scores,
+    build_from_distances,
+    build_combined,
+    apply_forbidden_mask,
+    normalize_costs,
+    to_assignment_matrix,
+    top_k_candidates,
+)
 
 __all__ = [
     "greedy_assembly",
@@ -107,4 +121,13 @@ __all__ = [
     "greedy_place",
     "remove_worst_placed",
     "iterative_place",
+    # Матрицы стоимостей
+    "CostMatrix",
+    "build_from_scores",
+    "build_from_distances",
+    "build_combined",
+    "apply_forbidden_mask",
+    "normalize_costs",
+    "to_assignment_matrix",
+    "top_k_candidates",
 ]

@@ -19,6 +19,10 @@
                        (PatchMatch, extract_edge_strip, ncc_score, ssd_score,
                        ssim_score, match_edge_strips, match_patch_pair,
                        batch_patch_match)
+    boundary_matcher — геометрическое сопоставление контуров (BoundaryMatch,
+                       extract_boundary_points, hausdorff_distance,
+                       chamfer_distance, frechet_approx, score_boundary_pair,
+                       match_boundary_pair, batch_match_boundaries)
 """
 from .dtw import dtw_distance, dtw_distance_mirror
 from .pairwise import match_score
@@ -108,6 +112,16 @@ from .patch_matcher import (
     match_patch_pair,
     batch_patch_match,
 )
+from .boundary_matcher import (
+    BoundaryMatch,
+    extract_boundary_points,
+    hausdorff_distance,
+    chamfer_distance,
+    frechet_approx,
+    score_boundary_pair,
+    match_boundary_pair,
+    batch_match_boundaries,
+)
 
 __all__ = [
     "dtw_distance",
@@ -190,4 +204,13 @@ __all__ = [
     "match_edge_strips",
     "match_patch_pair",
     "batch_patch_match",
+    # Геометрическое сопоставление контуров
+    "BoundaryMatch",
+    "extract_boundary_points",
+    "hausdorff_distance",
+    "chamfer_distance",
+    "frechet_approx",
+    "score_boundary_pair",
+    "match_boundary_pair",
+    "batch_match_boundaries",
 ]
