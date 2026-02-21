@@ -39,6 +39,10 @@
                               estimate_background, subtract_background,
                               correct_by_homomorph, correct_by_retinex,
                               correct_illumination, batch_correct, estimate_uniformity)
+    morphology_ops          — морфологические операции (MorphParams, erode, dilate,
+                              open_morph, close_morph, tophat, blackhat,
+                              morphological_gradient, skeleton, remove_small_blobs,
+                              fill_holes, apply_morph, batch_morph)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -211,6 +215,21 @@ from .illumination_corrector import (
     batch_correct,
     estimate_uniformity,
 )
+from .morphology_ops import (
+    MorphParams,
+    erode,
+    dilate,
+    open_morph,
+    close_morph,
+    tophat,
+    blackhat,
+    morphological_gradient,
+    skeleton,
+    remove_small_blobs,
+    fill_holes,
+    apply_morph,
+    batch_morph,
+)
 
 __all__ = [
     "segment_fragment",
@@ -361,4 +380,18 @@ __all__ = [
     "correct_illumination",
     "batch_correct",
     "estimate_uniformity",
+    # Морфологические операции
+    "MorphParams",
+    "erode",
+    "dilate",
+    "open_morph",
+    "close_morph",
+    "tophat",
+    "blackhat",
+    "morphological_gradient",
+    "skeleton",
+    "remove_small_blobs",
+    "fill_holes",
+    "apply_morph",
+    "batch_morph",
 ]

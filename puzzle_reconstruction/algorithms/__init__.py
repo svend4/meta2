@@ -28,6 +28,11 @@
                            estimate_by_pca, estimate_by_moments, estimate_by_gradient,
                            refine_rotation, estimate_rotation_pair,
                            batch_estimate_rotations)
+    gradient_flow        — анализ градиентного поля (GradientField, GradientStats,
+                           compute_gradient, compute_magnitude, compute_orientation,
+                           compute_divergence, compute_curl, flow_along_boundary,
+                           compare_gradient_fields, batch_gradient_fields,
+                           compute_gradient_stats)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -143,6 +148,19 @@ from .rotation_estimator import (
     estimate_rotation_pair,
     batch_estimate_rotations,
 )
+from .gradient_flow import (
+    GradientField,
+    GradientStats,
+    compute_gradient,
+    compute_magnitude,
+    compute_orientation,
+    compute_divergence,
+    compute_curl,
+    flow_along_boundary,
+    compare_gradient_fields,
+    batch_gradient_fields,
+    compute_gradient_stats,
+)
 
 __all__ = [
     # Синтез
@@ -252,4 +270,16 @@ __all__ = [
     "refine_rotation",
     "estimate_rotation_pair",
     "batch_estimate_rotations",
+    # Анализ градиентного поля
+    "GradientField",
+    "GradientStats",
+    "compute_gradient",
+    "compute_magnitude",
+    "compute_orientation",
+    "compute_divergence",
+    "compute_curl",
+    "flow_along_boundary",
+    "compare_gradient_fields",
+    "batch_gradient_fields",
+    "compute_gradient_stats",
 ]
