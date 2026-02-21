@@ -10,8 +10,9 @@
     visualizer — утилиты визуализации (word boxes, contours, matches, confidence bar)
     metrics    — метрики качества восстановления (ReconstructionMetrics, IoU, Kendall τ,
                  permutation distance, precision/recall, placement accuracy)
-    image_stats — статистический анализ изображений (ImageStats, энтропия, резкость,
-                  гистограммные моменты, градиентные статистики, compare_images)
+    image_stats    — статистический анализ изображений (ImageStats, энтропия, резкость,
+                     гистограммные моменты, градиентные статистики, compare_images)
+    patch_extractor — извлечение патчей (Patch, PatchSet, grid, sliding, random, border)
 """
 from .logger import (
     get_logger,
@@ -89,6 +90,16 @@ from .image_stats import (
     compare_images,
     batch_stats,
 )
+from .patch_extractor import (
+    Patch,
+    PatchSet,
+    extract_grid_patches,
+    extract_sliding_patches,
+    extract_random_patches,
+    extract_border_patches,
+    filter_patches,
+    batch_extract_patches,
+)
 
 __all__ = [
     # Логирование
@@ -159,4 +170,13 @@ __all__ = [
     "compute_image_stats",
     "compare_images",
     "batch_stats",
+    # Извлечение патчей
+    "Patch",
+    "PatchSet",
+    "extract_grid_patches",
+    "extract_sliding_patches",
+    "extract_random_patches",
+    "extract_border_patches",
+    "filter_patches",
+    "batch_extract_patches",
 ]

@@ -11,6 +11,7 @@
     word_segmentation    — сегментация слов/строк (морфология, без OCR)
     fragment_classifier  — классификация типов фрагментов (угол/край/внутр.)
     edge_profile         — 1D профили краёв (яркость, градиент, текстура, DTW)
+    line_detector        — обнаружение строк текста (проекция, Хаф, auto)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -65,6 +66,16 @@ from .edge_profile import (
     profile_dtw,
     match_edge_profiles,
     batch_profile_match,
+)
+from .line_detector import (
+    TextLine,
+    LineDetectionResult,
+    detect_lines_projection,
+    detect_lines_hough,
+    estimate_line_metrics,
+    filter_lines,
+    detect_text_lines,
+    batch_detect_lines,
 )
 
 __all__ = [
@@ -122,4 +133,13 @@ __all__ = [
     "profile_dtw",
     "match_edge_profiles",
     "batch_profile_match",
+    # Обнаружение строк
+    "TextLine",
+    "LineDetectionResult",
+    "detect_lines_projection",
+    "detect_lines_hough",
+    "estimate_line_metrics",
+    "filter_lines",
+    "detect_text_lines",
+    "batch_detect_lines",
 ]
