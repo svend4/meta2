@@ -21,6 +21,9 @@
     noise_analyzer   — анализ шума (σ, SNR, JPEG-артефакты, зернистость, качество)
     fragment_cropper — обрезка к содержательной области (CropResult, auto_crop,
                        find_content_bbox, pad_image, crop_to_content, batch_crop)
+    noise_reducer    — лёгкое шумоподавление (NoiseReductionResult, estimate_noise,
+                       gaussian_reduce, median_reduce, bilateral_reduce, auto_reduce,
+                       batch_reduce)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -139,6 +142,15 @@ from .fragment_cropper import (
     auto_crop,
     batch_crop,
 )
+from .noise_reducer import (
+    NoiseReductionResult,
+    estimate_noise,
+    gaussian_reduce,
+    median_reduce,
+    bilateral_reduce,
+    auto_reduce,
+    batch_reduce,
+)
 
 __all__ = [
     "segment_fragment",
@@ -241,4 +253,12 @@ __all__ = [
     "crop_to_content",
     "auto_crop",
     "batch_crop",
+    # Лёгкое шумоподавление
+    "NoiseReductionResult",
+    "estimate_noise",
+    "gaussian_reduce",
+    "median_reduce",
+    "bilateral_reduce",
+    "auto_reduce",
+    "batch_reduce",
 ]

@@ -13,6 +13,7 @@
     edge_profile         — 1D профили краёв (яркость, градиент, текстура, DTW)
     line_detector        — обнаружение строк текста (проекция, Хаф, auto)
     fragment_aligner     — субпиксельное выравнивание краёв (фазовая корр., шаблон)
+    score_aggregator     — агрегация оценок совместимости (weighted_avg, harmonic, min, max)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -86,6 +87,15 @@ from .fragment_aligner import (
     apply_shift,
     batch_align,
 )
+from .score_aggregator import (
+    AggregationResult,
+    weighted_avg,
+    harmonic_mean,
+    aggregate_scores,
+    threshold_filter,
+    top_k_pairs,
+    batch_aggregate,
+)
 
 __all__ = [
     # Синтез
@@ -158,4 +168,12 @@ __all__ = [
     "template_match_align",
     "apply_shift",
     "batch_align",
+    # Агрегация оценок совместимости
+    "AggregationResult",
+    "weighted_avg",
+    "harmonic_mean",
+    "aggregate_scores",
+    "threshold_filter",
+    "top_k_pairs",
+    "batch_aggregate",
 ]
