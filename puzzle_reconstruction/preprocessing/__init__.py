@@ -62,6 +62,10 @@
                               laplacian_enhance, hybrid_enhance,
                               gradient_scale_enhance, sharpness_measure,
                               apply_edge_enhance, batch_edge_enhance)
+    color_normalizer        — нормализация цвета (NormConfig, NormResult,
+                              gamma_correction, equalize_histogram, apply_clahe,
+                              grey_world_balance, max_rgb_balance, minmax_normalize,
+                              normalize_image, batch_normalize)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -302,6 +306,18 @@ from .edge_enhancer import (
     apply_edge_enhance,
     batch_edge_enhance,
 )
+from .color_normalizer import (
+    NormConfig,
+    NormResult,
+    gamma_correction as gamma_correction_new,
+    equalize_histogram as equalize_histogram_new,
+    apply_clahe,
+    grey_world_balance,
+    max_rgb_balance,
+    minmax_normalize,
+    normalize_image,
+    batch_normalize as batch_normalize_color,
+)
 
 __all__ = [
     "segment_fragment",
@@ -514,4 +530,15 @@ __all__ = [
     "sharpness_measure",
     "apply_edge_enhance",
     "batch_edge_enhance",
+    # Нормализация цвета
+    "NormConfig",
+    "NormResult",
+    "gamma_correction_new",
+    "equalize_histogram_new",
+    "apply_clahe",
+    "grey_world_balance",
+    "max_rgb_balance",
+    "minmax_normalize",
+    "normalize_image",
+    "batch_normalize_color",
 ]

@@ -73,6 +73,8 @@
                        connected_components, node_degrees, subgraph, batch_build_graphs)
     cache_manager    — LRU-кэш промежуточных результатов (CacheEntry, CacheStats,
                        LRUCache, make_cache, cached_call, merge_caches)
+    progress_tracker — трекер прогресса пайплайна (StepRecord, PipelineReport,
+                       ProgressTracker, make_tracker, run_step, summarize_tracker)
 """
 from .logger import (
     get_logger,
@@ -350,6 +352,14 @@ from .cache_manager import (
     cached_call,
     merge_caches,
 )
+from .progress_tracker import (
+    StepRecord,
+    PipelineReport,
+    ProgressTracker,
+    make_tracker,
+    run_step,
+    summarize_tracker,
+)
 
 __all__ = [
     # Логирование
@@ -602,4 +612,11 @@ __all__ = [
     "make_cache",
     "cached_call",
     "merge_caches",
+    # Трекер прогресса пайплайна
+    "StepRecord",
+    "PipelineReport",
+    "ProgressTracker",
+    "make_tracker",
+    "run_step",
+    "summarize_tracker",
 ]
