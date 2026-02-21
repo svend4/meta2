@@ -66,6 +66,9 @@
                               gamma_correction, equalize_histogram, apply_clahe,
                               grey_world_balance, max_rgb_balance, minmax_normalize,
                               normalize_image, batch_normalize)
+    image_enhancer          — улучшение качества изображений (EnhanceConfig,
+                              EnhanceResult, sharpen_image, denoise_image,
+                              enhance_contrast, enhance_image, batch_enhance)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -318,6 +321,15 @@ from .color_normalizer import (
     normalize_image,
     batch_normalize as batch_normalize_color,
 )
+from .image_enhancer import (
+    EnhanceConfig,
+    EnhanceResult,
+    sharpen_image,
+    denoise_image,
+    enhance_contrast,
+    enhance_image,
+    batch_enhance as batch_enhance_images,
+)
 
 __all__ = [
     "segment_fragment",
@@ -541,4 +553,12 @@ __all__ = [
     "minmax_normalize",
     "normalize_image",
     "batch_normalize_color",
+    # Улучшение качества изображений
+    "EnhanceConfig",
+    "EnhanceResult",
+    "sharpen_image",
+    "denoise_image",
+    "enhance_contrast",
+    "enhance_image",
+    "batch_enhance_images",
 ]

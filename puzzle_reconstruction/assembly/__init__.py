@@ -57,6 +57,10 @@
     gap_analyzer        — анализ зазоров между фрагментами (FragmentBounds, GapInfo,
                           GapStats, compute_gap, find_adjacent, analyze_all_gaps,
                           gap_histogram, classify_gaps, summarize, batch_analyze)
+    fragment_sorter     — сортировка фрагментов для порядка сборки (SortConfig,
+                          FragmentSortInfo, SortedFragment, sort_by_id, sort_by_area,
+                          sort_by_score, sort_random, sort_fragments,
+                          assign_positions, reorder_by_positions, batch_sort)
 """
 from .greedy import greedy_assembly
 from .annealing import simulated_annealing
@@ -187,6 +191,19 @@ from .gap_analyzer import (
     summarize,
     batch_analyze,
 )
+from .fragment_sorter import (
+    SortConfig,
+    FragmentSortInfo,
+    SortedFragment,
+    sort_by_id,
+    sort_by_area,
+    sort_by_score,
+    sort_random,
+    sort_fragments,
+    assign_positions,
+    reorder_by_positions,
+    batch_sort,
+)
 
 __all__ = [
     "greedy_assembly",
@@ -308,4 +325,16 @@ __all__ = [
     "classify_gaps",
     "summarize",
     "batch_analyze",
+    # Сортировка фрагментов
+    "SortConfig",
+    "FragmentSortInfo",
+    "SortedFragment",
+    "sort_by_id",
+    "sort_by_area",
+    "sort_by_score",
+    "sort_random",
+    "sort_fragments",
+    "assign_positions",
+    "reorder_by_positions",
+    "batch_sort",
 ]
