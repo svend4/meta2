@@ -69,6 +69,11 @@
     image_enhancer          — улучшение качества изображений (EnhanceConfig,
                               EnhanceResult, sharpen_image, denoise_image,
                               enhance_contrast, enhance_image, batch_enhance)
+    gradient_analyzer       — анализ градиентов (GradientConfig, GradientMap,
+                              GradientProfile, compute_gradient_map,
+                              compute_orientation_histogram,
+                              extract_gradient_profile, compare_gradient_profiles,
+                              batch_extract_gradient_profiles)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -330,6 +335,16 @@ from .image_enhancer import (
     enhance_image,
     batch_enhance as batch_enhance_images,
 )
+from .gradient_analyzer import (
+    GradientConfig,
+    GradientMap,
+    GradientProfile,
+    compute_gradient_map,
+    compute_orientation_histogram,
+    extract_gradient_profile,
+    compare_gradient_profiles,
+    batch_extract_gradient_profiles,
+)
 
 __all__ = [
     "segment_fragment",
@@ -561,4 +576,13 @@ __all__ = [
     "enhance_contrast",
     "enhance_image",
     "batch_enhance_images",
+    # Анализ градиентов
+    "GradientConfig",
+    "GradientMap",
+    "GradientProfile",
+    "compute_gradient_map",
+    "compute_orientation_histogram",
+    "extract_gradient_profile",
+    "compare_gradient_profiles",
+    "batch_extract_gradient_profiles",
 ]

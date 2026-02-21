@@ -42,6 +42,11 @@
                            PlacedFragment, check_unique_ids, check_within_canvas,
                            check_no_overlaps, check_coverage, check_gap_uniformity,
                            validate_spatial, batch_validate)
+    placement_validator  — валидация bbox-размещений (PlacementConfig, PlacementBox,
+                           CollisionReport, box_iou, find_collisions,
+                           find_duplicate_positions, find_out_of_bounds,
+                           compute_coverage, validate_placements,
+                           batch_validate_placements)
 """
 from .ocr import verify_full_assembly, render_assembly_image
 from .metrics import (
@@ -194,6 +199,18 @@ from .spatial_validator import (
     validate_spatial,
     batch_validate as batch_validate_spatial,
 )
+from .placement_validator import (
+    PlacementConfig,
+    PlacementBox,
+    CollisionReport,
+    box_iou,
+    find_collisions,
+    find_duplicate_positions,
+    find_out_of_bounds as find_oob_placements,
+    compute_coverage as compute_placement_coverage,
+    validate_placements,
+    batch_validate_placements,
+)
 
 __all__ = [
     "verify_full_assembly",
@@ -331,4 +348,15 @@ __all__ = [
     "check_gap_uniformity",
     "validate_spatial",
     "batch_validate_spatial",
+    # Валидация bbox-размещений
+    "PlacementConfig",
+    "PlacementBox",
+    "CollisionReport",
+    "box_iou",
+    "find_collisions",
+    "find_duplicate_positions",
+    "find_oob_placements",
+    "compute_placement_coverage",
+    "validate_placements",
+    "batch_validate_placements",
 ]
