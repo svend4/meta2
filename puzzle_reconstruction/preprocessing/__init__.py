@@ -8,7 +8,8 @@
     color_norm     — нормализация цвета (CLAHE, Gray World, гамма)
     denoise        — шумоподавление (Gaussian, Median, Bilateral, NLM, auto)
     augment        — аугментация данных (crop, rotate, noise, jitter, JPEG)
-    edge_detector  — специализированное детектирование краёв (Canny, Sobel, LoG)
+    edge_detector    — специализированное детектирование краёв (Canny, Sobel, LoG)
+    skew_correction  — коррекция наклона (Hough, projection, FFT)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -49,6 +50,16 @@ from .edge_detector import (
     edge_orientation_hist,
     EdgeDetectionResult,
 )
+from .skew_correction import (
+    SkewResult,
+    detect_skew_hough,
+    detect_skew_projection,
+    detect_skew_fft,
+    correct_skew,
+    auto_correct_skew,
+    skew_confidence,
+    batch_correct_skew,
+)
 
 __all__ = [
     "segment_fragment",
@@ -83,4 +94,12 @@ __all__ = [
     "edge_density",
     "edge_orientation_hist",
     "EdgeDetectionResult",
+    "SkewResult",
+    "detect_skew_hough",
+    "detect_skew_projection",
+    "detect_skew_fft",
+    "correct_skew",
+    "auto_correct_skew",
+    "skew_confidence",
+    "batch_correct_skew",
 ]

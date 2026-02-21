@@ -5,7 +5,8 @@
     ocr            — OCR-верификация текстовой связности (pytesseract)
     metrics        — Количественные метрики качества сборки (NA, DC, RMSE, ...)
     report         — Генератор отчётов (JSON / Markdown / HTML)
-    text_coherence — N-граммная языковая модель, оценка стыков по биграммам
+    text_coherence  — N-граммная языковая модель, оценка стыков по биграммам
+    layout_verifier — верификация пространственного расположения (overlap, gap, alignment)
 """
 from .ocr import verify_full_assembly, render_assembly_image
 from .metrics import (
@@ -23,6 +24,20 @@ from .text_coherence import (
     word_boundary_score,
     build_ngram_model,
 )
+from .layout_verifier import (
+    ConstraintType,
+    LayoutConstraint,
+    FragmentBox,
+    LayoutVerificationResult,
+    build_layout_boxes,
+    check_overlaps,
+    check_gaps,
+    check_column_alignment,
+    check_row_alignment,
+    check_out_of_bounds,
+    check_duplicate_placements,
+    verify_layout,
+)
 
 __all__ = [
     "verify_full_assembly",
@@ -39,4 +54,16 @@ __all__ = [
     "seam_bigram_score",
     "word_boundary_score",
     "build_ngram_model",
+    "ConstraintType",
+    "LayoutConstraint",
+    "FragmentBox",
+    "LayoutVerificationResult",
+    "build_layout_boxes",
+    "check_overlaps",
+    "check_gaps",
+    "check_column_alignment",
+    "check_row_alignment",
+    "check_out_of_bounds",
+    "check_duplicate_placements",
+    "verify_layout",
 ]
