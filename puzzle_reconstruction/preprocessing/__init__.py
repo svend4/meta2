@@ -32,6 +32,9 @@
     patch_normalizer   — нормализация патчей (NormalizationParams, equalize_histogram,
                          stretch_contrast, standardize_patch, normalize_patch,
                          batch_normalize, compute_normalization_stats)
+    quality_assessor   — оценка качества изображений (QualityReport, estimate_blur,
+                         estimate_noise, estimate_contrast, estimate_completeness,
+                         assess_quality, filter_by_quality, batch_assess_quality)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -184,6 +187,16 @@ from .patch_normalizer import (
     batch_normalize as batch_normalize_patches,
     compute_normalization_stats,
 )
+from .quality_assessor import (
+    QualityReport,
+    estimate_blur,
+    estimate_noise,
+    estimate_contrast,
+    estimate_completeness,
+    assess_quality,
+    filter_by_quality,
+    batch_assess_quality,
+)
 
 __all__ = [
     "segment_fragment",
@@ -316,4 +329,13 @@ __all__ = [
     "normalize_patch",
     "batch_normalize_patches",
     "compute_normalization_stats",
+    # Оценка качества изображений
+    "QualityReport",
+    "estimate_blur",
+    "estimate_noise",
+    "estimate_contrast",
+    "estimate_completeness",
+    "assess_quality",
+    "filter_by_quality",
+    "batch_assess_quality",
 ]

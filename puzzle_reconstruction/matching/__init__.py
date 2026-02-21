@@ -23,6 +23,10 @@
                        extract_boundary_points, hausdorff_distance,
                        chamfer_distance, frechet_approx, score_boundary_pair,
                        match_boundary_pair, batch_match_boundaries)
+    score_normalizer — нормализация оценок совместимости (ScoreNormResult,
+                       normalize_minmax, normalize_zscore, normalize_rank,
+                       calibrate_scores, combine_scores,
+                       normalize_score_matrix, batch_normalize_scores)
 """
 from .dtw import dtw_distance, dtw_distance_mirror
 from .pairwise import match_score
@@ -122,6 +126,16 @@ from .boundary_matcher import (
     match_boundary_pair,
     batch_match_boundaries,
 )
+from .score_normalizer import (
+    ScoreNormResult,
+    normalize_minmax,
+    normalize_zscore,
+    normalize_rank,
+    calibrate_scores,
+    combine_scores,
+    normalize_score_matrix,
+    batch_normalize_scores,
+)
 
 __all__ = [
     "dtw_distance",
@@ -213,4 +227,13 @@ __all__ = [
     "score_boundary_pair",
     "match_boundary_pair",
     "batch_match_boundaries",
+    # Нормализация оценок совместимости
+    "ScoreNormResult",
+    "normalize_minmax",
+    "normalize_zscore",
+    "normalize_rank",
+    "calibrate_scores",
+    "combine_scores",
+    "normalize_score_matrix",
+    "batch_normalize_scores",
 ]
