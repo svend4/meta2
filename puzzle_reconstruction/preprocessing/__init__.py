@@ -10,6 +10,7 @@
     augment        — аугментация данных (crop, rotate, noise, jitter, JPEG)
     edge_detector    — специализированное детектирование краёв (Canny, Sobel, LoG)
     skew_correction  — коррекция наклона (Hough, projection, FFT)
+    perspective      — коррекция перспективных искажений (contour, Hough)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -60,6 +61,16 @@ from .skew_correction import (
     skew_confidence,
     batch_correct_skew,
 )
+from .perspective import (
+    PerspectiveResult,
+    order_corners,
+    four_point_transform,
+    detect_corners_contour,
+    detect_corners_hough,
+    correct_perspective,
+    auto_correct_perspective,
+    batch_correct_perspective,
+)
 
 __all__ = [
     "segment_fragment",
@@ -102,4 +113,12 @@ __all__ = [
     "auto_correct_skew",
     "skew_confidence",
     "batch_correct_skew",
+    "PerspectiveResult",
+    "order_corners",
+    "four_point_transform",
+    "detect_corners_contour",
+    "detect_corners_hough",
+    "correct_perspective",
+    "auto_correct_perspective",
+    "batch_correct_perspective",
 ]

@@ -6,7 +6,8 @@
     metrics        — Количественные метрики качества сборки (NA, DC, RMSE, ...)
     report         — Генератор отчётов (JSON / Markdown / HTML)
     text_coherence  — N-граммная языковая модель, оценка стыков по биграммам
-    layout_verifier — верификация пространственного расположения (overlap, gap, alignment)
+    layout_verifier    — верификация пространственного расположения (overlap, gap, alignment)
+    confidence_scorer  — итоговая оценка уверенности в качестве сборки (A–F)
 """
 from .ocr import verify_full_assembly, render_assembly_image
 from .metrics import (
@@ -38,6 +39,17 @@ from .layout_verifier import (
     check_duplicate_placements,
     verify_layout,
 )
+from .confidence_scorer import (
+    ScoreComponent,
+    AssemblyConfidence,
+    grade_from_score,
+    score_edge_compat,
+    score_layout,
+    score_coverage,
+    score_uniqueness,
+    score_assembly_score,
+    compute_confidence,
+)
 
 __all__ = [
     "verify_full_assembly",
@@ -66,4 +78,13 @@ __all__ = [
     "check_out_of_bounds",
     "check_duplicate_placements",
     "verify_layout",
+    "ScoreComponent",
+    "AssemblyConfidence",
+    "grade_from_score",
+    "score_edge_compat",
+    "score_layout",
+    "score_coverage",
+    "score_uniqueness",
+    "score_assembly_score",
+    "compute_confidence",
 ]
