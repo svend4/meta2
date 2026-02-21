@@ -48,6 +48,10 @@
                       bbox_intersection, bbox_union, expand_bbox, crop_image,
                       bboxes_from_mask, merge_overlapping_bboxes,
                       bbox_center, bbox_aspect_ratio)
+    sparse_utils    — утилиты разреженных матриц оценок (SparseEntry,
+                      to_sparse_entries, from_sparse_entries, sparse_top_k,
+                      threshold_matrix, symmetrize_matrix, normalize_matrix,
+                      diagonal_zeros, matrix_sparsity, top_k_per_row)
 """
 from .logger import (
     get_logger,
@@ -247,6 +251,18 @@ from .bbox_utils import (
     bbox_center,
     bbox_aspect_ratio,
 )
+from .sparse_utils import (
+    SparseEntry,
+    to_sparse_entries,
+    from_sparse_entries,
+    sparse_top_k,
+    threshold_matrix,
+    symmetrize_matrix,
+    normalize_matrix,
+    diagonal_zeros,
+    matrix_sparsity,
+    top_k_per_row,
+)
 
 __all__ = [
     # Логирование
@@ -428,4 +444,15 @@ __all__ = [
     "merge_overlapping_bboxes",
     "bbox_center",
     "bbox_aspect_ratio",
+    # Утилиты разреженных матриц оценок
+    "SparseEntry",
+    "to_sparse_entries",
+    "from_sparse_entries",
+    "sparse_top_k",
+    "threshold_matrix",
+    "symmetrize_matrix",
+    "normalize_matrix",
+    "diagonal_zeros",
+    "matrix_sparsity",
+    "top_k_per_row",
 ]

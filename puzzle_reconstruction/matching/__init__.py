@@ -33,6 +33,9 @@
     affine_matcher   — аффинное сопоставление (AffineMatchResult, estimate_affine,
                        apply_affine_pts, affine_reprojection_error,
                        score_affine_match, match_fragments_affine, batch_affine_match)
+    spectral_matcher — спектральное сопоставление (SpectralMatchResult,
+                       magnitude_spectrum, log_magnitude, spectrum_correlation,
+                       phase_correlation, match_spectra, batch_spectral_match)
 """
 from .dtw import dtw_distance, dtw_distance_mirror
 from .pairwise import match_score
@@ -160,6 +163,15 @@ from .affine_matcher import (
     match_fragments_affine,
     batch_affine_match,
 )
+from .spectral_matcher import (
+    SpectralMatchResult,
+    magnitude_spectrum,
+    log_magnitude,
+    spectrum_correlation,
+    phase_correlation,
+    match_spectra,
+    batch_spectral_match,
+)
 
 __all__ = [
     "dtw_distance",
@@ -276,4 +288,12 @@ __all__ = [
     "score_affine_match",
     "match_fragments_affine",
     "batch_affine_match",
+    # Спектральное сопоставление
+    "SpectralMatchResult",
+    "magnitude_spectrum",
+    "log_magnitude",
+    "spectrum_correlation",
+    "phase_correlation",
+    "match_spectra",
+    "batch_spectral_match",
 ]
