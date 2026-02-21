@@ -13,6 +13,8 @@
     texture_match — текстурное сопоставление (LBP, Gabor, ориентации градиентов)
     geometric_match — геометрическое сопоставление (площадь, AR, моменты Ху)
     seam_score      — комплексная оценка шва (профиль, цвет, текстура, градиент)
+    candidate_ranker — ранжирование пар-кандидатов (score_pair, rank_pairs,
+                       filter_by_score, top_k, deduplicate_pairs, batch_rank)
 """
 from .dtw import dtw_distance, dtw_distance_mirror
 from .pairwise import match_score
@@ -83,6 +85,15 @@ from .seam_score import (
     rank_candidates,
     batch_seam_scores,
 )
+from .candidate_ranker import (
+    CandidatePair,
+    score_pair,
+    rank_pairs,
+    filter_by_score,
+    top_k,
+    deduplicate_pairs,
+    batch_rank,
+)
 
 __all__ = [
     "dtw_distance",
@@ -148,4 +159,12 @@ __all__ = [
     "normalize_seam_scores",
     "rank_candidates",
     "batch_seam_scores",
+    # Ранжирование кандидатов
+    "CandidatePair",
+    "score_pair",
+    "rank_pairs",
+    "filter_by_score",
+    "top_k",
+    "deduplicate_pairs",
+    "batch_rank",
 ]

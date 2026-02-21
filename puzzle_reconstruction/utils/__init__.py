@@ -19,6 +19,9 @@
     transform_utils — геометрические преобразования (rotate, flip, scale, crop_region,
                       affine_from_params, compose_affines, apply_affine,
                       apply_homography, batch_rotate)
+    color_utils     — цветовые утилиты (to_gray, to_lab, to_hsv, from_lab,
+                      compute_histogram, compare_histograms, dominant_colors,
+                      color_distance, strip_histogram)
 """
 from .logger import (
     get_logger,
@@ -127,6 +130,17 @@ from .transform_utils import (
     apply_homography,
     batch_rotate,
 )
+from .color_utils import (
+    to_gray,
+    to_lab,
+    to_hsv,
+    from_lab,
+    compute_histogram,
+    compare_histograms,
+    dominant_colors,
+    color_distance,
+    strip_histogram,
+)
 
 __all__ = [
     # Логирование
@@ -225,4 +239,14 @@ __all__ = [
     "apply_affine",
     "apply_homography",
     "batch_rotate",
+    # Цветовые утилиты
+    "to_gray",
+    "to_lab",
+    "to_hsv",
+    "from_lab",
+    "compute_histogram",
+    "compare_histograms",
+    "dominant_colors",
+    "color_distance",
+    "strip_histogram",
 ]
