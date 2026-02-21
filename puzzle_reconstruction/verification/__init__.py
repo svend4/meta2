@@ -55,6 +55,10 @@
                            ScoringReport, add_score, compute_summary, format_report,
                            filter_report, compare_reports, export_report,
                            batch_score_report)
+    edge_validator       — валидация совместимости краёв (EdgeValidConfig, EdgeCheck,
+                           EdgeValidResult, check_intensity, check_gap, check_normals,
+                           validate_edge_pair, summarise_validations,
+                           batch_validate_edges)
 """
 from .ocr import verify_full_assembly, render_assembly_image
 from .metrics import (
@@ -242,6 +246,17 @@ from .score_reporter import (
     export_report,
     batch_score_report,
 )
+from .edge_validator import (
+    EdgeValidConfig,
+    EdgeCheck,
+    EdgeValidResult,
+    check_intensity,
+    check_gap,
+    check_normals,
+    validate_edge_pair,
+    summarise_validations,
+    batch_validate_edges,
+)
 
 __all__ = [
     "verify_full_assembly",
@@ -411,4 +426,14 @@ __all__ = [
     "compare_reports",
     "export_report",
     "batch_score_report",
+    # Валидация совместимости краёв
+    "EdgeValidConfig",
+    "EdgeCheck",
+    "EdgeValidResult",
+    "check_intensity",
+    "check_gap",
+    "check_normals",
+    "validate_edge_pair",
+    "summarise_validations",
+    "batch_validate_edges",
 ]

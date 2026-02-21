@@ -95,6 +95,9 @@
                        merge_batch_results)
     event_bus        — шина событий pub/sub (BusConfig, EventRecord, BusSummary,
                        EventBus, make_event_bus, collect_events, drain_bus)
+    pipeline_runner  — запуск многоэтапного пайплайна (RunnerConfig, StepResult,
+                       PipelineResult, PipelineStep, make_step, run_pipeline,
+                       get_step_output, filter_step_results, retry_failed_steps)
 """
 from .logger import (
     get_logger,
@@ -444,6 +447,17 @@ from .event_bus import (
     collect_events,
     drain_bus,
 )
+from .pipeline_runner import (
+    RunnerConfig,
+    StepResult,
+    PipelineResult,
+    PipelineStep,
+    make_step,
+    run_pipeline,
+    get_step_output,
+    filter_step_results,
+    retry_failed_steps,
+)
 
 __all__ = [
     # Логирование
@@ -761,4 +775,14 @@ __all__ = [
     "make_event_bus",
     "collect_events",
     "drain_bus",
+    # Запуск многоэтапного пайплайна
+    "RunnerConfig",
+    "StepResult",
+    "PipelineResult",
+    "PipelineStep",
+    "make_step",
+    "run_pipeline",
+    "get_step_output",
+    "filter_step_results",
+    "retry_failed_steps",
 ]
