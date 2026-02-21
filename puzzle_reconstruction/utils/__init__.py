@@ -68,6 +68,9 @@
                        variance_selection, correlation_selection, rank_features,
                        pca_reduce, normalize_features, select_top_k,
                        apply_selection, batch_select)
+    graph_utils      — граф совместимости фрагментов (GraphEdge, FragmentGraph,
+                       build_graph, dijkstra, shortest_path, minimum_spanning_tree,
+                       connected_components, node_degrees, subgraph, batch_build_graphs)
 """
 from .logger import (
     get_logger,
@@ -325,6 +328,18 @@ from .feature_selector import (
     apply_selection,
     batch_select,
 )
+from .graph_utils import (
+    GraphEdge,
+    FragmentGraph,
+    build_graph,
+    dijkstra,
+    shortest_path,
+    minimum_spanning_tree,
+    connected_components,
+    node_degrees,
+    subgraph,
+    batch_build_graphs,
+)
 
 __all__ = [
     # Логирование
@@ -559,4 +574,15 @@ __all__ = [
     "select_top_k",
     "apply_selection",
     "batch_select",
+    # Граф совместимости фрагментов
+    "GraphEdge",
+    "FragmentGraph",
+    "build_graph",
+    "dijkstra",
+    "shortest_path",
+    "minimum_spanning_tree",
+    "connected_components",
+    "node_degrees",
+    "subgraph",
+    "batch_build_graphs",
 ]

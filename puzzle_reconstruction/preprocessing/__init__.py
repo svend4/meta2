@@ -58,6 +58,10 @@
     noise_filter            — фильтрация шума (NoiseFilterParams, average_filter,
                               gaussian_filter, median_filter, bilateral_filter,
                               nlm_filter, apply_noise_filter, batch_noise_filter)
+    edge_enhancer           — усиление краёв (EdgeEnhanceParams, unsharp_mask,
+                              laplacian_enhance, hybrid_enhance,
+                              gradient_scale_enhance, sharpness_measure,
+                              apply_edge_enhance, batch_edge_enhance)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -288,6 +292,16 @@ from .noise_filter import (
     apply_noise_filter,
     batch_noise_filter,
 )
+from .edge_enhancer import (
+    EdgeEnhanceParams,
+    unsharp_mask,
+    laplacian_enhance,
+    hybrid_enhance,
+    gradient_scale_enhance,
+    sharpness_measure,
+    apply_edge_enhance,
+    batch_edge_enhance,
+)
 
 __all__ = [
     "segment_fragment",
@@ -491,4 +505,13 @@ __all__ = [
     "nlm_filter",
     "apply_noise_filter",
     "batch_noise_filter",
+    # Усиление краёв
+    "EdgeEnhanceParams",
+    "unsharp_mask",
+    "laplacian_enhance",
+    "hybrid_enhance",
+    "gradient_scale_enhance",
+    "sharpness_measure",
+    "apply_edge_enhance",
+    "batch_edge_enhance",
 ]
