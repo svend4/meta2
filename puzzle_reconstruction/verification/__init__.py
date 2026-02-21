@@ -30,6 +30,11 @@
                           score_geometry, score_coverage, score_seam_quality,
                           score_uniqueness, compute_assembly_score,
                           compare_assemblies, rank_assemblies)
+    completeness_checker — проверка полноты реконструкции (CompletenessReport,
+                           check_fragment_coverage, find_missing_fragments,
+                           check_spatial_coverage, find_uncovered_regions,
+                           completeness_score, generate_completeness_report,
+                           batch_check_coverage)
 """
 from .ocr import verify_full_assembly, render_assembly_image
 from .metrics import (
@@ -150,6 +155,16 @@ from .assembly_scorer import (
     compare_assemblies,
     rank_assemblies,
 )
+from .completeness_checker import (
+    CompletenessReport,
+    check_fragment_coverage,
+    find_missing_fragments,
+    check_spatial_coverage,
+    find_uncovered_regions,
+    completeness_score,
+    generate_completeness_report,
+    batch_check_coverage,
+)
 
 __all__ = [
     "verify_full_assembly",
@@ -258,4 +273,13 @@ __all__ = [
     "compute_assembly_score",
     "compare_assemblies",
     "rank_assemblies",
+    # Проверка полноты реконструкции
+    "CompletenessReport",
+    "check_fragment_coverage",
+    "find_missing_fragments",
+    "check_spatial_coverage",
+    "find_uncovered_regions",
+    "completeness_score",
+    "generate_completeness_report",
+    "batch_check_coverage",
 ]

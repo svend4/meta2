@@ -47,6 +47,10 @@
                               fft_image, ifft_image, gaussian_low_pass,
                               gaussian_high_pass, band_pass_filter, notch_filter,
                               apply_frequency_filter, batch_frequency_filter)
+    channel_splitter        — разделение и обработка каналов (ChannelStats,
+                              split_channels, merge_channels, channel_statistics,
+                              equalize_channel, normalize_channel,
+                              channel_difference, apply_per_channel, batch_split)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -245,6 +249,17 @@ from .frequency_filter import (
     apply_frequency_filter,
     batch_frequency_filter,
 )
+from .channel_splitter import (
+    ChannelStats,
+    split_channels,
+    merge_channels,
+    channel_statistics,
+    equalize_channel,
+    normalize_channel,
+    channel_difference,
+    apply_per_channel,
+    batch_split,
+)
 
 __all__ = [
     "segment_fragment",
@@ -419,4 +434,14 @@ __all__ = [
     "notch_filter",
     "apply_frequency_filter",
     "batch_frequency_filter",
+    # Разделение и обработка каналов
+    "ChannelStats",
+    "split_channels",
+    "merge_channels",
+    "channel_statistics",
+    "equalize_channel",
+    "normalize_channel",
+    "channel_difference",
+    "apply_per_channel",
+    "batch_split",
 ]
