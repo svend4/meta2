@@ -51,6 +51,10 @@
                            LayoutScoreResult, PlacedFragment, compute_coverage,
                            compute_overlap_ratio, compute_uniformity, score_layout,
                            rank_layouts, batch_score_layouts)
+    score_reporter       — формирование отчётов по оценкам (ReportConfig, ScoreEntry,
+                           ScoringReport, add_score, compute_summary, format_report,
+                           filter_report, compare_reports, export_report,
+                           batch_score_report)
 """
 from .ocr import verify_full_assembly, render_assembly_image
 from .metrics import (
@@ -226,6 +230,18 @@ from .layout_scorer import (
     rank_layouts,
     batch_score_layouts,
 )
+from .score_reporter import (
+    ReportConfig,
+    ScoreEntry,
+    ScoringReport,
+    add_score,
+    compute_summary,
+    format_report,
+    filter_report,
+    compare_reports,
+    export_report,
+    batch_score_report,
+)
 
 __all__ = [
     "verify_full_assembly",
@@ -384,4 +400,15 @@ __all__ = [
     "score_layout_quality",
     "rank_layouts",
     "batch_score_layouts",
+    # Формирование отчётов по оценкам
+    "ReportConfig",
+    "ScoreEntry",
+    "ScoringReport",
+    "add_score",
+    "compute_summary",
+    "format_report",
+    "filter_report",
+    "compare_reports",
+    "export_report",
+    "batch_score_report",
 ]

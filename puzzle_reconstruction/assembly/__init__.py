@@ -69,6 +69,10 @@
                           PositionEstimate, snap_to_grid, estimate_grid_positions,
                           refine_positions, generate_position_candidates,
                           batch_estimate_positions)
+    fragment_mapper     — маппинг фрагментов к зонам (MapConfig, FragmentZone,
+                          MapResult, compute_zone_grid, assign_to_zone,
+                          build_fragment_map, remap_fragments, score_mapping,
+                          batch_build_fragment_maps)
 """
 from .greedy import greedy_assembly
 from .annealing import simulated_annealing
@@ -233,6 +237,17 @@ from .position_estimator import (
     generate_position_candidates,
     batch_estimate_positions,
 )
+from .fragment_mapper import (
+    MapConfig,
+    FragmentZone,
+    MapResult,
+    compute_zone_grid,
+    assign_to_zone,
+    build_fragment_map,
+    remap_fragments,
+    score_mapping,
+    batch_build_fragment_maps,
+)
 
 __all__ = [
     "greedy_assembly",
@@ -385,4 +400,14 @@ __all__ = [
     "refine_positions",
     "generate_position_candidates",
     "batch_estimate_positions",
+    # Маппинг фрагментов к зонам
+    "MapConfig",
+    "FragmentZone",
+    "MapResult",
+    "compute_zone_grid",
+    "assign_to_zone",
+    "build_fragment_map",
+    "remap_fragments",
+    "score_mapping",
+    "batch_build_fragment_maps",
 ]
