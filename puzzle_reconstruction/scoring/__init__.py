@@ -31,6 +31,9 @@
                           select_percentile_threshold, select_otsu_threshold,
                           select_f1_threshold, select_adaptive_threshold,
                           select_threshold, apply_threshold, batch_select_thresholds)
+    pair_ranker         — ранжирование пар фрагментов (RankConfig, RankerPair,
+                          RankResult, compute_pair_score, rank_fragment_pairs,
+                          build_rank_matrix, merge_rank_results)
 """
 from .consistency_checker import (
     ConsistencyIssue,
@@ -115,6 +118,15 @@ from .threshold_selector import (
     apply_threshold,
     batch_select_thresholds,
 )
+from .pair_ranker import (
+    RankConfig,
+    RankedPair as RankerPair,
+    RankResult,
+    compute_pair_score,
+    rank_pairs as rank_fragment_pairs,
+    build_rank_matrix,
+    merge_rank_results,
+)
 
 __all__ = [
     # Проверка согласованности
@@ -193,4 +205,12 @@ __all__ = [
     "select_threshold",
     "apply_threshold",
     "batch_select_thresholds",
+    # Ранжирование пар фрагментов
+    "RankConfig",
+    "RankerPair",
+    "RankResult",
+    "compute_pair_score",
+    "rank_fragment_pairs",
+    "build_rank_matrix",
+    "merge_rank_results",
 ]

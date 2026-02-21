@@ -85,6 +85,10 @@
     metric_tracker   — отслеживание метрик (MetricRecord, MetricStats, TrackerConfig,
                        MetricTracker, make_tracker, merge_trackers,
                        compute_moving_average, export_metrics)
+    event_log        — журнал событий пайплайна (EventLogConfig, EventRecord,
+                       EventSummary, EventLog, make_event_log, log_event,
+                       filter_events, summarize_events, merge_event_logs,
+                       export_event_log)
 """
 from .logger import (
     get_logger,
@@ -402,6 +406,18 @@ from .metric_tracker import (
     compute_moving_average,
     export_metrics,
 )
+from .event_log import (
+    EventLogConfig,
+    EventRecord,
+    EventSummary,
+    EventLog,
+    make_event_log,
+    log_event,
+    filter_events,
+    summarize_events,
+    merge_event_logs,
+    export_event_log,
+)
 
 __all__ = [
     # Логирование
@@ -690,4 +706,15 @@ __all__ = [
     "merge_trackers",
     "compute_moving_average",
     "export_metrics",
+    # Журнал событий пайплайна
+    "EventLogConfig",
+    "EventRecord",
+    "EventSummary",
+    "EventLog",
+    "make_event_log",
+    "log_event",
+    "filter_events",
+    "summarize_events",
+    "merge_event_logs",
+    "export_event_log",
 ]
