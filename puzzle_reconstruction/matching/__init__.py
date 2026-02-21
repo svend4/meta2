@@ -51,6 +51,10 @@
                        (OrientConfig, OrientProfile, OrientMatchResult,
                        compute_orient_profile, orient_similarity,
                        best_orient_angle, match_orient_pair, batch_orient_match)
+    global_matcher   — глобальное сопоставление по совокупности оценок
+                       (GlobalMatchConfig, GlobalMatch, GlobalMatchResult,
+                       aggregate_pair_scores, rank_candidates, global_match,
+                       filter_matches, merge_match_results)
 """
 from .dtw import dtw_distance, dtw_distance_mirror
 from .pairwise import match_score
@@ -228,6 +232,16 @@ from .orient_matcher import (
     match_orient_pair,
     batch_orient_match,
 )
+from .global_matcher import (
+    GlobalMatchConfig,
+    GlobalMatch,
+    GlobalMatchResult,
+    aggregate_pair_scores,
+    rank_candidates,
+    global_match,
+    filter_matches,
+    merge_match_results,
+)
 
 __all__ = [
     "dtw_distance",
@@ -389,4 +403,13 @@ __all__ = [
     "best_orient_angle",
     "match_orient_pair",
     "batch_orient_match",
+    # Глобальное сопоставление
+    "GlobalMatchConfig",
+    "GlobalMatch",
+    "GlobalMatchResult",
+    "aggregate_pair_scores",
+    "rank_candidates",
+    "global_match",
+    "filter_matches",
+    "merge_match_results",
 ]

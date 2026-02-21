@@ -76,6 +76,10 @@
     sequence_planner    — планирование порядка размещения (PlanConfig,
                           PlacementStep, PlacementPlan, build_placement_plan,
                           reorder_plan, filter_plan, export_plan, batch_build_plans)
+    layout_refiner      — итеративное уточнение компоновки (RefineConfig,
+                          FragmentPosition, RefineStep, RefineResult,
+                          compute_layout_score, refine_layout, apply_offset,
+                          compare_layouts)
 """
 from .greedy import greedy_assembly
 from .annealing import simulated_annealing
@@ -261,6 +265,16 @@ from .sequence_planner import (
     export_plan,
     batch_build_plans,
 )
+from .layout_refiner import (
+    RefineConfig,
+    FragmentPosition,
+    RefineStep,
+    RefineResult,
+    compute_layout_score,
+    refine_layout,
+    apply_offset,
+    compare_layouts,
+)
 
 __all__ = [
     "greedy_assembly",
@@ -432,4 +446,13 @@ __all__ = [
     "filter_plan",
     "export_plan",
     "batch_build_plans",
+    # Итеративное уточнение компоновки
+    "RefineConfig",
+    "FragmentPosition",
+    "RefineStep",
+    "RefineResult",
+    "compute_layout_score",
+    "refine_layout",
+    "apply_offset",
+    "compare_layouts",
 ]
