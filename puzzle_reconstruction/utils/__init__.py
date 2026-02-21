@@ -89,6 +89,10 @@
                        EventSummary, EventLog, make_event_log, log_event,
                        filter_events, summarize_events, merge_event_logs,
                        export_event_log)
+    batch_processor  — пакетная обработка элементов (ProcessConfig, ProcessItem,
+                       BatchSummary, make_processor, process_items,
+                       filter_successful, retry_failed_items, split_batch,
+                       merge_batch_results)
 """
 from .logger import (
     get_logger,
@@ -418,6 +422,17 @@ from .event_log import (
     merge_event_logs,
     export_event_log,
 )
+from .batch_processor import (
+    ProcessConfig,
+    ProcessItem,
+    BatchSummary,
+    make_processor,
+    process_items,
+    filter_successful,
+    retry_failed_items,
+    split_batch,
+    merge_batch_results,
+)
 
 __all__ = [
     # Логирование
@@ -717,4 +732,14 @@ __all__ = [
     "summarize_events",
     "merge_event_logs",
     "export_event_log",
+    # Пакетная обработка элементов
+    "ProcessConfig",
+    "ProcessItem",
+    "BatchSummary",
+    "make_processor",
+    "process_items",
+    "filter_successful",
+    "retry_failed_items",
+    "split_batch",
+    "merge_batch_results",
 ]

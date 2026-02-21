@@ -42,6 +42,11 @@
     score_aggregator — агрегация оценок от нескольких матчеров (AggregationConfig,
                        AggregatedScore, AggregationReport, aggregate_scores,
                        aggregate_score_matrix, batch_aggregate_scores, filter_aggregated)
+    edge_comparator  — сравнение краёв по интенсивности/градиенту/текстуре
+                       (EdgeCompConfig, EdgeSample, EdgeCompResult,
+                       extract_edge_sample, compare_edge_intensity,
+                       compare_edge_gradient, compare_edge_texture,
+                       score_edge_comparison, compare_edge_pair, batch_compare_edges)
 """
 from .dtw import dtw_distance, dtw_distance_mirror
 from .pairwise import match_score
@@ -197,6 +202,18 @@ from .score_aggregator import (
     batch_aggregate_scores,
     filter_aggregated,
 )
+from .edge_comparator import (
+    EdgeCompConfig,
+    EdgeSample,
+    EdgeCompResult,
+    extract_edge_sample,
+    compare_edge_intensity,
+    compare_edge_gradient,
+    compare_edge_texture,
+    score_edge_comparison,
+    compare_edge_pair,
+    batch_compare_edges,
+)
 
 __all__ = [
     "dtw_distance",
@@ -338,4 +355,15 @@ __all__ = [
     "aggregate_score_matrix",
     "batch_aggregate_scores",
     "filter_aggregated",
+    # Сравнение краёв по интенсивности/градиенту/текстуре
+    "EdgeCompConfig",
+    "EdgeSample",
+    "EdgeCompResult",
+    "extract_edge_sample",
+    "compare_edge_intensity",
+    "compare_edge_gradient",
+    "compare_edge_texture",
+    "score_edge_comparison",
+    "compare_edge_pair",
+    "batch_compare_edges",
 ]
