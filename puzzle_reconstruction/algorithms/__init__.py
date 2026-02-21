@@ -45,6 +45,10 @@
                            FragmentEdges, detect_boundary, extract_edge_points,
                            split_edge_by_side, compute_edge_length, simplify_edge,
                            extract_fragment_edges, batch_extract_edges)
+    contour_tracker      — отслеживание контуров (ContourInfo, TrackState,
+                           find_contours, filter_contours, contour_to_array,
+                           compute_contour_info, match_contours,
+                           track_contour, batch_find_contours)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -206,6 +210,17 @@ from .edge_extractor import (
     extract_fragment_edges,
     batch_extract_edges,
 )
+from .contour_tracker import (
+    ContourInfo,
+    TrackState,
+    find_contours,
+    filter_contours,
+    contour_to_array,
+    compute_contour_info,
+    match_contours,
+    track_contour,
+    batch_find_contours,
+)
 
 __all__ = [
     # Синтез
@@ -357,4 +372,14 @@ __all__ = [
     "simplify_edge",
     "extract_fragment_edges",
     "batch_extract_edges",
+    # Отслеживание контуров
+    "ContourInfo",
+    "TrackState",
+    "find_contours",
+    "filter_contours",
+    "contour_to_array",
+    "compute_contour_info",
+    "match_contours",
+    "track_contour",
+    "batch_find_contours",
 ]

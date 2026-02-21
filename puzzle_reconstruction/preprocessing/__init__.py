@@ -51,6 +51,10 @@
                               split_channels, merge_channels, channel_statistics,
                               equalize_channel, normalize_channel,
                               channel_difference, apply_per_channel, batch_split)
+    adaptive_threshold      — адаптивная бинаризация (ThresholdParams,
+                              global_threshold, adaptive_mean, adaptive_gaussian,
+                              niblack_threshold, sauvola_threshold,
+                              bernsen_threshold, apply_threshold, batch_threshold)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -260,6 +264,17 @@ from .channel_splitter import (
     apply_per_channel,
     batch_split,
 )
+from .adaptive_threshold import (
+    ThresholdParams,
+    global_threshold,
+    adaptive_mean,
+    adaptive_gaussian,
+    niblack_threshold,
+    sauvola_threshold,
+    bernsen_threshold,
+    apply_threshold,
+    batch_threshold,
+)
 
 __all__ = [
     "segment_fragment",
@@ -444,4 +459,14 @@ __all__ = [
     "channel_difference",
     "apply_per_channel",
     "batch_split",
+    # Адаптивная бинаризация
+    "ThresholdParams",
+    "global_threshold",
+    "adaptive_mean",
+    "adaptive_gaussian",
+    "niblack_threshold",
+    "sauvola_threshold",
+    "bernsen_threshold",
+    "apply_threshold",
+    "batch_threshold",
 ]
