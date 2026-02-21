@@ -26,6 +26,11 @@
                           EvalReport, compute_precision, compute_recall,
                           compute_f_score, evaluate_match, evaluate_batch_matches,
                           aggregate_eval, filter_by_score, rank_matches)
+    threshold_selector  — выбор порога бинаризации оценок (ThresholdConfig,
+                          ThresholdResult, select_fixed_threshold,
+                          select_percentile_threshold, select_otsu_threshold,
+                          select_f1_threshold, select_adaptive_threshold,
+                          select_threshold, apply_threshold, batch_select_thresholds)
 """
 from .consistency_checker import (
     ConsistencyIssue,
@@ -98,6 +103,18 @@ from .match_evaluator import (
     filter_by_score as filter_evals_by_score,
     rank_matches,
 )
+from .threshold_selector import (
+    ThresholdConfig,
+    ThresholdResult,
+    select_fixed_threshold,
+    select_percentile_threshold,
+    select_otsu_threshold,
+    select_f1_threshold,
+    select_adaptive_threshold,
+    select_threshold,
+    apply_threshold,
+    batch_select_thresholds,
+)
 
 __all__ = [
     # Проверка согласованности
@@ -165,4 +182,15 @@ __all__ = [
     "aggregate_eval",
     "filter_evals_by_score",
     "rank_matches",
+    # Выбор порога бинаризации оценок
+    "ThresholdConfig",
+    "ThresholdResult",
+    "select_fixed_threshold",
+    "select_percentile_threshold",
+    "select_otsu_threshold",
+    "select_f1_threshold",
+    "select_adaptive_threshold",
+    "select_threshold",
+    "apply_threshold",
+    "batch_select_thresholds",
 ]

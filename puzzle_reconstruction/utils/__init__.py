@@ -82,6 +82,9 @@
     result_cache     — кэш промежуточных результатов с TTL (CachePolicy, CacheRecord,
                        CacheSummary, ResultCache, make_cache, cached_result,
                        merge_caches, evict_expired)
+    metric_tracker   — отслеживание метрик (MetricRecord, MetricStats, TrackerConfig,
+                       MetricTracker, make_tracker, merge_trackers,
+                       compute_moving_average, export_metrics)
 """
 from .logger import (
     get_logger,
@@ -389,6 +392,16 @@ from .result_cache import (
     merge_caches as merge_result_caches,
     evict_expired,
 )
+from .metric_tracker import (
+    MetricRecord,
+    MetricStats,
+    TrackerConfig,
+    MetricTracker,
+    make_tracker as make_metric_tracker,
+    merge_trackers,
+    compute_moving_average,
+    export_metrics,
+)
 
 __all__ = [
     # Логирование
@@ -668,4 +681,13 @@ __all__ = [
     "cached_result",
     "merge_result_caches",
     "evict_expired",
+    # Отслеживание метрик
+    "MetricRecord",
+    "MetricStats",
+    "TrackerConfig",
+    "MetricTracker",
+    "make_metric_tracker",
+    "merge_trackers",
+    "compute_moving_average",
+    "export_metrics",
 ]
