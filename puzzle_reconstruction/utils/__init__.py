@@ -36,6 +36,10 @@
                       histogram_equalization, histogram_specification,
                       earth_mover_distance, chi_squared_distance,
                       histogram_intersection, backproject, joint_histogram)
+    keypoint_utils  — ключевые точки и дескрипторы (KeypointSet, detect_keypoints,
+                      filter_by_response, filter_by_region, describe_keypoints,
+                      match_descriptors, filter_matches_ransac, keypoints_to_array,
+                      array_to_keypoints, compute_match_score)
 """
 from .logger import (
     get_logger,
@@ -199,6 +203,18 @@ from .histogram_utils import (
     backproject,
     joint_histogram,
 )
+from .keypoint_utils import (
+    KeypointSet,
+    detect_keypoints,
+    filter_by_response,
+    filter_by_region,
+    describe_keypoints,
+    match_descriptors,
+    filter_matches_ransac,
+    keypoints_to_array,
+    array_to_keypoints,
+    compute_match_score,
+)
 
 __all__ = [
     # Логирование
@@ -347,4 +363,15 @@ __all__ = [
     "histogram_intersection",
     "backproject",
     "joint_histogram",
+    # Утилиты ключевых точек
+    "KeypointSet",
+    "detect_keypoints",
+    "filter_by_response",
+    "filter_by_region",
+    "describe_keypoints",
+    "match_descriptors",
+    "filter_matches_ransac",
+    "keypoints_to_array",
+    "array_to_keypoints",
+    "compute_match_score",
 ]

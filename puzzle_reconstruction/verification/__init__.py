@@ -20,6 +20,11 @@
     boundary_validator  — валидация геометрических границ (BoundaryViolation,
                           BoundaryReport, validate_edge_gap, validate_alignment,
                           validate_pair, validate_all_pairs, boundary_quality_score)
+    fragment_validator  — валидация отдельных фрагментов (ValidationIssue,
+                          ValidationResult, FragmentValidatorParams,
+                          validate_dimensions, validate_aspect_ratio,
+                          validate_content_coverage, validate_contour,
+                          validate_fragment, batch_validate, filter_valid)
 """
 from .ocr import verify_full_assembly, render_assembly_image
 from .metrics import (
@@ -116,6 +121,18 @@ from .boundary_validator import (
     validate_all_pairs,
     boundary_quality_score,
 )
+from .fragment_validator import (
+    ValidationIssue,
+    ValidationResult,
+    FragmentValidatorParams,
+    validate_dimensions,
+    validate_aspect_ratio,
+    validate_content_coverage,
+    validate_contour,
+    validate_fragment,
+    batch_validate,
+    filter_valid,
+)
 
 __all__ = [
     "verify_full_assembly",
@@ -202,4 +219,15 @@ __all__ = [
     "validate_pair",
     "validate_all_pairs",
     "boundary_quality_score",
+    # Валидация фрагментов
+    "ValidationIssue",
+    "ValidationResult",
+    "FragmentValidatorParams",
+    "validate_dimensions",
+    "validate_aspect_ratio",
+    "validate_content_coverage",
+    "validate_contour",
+    "validate_fragment",
+    "batch_validate",
+    "filter_valid",
 ]
