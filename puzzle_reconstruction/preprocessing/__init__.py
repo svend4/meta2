@@ -55,6 +55,9 @@
                               global_threshold, adaptive_mean, adaptive_gaussian,
                               niblack_threshold, sauvola_threshold,
                               bernsen_threshold, apply_threshold, batch_threshold)
+    noise_filter            — фильтрация шума (NoiseFilterParams, average_filter,
+                              gaussian_filter, median_filter, bilateral_filter,
+                              nlm_filter, apply_noise_filter, batch_noise_filter)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -275,6 +278,16 @@ from .adaptive_threshold import (
     apply_threshold,
     batch_threshold,
 )
+from .noise_filter import (
+    NoiseFilterParams,
+    average_filter,
+    gaussian_filter,
+    median_filter,
+    bilateral_filter,
+    nlm_filter,
+    apply_noise_filter,
+    batch_noise_filter,
+)
 
 __all__ = [
     "segment_fragment",
@@ -469,4 +482,13 @@ __all__ = [
     "bernsen_threshold",
     "apply_threshold",
     "batch_threshold",
+    # Фильтрация шума
+    "NoiseFilterParams",
+    "average_filter",
+    "gaussian_filter",
+    "median_filter",
+    "bilateral_filter",
+    "nlm_filter",
+    "apply_noise_filter",
+    "batch_noise_filter",
 ]

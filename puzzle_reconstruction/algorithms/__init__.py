@@ -49,6 +49,10 @@
                            find_contours, filter_contours, contour_to_array,
                            compute_contour_info, match_contours,
                            track_contour, batch_find_contours)
+    region_splitter      — разделение на связные регионы (RegionInfo, SplitResult,
+                           find_regions, filter_regions, region_masks,
+                           merge_small_regions, largest_region,
+                           split_mask_to_crops, batch_find_regions)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -221,6 +225,17 @@ from .contour_tracker import (
     track_contour,
     batch_find_contours,
 )
+from .region_splitter import (
+    RegionInfo,
+    SplitResult,
+    find_regions,
+    filter_regions as filter_split_regions,
+    region_masks,
+    merge_small_regions,
+    largest_region as largest_split_region,
+    split_mask_to_crops,
+    batch_find_regions,
+)
 
 __all__ = [
     # Синтез
@@ -382,4 +397,14 @@ __all__ = [
     "match_contours",
     "track_contour",
     "batch_find_contours",
+    # Разделение на связные регионы
+    "RegionInfo",
+    "SplitResult",
+    "find_regions",
+    "filter_split_regions",
+    "region_masks",
+    "merge_small_regions",
+    "largest_split_region",
+    "split_mask_to_crops",
+    "batch_find_regions",
 ]
