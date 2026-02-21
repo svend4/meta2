@@ -57,6 +57,10 @@
                            compute_glcm_features, compute_stats_descriptor,
                            compute_texture_descriptor, normalize_descriptor,
                            descriptor_distance, batch_compute_descriptors)
+    sift_matcher         — SIFT-сопоставление фрагментов (SiftConfig, MatchResult,
+                           extract_keypoints, match_descriptors, compute_homography,
+                           sift_match_pair, filter_matches_by_distance,
+                           batch_sift_match)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -250,6 +254,16 @@ from .texture_descriptor import (
     descriptor_distance,
     batch_compute_descriptors,
 )
+from .sift_matcher import (
+    SiftConfig,
+    MatchResult,
+    extract_keypoints,
+    match_descriptors,
+    compute_homography,
+    sift_match_pair,
+    filter_matches_by_distance,
+    batch_sift_match,
+)
 
 __all__ = [
     # Синтез
@@ -430,4 +444,13 @@ __all__ = [
     "normalize_descriptor",
     "descriptor_distance",
     "batch_compute_descriptors",
+    # SIFT-сопоставление
+    "SiftConfig",
+    "MatchResult",
+    "extract_keypoints",
+    "match_descriptors",
+    "compute_homography",
+    "sift_match_pair",
+    "filter_matches_by_distance",
+    "batch_sift_match",
 ]
