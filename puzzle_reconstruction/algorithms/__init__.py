@@ -75,6 +75,11 @@
                             compute_reprojection_error, estimate_homography,
                             decompose_homography, warp_points,
                             batch_estimate_homographies)
+    descriptor_combiner   — комбинирование дескрипторов (CombineConfig,
+                            DescriptorSet, CombineResult, combine_descriptors,
+                            combine_selected, batch_combine,
+                            descriptor_distance, build_distance_matrix,
+                            find_nearest)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -313,6 +318,17 @@ from .homography_estimator import (
     warp_points,
     batch_estimate_homographies,
 )
+from .descriptor_combiner import (
+    CombineConfig,
+    DescriptorSet,
+    CombineResult,
+    combine_descriptors,
+    combine_selected,
+    batch_combine,
+    descriptor_distance as descriptor_distance_combine,
+    build_distance_matrix,
+    find_nearest,
+)
 
 __all__ = [
     # Синтез
@@ -534,4 +550,14 @@ __all__ = [
     "decompose_homography",
     "warp_points",
     "batch_estimate_homographies",
+    # Комбинирование дескрипторов
+    "CombineConfig",
+    "DescriptorSet",
+    "CombineResult",
+    "combine_descriptors",
+    "combine_selected",
+    "batch_combine",
+    "descriptor_distance_combine",
+    "build_distance_matrix",
+    "find_nearest",
 ]
