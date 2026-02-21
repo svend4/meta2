@@ -24,6 +24,8 @@
     noise_reducer    — лёгкое шумоподавление (NoiseReductionResult, estimate_noise,
                        gaussian_reduce, median_reduce, bilateral_reduce, auto_reduce,
                        batch_reduce)
+    deskewer         — коррекция наклона (DeskewResult, estimate_skew_projection,
+                       estimate_skew_hough, deskew_image, auto_deskew, batch_deskew)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -151,6 +153,14 @@ from .noise_reducer import (
     auto_reduce,
     batch_reduce,
 )
+from .deskewer import (
+    DeskewResult,
+    estimate_skew_projection,
+    estimate_skew_hough,
+    deskew_image,
+    auto_deskew,
+    batch_deskew,
+)
 
 __all__ = [
     "segment_fragment",
@@ -261,4 +271,11 @@ __all__ = [
     "bilateral_reduce",
     "auto_reduce",
     "batch_reduce",
+    # Коррекция наклона
+    "DeskewResult",
+    "estimate_skew_projection",
+    "estimate_skew_hough",
+    "deskew_image",
+    "auto_deskew",
+    "batch_deskew",
 ]

@@ -17,6 +17,12 @@
     - 6-15 фрагментов:  beam, sa или mcts
     - 15–30 фрагментов: genetic, ant_colony, mcts или gamma
     - 30+ фрагментов:   gamma или sa с большим числом итераций
+
+Вспомогательные модули:
+    assembly_state — состояние сборки (PlacedFragment, AssemblyState,
+                     create_state, place_fragment, remove_fragment,
+                     add_adjacency, get_neighbors, compute_coverage,
+                     is_complete, to_dict, from_dict)
 """
 from .greedy import greedy_assembly
 from .annealing import simulated_annealing
@@ -26,6 +32,19 @@ from .exhaustive import exhaustive_assembly
 from .genetic import genetic_assembly
 from .ant_colony import ant_colony_assembly
 from .mcts import mcts_assembly, MCTSNode
+from .assembly_state import (
+    PlacedFragment,
+    AssemblyState,
+    create_state,
+    place_fragment,
+    remove_fragment,
+    add_adjacency,
+    get_neighbors,
+    compute_coverage,
+    is_complete,
+    to_dict,
+    from_dict,
+)
 from .parallel import (
     run_all_methods,
     run_selected,
@@ -58,4 +77,16 @@ __all__ = [
     "AssemblyRacer",
     "ALL_METHODS",
     "DEFAULT_METHODS",
+    # Состояние сборки
+    "PlacedFragment",
+    "AssemblyState",
+    "create_state",
+    "place_fragment",
+    "remove_fragment",
+    "add_adjacency",
+    "get_neighbors",
+    "compute_coverage",
+    "is_complete",
+    "to_dict",
+    "from_dict",
 ]
