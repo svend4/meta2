@@ -85,6 +85,10 @@
                               compute_spectral_entropy, extract_top_frequencies,
                               extract_freq_descriptor, compare_freq_descriptors,
                               batch_extract_freq_descriptors)
+    warp_corrector          — коррекция аффинных искажений (WarpConfig,
+                              WarpEstimate, WarpResult, estimate_warp,
+                              apply_warp, correct_warp, warp_score,
+                              batch_correct_warp)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -381,6 +385,16 @@ from .frequency_analyzer import (
     compare_freq_descriptors,
     batch_extract_freq_descriptors,
 )
+from .warp_corrector import (
+    WarpConfig,
+    WarpEstimate,
+    WarpResult,
+    estimate_warp,
+    apply_warp,
+    correct_warp,
+    warp_score,
+    batch_correct_warp,
+)
 
 __all__ = [
     "segment_fragment",
@@ -644,4 +658,13 @@ __all__ = [
     "extract_freq_descriptor",
     "compare_freq_descriptors",
     "batch_extract_freq_descriptors",
+    # Коррекция перспективных и аффинных искажений
+    "WarpConfig",
+    "WarpEstimate",
+    "WarpResult",
+    "estimate_warp",
+    "apply_warp",
+    "correct_warp",
+    "warp_score",
+    "batch_correct_warp",
 ]

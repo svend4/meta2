@@ -73,6 +73,9 @@
                           MapResult, compute_zone_grid, assign_to_zone,
                           build_fragment_map, remap_fragments, score_mapping,
                           batch_build_fragment_maps)
+    sequence_planner    — планирование порядка размещения (PlanConfig,
+                          PlacementStep, PlacementPlan, build_placement_plan,
+                          reorder_plan, filter_plan, export_plan, batch_build_plans)
 """
 from .greedy import greedy_assembly
 from .annealing import simulated_annealing
@@ -248,6 +251,16 @@ from .fragment_mapper import (
     score_mapping,
     batch_build_fragment_maps,
 )
+from .sequence_planner import (
+    PlanConfig,
+    PlacementStep,
+    PlacementPlan,
+    build_placement_plan,
+    reorder_plan,
+    filter_plan,
+    export_plan,
+    batch_build_plans,
+)
 
 __all__ = [
     "greedy_assembly",
@@ -410,4 +423,13 @@ __all__ = [
     "remap_fragments",
     "score_mapping",
     "batch_build_fragment_maps",
+    # Планирование последовательности размещения
+    "PlanConfig",
+    "PlacementStep",
+    "PlacementPlan",
+    "build_placement_plan",
+    "reorder_plan",
+    "filter_plan",
+    "export_plan",
+    "batch_build_plans",
 ]
