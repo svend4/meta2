@@ -89,6 +89,10 @@
                               WarpEstimate, WarpResult, estimate_warp,
                               apply_warp, correct_warp, warp_score,
                               batch_correct_warp)
+    contrast_enhancer       — улучшение контрастности (EnhanceConfig,
+                              EnhanceResult, equalize_histogram,
+                              stretch_contrast, apply_gamma, clahe_enhance,
+                              enhance_contrast, batch_enhance)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -395,6 +399,16 @@ from .warp_corrector import (
     warp_score,
     batch_correct_warp,
 )
+from .contrast_enhancer import (
+    EnhanceConfig,
+    EnhanceResult,
+    equalize_histogram,
+    stretch_contrast,
+    apply_gamma,
+    clahe_enhance,
+    enhance_contrast,
+    batch_enhance,
+)
 
 __all__ = [
     "segment_fragment",
@@ -667,4 +681,13 @@ __all__ = [
     "correct_warp",
     "warp_score",
     "batch_correct_warp",
+    # Улучшение контрастности
+    "EnhanceConfig",
+    "EnhanceResult",
+    "equalize_histogram",
+    "stretch_contrast",
+    "apply_gamma",
+    "clahe_enhance",
+    "enhance_contrast",
+    "batch_enhance",
 ]

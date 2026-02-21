@@ -59,6 +59,10 @@
                            EdgeValidResult, check_intensity, check_gap, check_normals,
                            validate_edge_pair, summarise_validations,
                            batch_validate_edges)
+    quality_reporter     — отчёты о качестве восстановления (ReporterConfig,
+                           QualityMetric, QualityIssue, QualityReport,
+                           build_metric, add_issue, build_report,
+                           merge_reports, filter_issues, export_report)
 """
 from .ocr import verify_full_assembly, render_assembly_image
 from .metrics import (
@@ -257,6 +261,18 @@ from .edge_validator import (
     summarise_validations,
     batch_validate_edges,
 )
+from .quality_reporter import (
+    ReporterConfig,
+    QualityMetric,
+    QualityIssue,
+    QualityReport,
+    build_metric,
+    add_issue,
+    build_report,
+    merge_reports,
+    filter_issues,
+    export_report,
+)
 
 __all__ = [
     "verify_full_assembly",
@@ -436,4 +452,15 @@ __all__ = [
     "validate_edge_pair",
     "summarise_validations",
     "batch_validate_edges",
+    # Отчёты о качестве восстановления
+    "ReporterConfig",
+    "QualityMetric",
+    "QualityIssue",
+    "QualityReport",
+    "build_metric",
+    "add_issue",
+    "build_report",
+    "merge_reports",
+    "filter_issues",
+    "export_report",
 ]
