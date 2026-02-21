@@ -26,6 +26,9 @@
                        batch_reduce)
     deskewer         — коррекция наклона (DeskewResult, estimate_skew_projection,
                        estimate_skew_hough, deskew_image, auto_deskew, batch_deskew)
+    background_remover — удаление фона (BackgroundRemovalResult, remove_background_thresh,
+                         remove_background_edges, remove_background_grabcut,
+                         auto_remove_background, batch_remove_background)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -161,6 +164,14 @@ from .deskewer import (
     auto_deskew,
     batch_deskew,
 )
+from .background_remover import (
+    BackgroundRemovalResult,
+    remove_background_thresh,
+    remove_background_edges,
+    remove_background_grabcut,
+    auto_remove_background,
+    batch_remove_background,
+)
 
 __all__ = [
     "segment_fragment",
@@ -278,4 +289,11 @@ __all__ = [
     "deskew_image",
     "auto_deskew",
     "batch_deskew",
+    # Удаление фона
+    "BackgroundRemovalResult",
+    "remove_background_thresh",
+    "remove_background_edges",
+    "remove_background_grabcut",
+    "auto_remove_background",
+    "batch_remove_background",
 ]

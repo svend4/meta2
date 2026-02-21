@@ -17,6 +17,9 @@
     edge_scorer          — многоканальная оценка совместимости краёв (EdgeScore,
                            score_color_compat, score_gradient_compat,
                            score_texture_compat, score_edge_pair, batch_score_edges)
+    position_estimator   — оценка абсолютных позиций фрагментов по попарным смещениям
+                           (PositionEstimate, build_offset_graph, estimate_positions,
+                           refine_positions, positions_to_array, align_to_origin)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -107,6 +110,14 @@ from .edge_scorer import (
     score_edge_pair,
     batch_score_edges,
 )
+from .position_estimator import (
+    PositionEstimate,
+    build_offset_graph,
+    estimate_positions,
+    refine_positions,
+    positions_to_array,
+    align_to_origin,
+)
 
 __all__ = [
     # Синтез
@@ -194,4 +205,11 @@ __all__ = [
     "score_texture_compat",
     "score_edge_pair",
     "batch_score_edges",
+    # Оценка позиций фрагментов
+    "PositionEstimate",
+    "build_offset_graph",
+    "estimate_positions",
+    "refine_positions",
+    "positions_to_array",
+    "align_to_origin",
 ]
