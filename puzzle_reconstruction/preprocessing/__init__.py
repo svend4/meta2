@@ -19,6 +19,8 @@
                       Niblack, Bernsen, adaptive, auto_binarize, batch_binarize)
     document_cleaner — очистка документов (тени, рамки, освещённость, пятна)
     noise_analyzer   — анализ шума (σ, SNR, JPEG-артефакты, зернистость, качество)
+    fragment_cropper — обрезка к содержательной области (CropResult, auto_crop,
+                       find_content_bbox, pad_image, crop_to_content, batch_crop)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -129,6 +131,14 @@ from .noise_analyzer import (
     analyze_noise,
     batch_analyze_noise,
 )
+from .fragment_cropper import (
+    CropResult,
+    find_content_bbox,
+    pad_image,
+    crop_to_content,
+    auto_crop,
+    batch_crop,
+)
 
 __all__ = [
     "segment_fragment",
@@ -224,4 +234,11 @@ __all__ = [
     "estimate_grain",
     "analyze_noise",
     "batch_analyze_noise",
+    # Обрезка фрагментов
+    "CropResult",
+    "find_content_bbox",
+    "pad_image",
+    "crop_to_content",
+    "auto_crop",
+    "batch_crop",
 ]

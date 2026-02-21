@@ -12,6 +12,7 @@
     fragment_classifier  — классификация типов фрагментов (угол/край/внутр.)
     edge_profile         — 1D профили краёв (яркость, градиент, текстура, DTW)
     line_detector        — обнаружение строк текста (проекция, Хаф, auto)
+    fragment_aligner     — субпиксельное выравнивание краёв (фазовая корр., шаблон)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -76,6 +77,14 @@ from .line_detector import (
     filter_lines,
     detect_text_lines,
     batch_detect_lines,
+)
+from .fragment_aligner import (
+    AlignmentResult,
+    estimate_shift,
+    phase_correlation_align,
+    template_match_align,
+    apply_shift,
+    batch_align,
 )
 
 __all__ = [
@@ -142,4 +151,11 @@ __all__ = [
     "filter_lines",
     "detect_text_lines",
     "batch_detect_lines",
+    # Субпиксельное выравнивание
+    "AlignmentResult",
+    "estimate_shift",
+    "phase_correlation_align",
+    "template_match_align",
+    "apply_shift",
+    "batch_align",
 ]
