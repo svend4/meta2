@@ -80,6 +80,10 @@
                             combine_selected, batch_combine,
                             descriptor_distance, build_distance_matrix,
                             find_nearest)
+    edge_comparator       — сравнение краёв фрагментов (CompareConfig,
+                            EdgeCompareResult, dtw_distance, css_similarity,
+                            fd_score, ifs_similarity, compare_edges,
+                            build_compat_matrix, top_k_matches)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -329,6 +333,17 @@ from .descriptor_combiner import (
     build_distance_matrix,
     find_nearest,
 )
+from .edge_comparator import (
+    CompareConfig,
+    EdgeCompareResult,
+    dtw_distance,
+    css_similarity,
+    fd_score,
+    ifs_similarity,
+    compare_edges,
+    build_compat_matrix,
+    top_k_matches,
+)
 
 __all__ = [
     # Синтез
@@ -560,4 +575,14 @@ __all__ = [
     "descriptor_distance_combine",
     "build_distance_matrix",
     "find_nearest",
+    # Сравнение краёв фрагментов
+    "CompareConfig",
+    "EdgeCompareResult",
+    "dtw_distance",
+    "css_similarity",
+    "fd_score",
+    "ifs_similarity",
+    "compare_edges",
+    "build_compat_matrix",
+    "top_k_matches",
 ]
