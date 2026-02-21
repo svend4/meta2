@@ -55,6 +55,10 @@
                        (GlobalMatchConfig, GlobalMatch, GlobalMatchResult,
                        aggregate_pair_scores, rank_candidates, global_match,
                        filter_matches, merge_match_results)
+    patch_validator    — валидация патчей на границах (PatchValidConfig,
+                       PatchScore, PatchValidResult, compute_patch_score,
+                       aggregate_patch_scores, validate_patch_pair,
+                       batch_validate_patches, filter_valid_pairs)
 """
 from .dtw import dtw_distance, dtw_distance_mirror
 from .pairwise import match_score
@@ -242,6 +246,16 @@ from .global_matcher import (
     filter_matches,
     merge_match_results,
 )
+from .patch_validator import (
+    PatchValidConfig,
+    PatchScore,
+    PatchValidResult,
+    compute_patch_score,
+    aggregate_patch_scores,
+    validate_patch_pair,
+    batch_validate_patches,
+    filter_valid_pairs,
+)
 
 __all__ = [
     "dtw_distance",
@@ -412,4 +426,13 @@ __all__ = [
     "global_match",
     "filter_matches",
     "merge_match_results",
+    # Валидация совместимости патчей
+    "PatchValidConfig",
+    "PatchScore",
+    "PatchValidResult",
+    "compute_patch_score",
+    "aggregate_patch_scores",
+    "validate_patch_pair",
+    "batch_validate_patches",
+    "filter_valid_pairs",
 ]

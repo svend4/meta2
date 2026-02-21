@@ -80,6 +80,9 @@
                           FragmentPosition, RefineStep, RefineResult,
                           compute_layout_score, refine_layout, apply_offset,
                           compare_layouts)
+    overlap_resolver    — разрешение перекрытий (ResolveConfig, BBox, Overlap,
+                          ResolveResult, compute_overlap, detect_overlaps,
+                          resolve_overlaps, compute_total_overlap, overlap_ratio)
 """
 from .greedy import greedy_assembly
 from .annealing import simulated_annealing
@@ -275,6 +278,17 @@ from .layout_refiner import (
     apply_offset,
     compare_layouts,
 )
+from .overlap_resolver import (
+    ResolveConfig,
+    BBox,
+    Overlap,
+    ResolveResult,
+    compute_overlap,
+    detect_overlaps,
+    resolve_overlaps,
+    compute_total_overlap,
+    overlap_ratio,
+)
 
 __all__ = [
     "greedy_assembly",
@@ -455,4 +469,14 @@ __all__ = [
     "refine_layout",
     "apply_offset",
     "compare_layouts",
+    # Разрешение перекрытий
+    "ResolveConfig",
+    "BBox",
+    "Overlap",
+    "ResolveResult",
+    "compute_overlap",
+    "detect_overlaps",
+    "resolve_overlaps",
+    "compute_total_overlap",
+    "overlap_ratio",
 ]
