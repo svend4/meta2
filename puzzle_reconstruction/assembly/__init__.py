@@ -46,6 +46,10 @@
                           filter_by_threshold, filter_top_k, filter_by_rank,
                           deduplicate_candidates, normalize_scores,
                           merge_candidate_lists, batch_filter)
+    fragment_arranger   — расстановка фрагментов на холсте (ArrangementParams,
+                          FragmentPlacement, arrange_grid, arrange_strip,
+                          center_placements, group_bbox, shift_placements,
+                          arrange, batch_arrange)
 """
 from .greedy import greedy_assembly
 from .annealing import simulated_annealing
@@ -141,6 +145,17 @@ from .candidate_filter import (
     merge_candidate_lists,
     batch_filter,
 )
+from .fragment_arranger import (
+    ArrangementParams,
+    FragmentPlacement,
+    arrange_grid,
+    arrange_strip,
+    center_placements,
+    group_bbox,
+    shift_placements,
+    arrange,
+    batch_arrange,
+)
 
 __all__ = [
     "greedy_assembly",
@@ -230,4 +245,14 @@ __all__ = [
     "normalize_scores",
     "merge_candidate_lists",
     "batch_filter",
+    # Расстановка фрагментов на холсте
+    "ArrangementParams",
+    "FragmentPlacement",
+    "arrange_grid",
+    "arrange_strip",
+    "center_placements",
+    "group_bbox",
+    "shift_placements",
+    "arrange",
+    "batch_arrange",
 ]

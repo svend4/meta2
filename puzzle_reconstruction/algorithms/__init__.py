@@ -53,6 +53,10 @@
                            find_regions, filter_regions, region_masks,
                            merge_small_regions, largest_region,
                            split_mask_to_crops, batch_find_regions)
+    texture_descriptor   — текстурные дескрипторы (TextureDescriptor, compute_lbp,
+                           compute_glcm_features, compute_stats_descriptor,
+                           compute_texture_descriptor, normalize_descriptor,
+                           descriptor_distance, batch_compute_descriptors)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -236,6 +240,16 @@ from .region_splitter import (
     split_mask_to_crops,
     batch_find_regions,
 )
+from .texture_descriptor import (
+    TextureDescriptor,
+    compute_lbp,
+    compute_glcm_features,
+    compute_stats_descriptor,
+    compute_texture_descriptor,
+    normalize_descriptor,
+    descriptor_distance,
+    batch_compute_descriptors,
+)
 
 __all__ = [
     # Синтез
@@ -407,4 +421,13 @@ __all__ = [
     "largest_split_region",
     "split_mask_to_crops",
     "batch_find_regions",
+    # Текстурные дескрипторы
+    "TextureDescriptor",
+    "compute_lbp",
+    "compute_glcm_features",
+    "compute_stats_descriptor",
+    "compute_texture_descriptor",
+    "normalize_descriptor",
+    "descriptor_distance",
+    "batch_compute_descriptors",
 ]
