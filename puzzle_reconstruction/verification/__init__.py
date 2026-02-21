@@ -2,12 +2,14 @@
 Верификация и оценка качества восстановленного документа.
 
 Модули:
-    ocr            — OCR-верификация текстовой связности (pytesseract)
-    metrics        — Количественные метрики качества сборки (NA, DC, RMSE, ...)
-    report         — Генератор отчётов (JSON / Markdown / HTML)
-    text_coherence  — N-граммная языковая модель, оценка стыков по биграммам
-    layout_verifier    — верификация пространственного расположения (overlap, gap, alignment)
-    confidence_scorer  — итоговая оценка уверенности в качестве сборки (A–F)
+    ocr                 — OCR-верификация текстовой связности (pytesseract)
+    metrics             — Количественные метрики качества сборки (NA, DC, RMSE, ...)
+    report              — Генератор отчётов (JSON / Markdown / HTML)
+    text_coherence      — N-граммная языковая модель, оценка стыков по биграммам
+    layout_verifier     — верификация пространственного расположения (overlap, gap, alignment)
+    confidence_scorer   — итоговая оценка уверенности в качестве сборки (A–F)
+    consistency_checker — проверка согласованности межстрочного интервала, высоты
+                          символов, угла текста и полей между фрагментами
 """
 from .ocr import verify_full_assembly, render_assembly_image
 from .metrics import (
@@ -50,6 +52,20 @@ from .confidence_scorer import (
     score_assembly_score,
     compute_confidence,
 )
+from .consistency_checker import (
+    ConsistencyType,
+    ConsistencyViolation,
+    ConsistencyResult,
+    estimate_line_spacing,
+    estimate_char_height,
+    estimate_text_angle,
+    check_line_spacing,
+    check_char_height,
+    check_text_angle,
+    check_margin_alignment,
+    check_consistency,
+    batch_check_consistency,
+)
 
 __all__ = [
     "verify_full_assembly",
@@ -87,4 +103,17 @@ __all__ = [
     "score_uniqueness",
     "score_assembly_score",
     "compute_confidence",
+    # Проверка согласованности
+    "ConsistencyType",
+    "ConsistencyViolation",
+    "ConsistencyResult",
+    "estimate_line_spacing",
+    "estimate_char_height",
+    "estimate_text_angle",
+    "check_line_spacing",
+    "check_char_height",
+    "check_text_angle",
+    "check_margin_alignment",
+    "check_consistency",
+    "batch_check_consistency",
 ]

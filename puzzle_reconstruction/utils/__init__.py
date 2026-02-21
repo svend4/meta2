@@ -2,12 +2,14 @@
 Утилиты: логирование, геометрия, кэш дескрипторов, ввод-вывод.
 
 Модули:
-    logger   — структурированное логирование с цветами (get_logger, stage, PipelineTimer)
-    geometry — геометрические операции (rotation_matrix_2d, polygon_area, poly_iou, …)
-    cache    — LRU-кэш и дисковый кэш дескрипторов (DescriptorCache, DiskCache, @cached)
-    io       — загрузка/сохранение фрагментов и Assembly (load_image_dir, save_assembly_json, …)
+    logger     — структурированное логирование с цветами (get_logger, stage, PipelineTimer)
+    geometry   — геометрические операции (rotation_matrix_2d, polygon_area, poly_iou, …)
+    cache      — LRU-кэш и дисковый кэш дескрипторов (DescriptorCache, DiskCache, @cached)
+    io         — загрузка/сохранение фрагментов и Assembly (load_image_dir, save_assembly_json, …)
     profiler   — профилировщик шагов пайплайна (StepProfile, PipelineProfiler, @timed)
     visualizer — утилиты визуализации (word boxes, contours, matches, confidence bar)
+    metrics    — метрики качества восстановления (ReconstructionMetrics, IoU, Kendall τ,
+                 permutation distance, precision/recall, placement accuracy)
 """
 from .logger import (
     get_logger,
@@ -66,6 +68,15 @@ from .visualizer import (
     draw_confidence_bar,
     tile_images,
 )
+from .metrics import (
+    ReconstructionMetrics as AssemblyReconstructionMetrics,
+    placement_iou,
+    order_kendall_tau,
+    permutation_distance,
+    assembly_precision_recall,
+    fragment_placement_accuracy,
+    compute_reconstruction_metrics,
+)
 
 __all__ = [
     # Логирование
@@ -119,4 +130,12 @@ __all__ = [
     "draw_skew_angle",
     "draw_confidence_bar",
     "tile_images",
+    # Метрики качества
+    "AssemblyReconstructionMetrics",
+    "placement_iou",
+    "order_kendall_tau",
+    "permutation_distance",
+    "assembly_precision_recall",
+    "fragment_placement_accuracy",
+    "compute_reconstruction_metrics",
 ]
