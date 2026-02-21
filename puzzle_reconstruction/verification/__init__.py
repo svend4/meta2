@@ -13,6 +13,10 @@
     layout_checker      — статистическая проверка геометрической согласованности
                           (перекрытия, зазоры, сетка, соотношение сторон)
     overlap_checker     — попиксельная проверка перекрытий полигонов (IoU, конфликты)
+    seam_analyzer       — детальный анализ качества швов (SeamAnalysis,
+                          extract_seam_profiles, brightness_continuity,
+                          gradient_continuity, texture_continuity,
+                          analyze_seam, score_seam_quality, batch_analyze_seams)
 """
 from .ocr import verify_full_assembly, render_assembly_image
 from .metrics import (
@@ -90,6 +94,16 @@ from .overlap_checker import (
     check_all_overlaps,
     find_conflicting_pairs,
 )
+from .seam_analyzer import (
+    SeamAnalysis,
+    extract_seam_profiles,
+    brightness_continuity,
+    gradient_continuity,
+    texture_continuity,
+    analyze_seam,
+    score_seam_quality,
+    batch_analyze_seams,
+)
 
 __all__ = [
     "verify_full_assembly",
@@ -159,4 +173,13 @@ __all__ = [
     "check_overlap_pair",
     "check_all_overlaps",
     "find_conflicting_pairs",
+    # Анализ качества швов
+    "SeamAnalysis",
+    "extract_seam_profiles",
+    "brightness_continuity",
+    "gradient_continuity",
+    "texture_continuity",
+    "analyze_seam",
+    "score_seam_quality",
+    "batch_analyze_seams",
 ]

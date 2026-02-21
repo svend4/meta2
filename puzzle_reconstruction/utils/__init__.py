@@ -25,6 +25,9 @@
     mask_utils      — утилиты масок (create_alpha_mask, apply_mask, erode_mask,
                       dilate_mask, mask_from_contour, combine_masks,
                       crop_to_mask, invert_mask)
+    array_utils     — утилиты numpy-массивов (normalize_array, pad_to_shape,
+                      crop_center, stack_arrays, chunk_array, sliding_window,
+                      flatten_images, unflatten_images, compute_pairwise_norms)
 """
 from .logger import (
     get_logger,
@@ -154,6 +157,17 @@ from .mask_utils import (
     crop_to_mask,
     invert_mask,
 )
+from .array_utils import (
+    normalize_array,
+    pad_to_shape,
+    crop_center,
+    stack_arrays,
+    chunk_array,
+    sliding_window,
+    flatten_images,
+    unflatten_images,
+    compute_pairwise_norms,
+)
 
 __all__ = [
     # Логирование
@@ -271,4 +285,14 @@ __all__ = [
     "combine_masks",
     "crop_to_mask",
     "invert_mask",
+    # Утилиты numpy-массивов
+    "normalize_array",
+    "pad_to_shape",
+    "crop_center",
+    "stack_arrays",
+    "chunk_array",
+    "sliding_window",
+    "flatten_images",
+    "unflatten_images",
+    "compute_pairwise_norms",
 ]
