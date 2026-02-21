@@ -17,6 +17,9 @@
                           extract_seam_profiles, brightness_continuity,
                           gradient_continuity, texture_continuity,
                           analyze_seam, score_seam_quality, batch_analyze_seams)
+    boundary_validator  — валидация геометрических границ (BoundaryViolation,
+                          BoundaryReport, validate_edge_gap, validate_alignment,
+                          validate_pair, validate_all_pairs, boundary_quality_score)
 """
 from .ocr import verify_full_assembly, render_assembly_image
 from .metrics import (
@@ -104,6 +107,15 @@ from .seam_analyzer import (
     score_seam_quality,
     batch_analyze_seams,
 )
+from .boundary_validator import (
+    BoundaryViolation,
+    BoundaryReport,
+    validate_edge_gap,
+    validate_alignment,
+    validate_pair,
+    validate_all_pairs,
+    boundary_quality_score,
+)
 
 __all__ = [
     "verify_full_assembly",
@@ -182,4 +194,12 @@ __all__ = [
     "analyze_seam",
     "score_seam_quality",
     "batch_analyze_seams",
+    # Валидация геометрических границ
+    "BoundaryViolation",
+    "BoundaryReport",
+    "validate_edge_gap",
+    "validate_alignment",
+    "validate_pair",
+    "validate_all_pairs",
+    "boundary_quality_score",
 ]

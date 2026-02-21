@@ -24,6 +24,10 @@
                            compute_separation_vector, detect_overlap_conflicts,
                            resolve_single_conflict, resolve_all_conflicts,
                            conflict_score)
+    rotation_estimator   — оценка угла поворота фрагментов (RotationEstimate,
+                           estimate_by_pca, estimate_by_moments, estimate_by_gradient,
+                           refine_rotation, estimate_rotation_pair,
+                           batch_estimate_rotations)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -130,6 +134,15 @@ from .overlap_resolver import (
     resolve_all_conflicts,
     conflict_score,
 )
+from .rotation_estimator import (
+    RotationEstimate,
+    estimate_by_pca,
+    estimate_by_moments,
+    estimate_by_gradient,
+    refine_rotation,
+    estimate_rotation_pair,
+    batch_estimate_rotations,
+)
 
 __all__ = [
     # Синтез
@@ -231,4 +244,12 @@ __all__ = [
     "resolve_single_conflict",
     "resolve_all_conflicts",
     "conflict_score",
+    # Оценка угла поворота
+    "RotationEstimate",
+    "estimate_by_pca",
+    "estimate_by_moments",
+    "estimate_by_gradient",
+    "refine_rotation",
+    "estimate_rotation_pair",
+    "batch_estimate_rotations",
 ]
