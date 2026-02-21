@@ -34,6 +34,10 @@
     pair_ranker         — ранжирование пар фрагментов (RankConfig, RankerPair,
                           RankResult, compute_pair_score, rank_fragment_pairs,
                           build_rank_matrix, merge_rank_results)
+    gap_scorer          — оценка зазоров между фрагментами (GapConfig,
+                          GapMeasure, GapReport, score_gap, measure_gap,
+                          build_gap_report, filter_gap_measures,
+                          worst_gap_pairs, gap_score_matrix)
 """
 from .consistency_checker import (
     ConsistencyIssue,
@@ -127,6 +131,17 @@ from .pair_ranker import (
     build_rank_matrix,
     merge_rank_results,
 )
+from .gap_scorer import (
+    GapConfig,
+    GapMeasure,
+    GapReport,
+    score_gap,
+    measure_gap,
+    build_gap_report,
+    filter_gap_measures,
+    worst_gap_pairs,
+    gap_score_matrix,
+)
 
 __all__ = [
     # Проверка согласованности
@@ -213,4 +228,14 @@ __all__ = [
     "rank_fragment_pairs",
     "build_rank_matrix",
     "merge_rank_results",
+    # Оценка зазоров между фрагментами
+    "GapConfig",
+    "GapMeasure",
+    "GapReport",
+    "score_gap",
+    "measure_gap",
+    "build_gap_report",
+    "filter_gap_measures",
+    "worst_gap_pairs",
+    "gap_score_matrix",
 ]

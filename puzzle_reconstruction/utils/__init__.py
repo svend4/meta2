@@ -98,6 +98,11 @@
     pipeline_runner  — запуск многоэтапного пайплайна (RunnerConfig, StepResult,
                        PipelineResult, PipelineStep, make_step, run_pipeline,
                        get_step_output, filter_step_results, retry_failed_steps)
+    polygon_utils    — геометрия полигонов (polygon_area, polygon_perimeter,
+                       polygon_centroid, point_in_polygon, convex_hull,
+                       polygon_bounding_box, polygon_aspect_ratio,
+                       translate_polygon, scale_polygon, rotate_polygon,
+                       polygon_similarity)
 """
 from .logger import (
     get_logger,
@@ -458,6 +463,19 @@ from .pipeline_runner import (
     filter_step_results,
     retry_failed_steps,
 )
+from .polygon_utils import (
+    polygon_area as poly_area,
+    polygon_perimeter,
+    polygon_centroid as poly_centroid,
+    point_in_polygon as poly_point_in,
+    convex_hull,
+    polygon_bounding_box,
+    polygon_aspect_ratio,
+    translate_polygon,
+    scale_polygon,
+    rotate_polygon,
+    polygon_similarity,
+)
 
 __all__ = [
     # Логирование
@@ -785,4 +803,16 @@ __all__ = [
     "get_step_output",
     "filter_step_results",
     "retry_failed_steps",
+    # Геометрия полигонов
+    "poly_area",
+    "polygon_perimeter",
+    "poly_centroid",
+    "poly_point_in",
+    "convex_hull",
+    "polygon_bounding_box",
+    "polygon_aspect_ratio",
+    "translate_polygon",
+    "scale_polygon",
+    "rotate_polygon",
+    "polygon_similarity",
 ]
