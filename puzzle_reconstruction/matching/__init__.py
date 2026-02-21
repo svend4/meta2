@@ -10,6 +10,7 @@
     graph_match   — графовый анализ (MST, спектральный порядок, random walk)
     feature_match — дескрипторное сопоставление (ORB/SIFT/AKAZE + RANSAC)
     color_match   — цветовое сопоставление (гистограммы, моменты, профили)
+    texture_match — текстурное сопоставление (LBP, Gabor, ориентации градиентов)
 """
 from .dtw import dtw_distance, dtw_distance_mirror
 from .pairwise import match_score
@@ -51,6 +52,16 @@ from .color_match import (
     color_match_pair,
     color_compatibility_matrix,
 )
+from .texture_match import (
+    TextureMatchResult,
+    compute_lbp_histogram,
+    lbp_distance,
+    compute_gabor_features,
+    gabor_distance,
+    gradient_orientation_hist,
+    texture_match_pair,
+    texture_compatibility_matrix,
+)
 
 __all__ = [
     "dtw_distance",
@@ -90,4 +101,13 @@ __all__ = [
     "edge_color_profile",
     "color_match_pair",
     "color_compatibility_matrix",
+    # Текстурное сопоставление
+    "TextureMatchResult",
+    "compute_lbp_histogram",
+    "lbp_distance",
+    "compute_gabor_features",
+    "gabor_distance",
+    "gradient_orientation_hist",
+    "texture_match_pair",
+    "texture_compatibility_matrix",
 ]

@@ -10,6 +10,8 @@
     confidence_scorer   — итоговая оценка уверенности в качестве сборки (A–F)
     consistency_checker — проверка согласованности межстрочного интервала, высоты
                           символов, угла текста и полей между фрагментами
+    layout_checker      — статистическая проверка геометрической согласованности
+                          (перекрытия, зазоры, сетка, соотношение сторон)
 """
 from .ocr import verify_full_assembly, render_assembly_image
 from .metrics import (
@@ -66,6 +68,18 @@ from .consistency_checker import (
     check_consistency,
     batch_check_consistency,
 )
+from .layout_checker import (
+    LayoutViolationType,
+    LayoutViolation,
+    LayoutCheckResult,
+    compute_bounding_box,
+    detect_overlaps,
+    detect_gaps,
+    check_grid_alignment,
+    check_aspect_ratio,
+    check_layout,
+    batch_check_layout,
+)
 
 __all__ = [
     "verify_full_assembly",
@@ -116,4 +130,15 @@ __all__ = [
     "check_margin_alignment",
     "check_consistency",
     "batch_check_consistency",
+    # Геометрическая проверка расположения
+    "LayoutViolationType",
+    "LayoutViolation",
+    "LayoutCheckResult",
+    "compute_bounding_box",
+    "detect_overlaps",
+    "detect_gaps",
+    "check_grid_alignment",
+    "check_aspect_ratio",
+    "check_layout",
+    "batch_check_layout",
 ]
