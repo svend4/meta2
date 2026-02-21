@@ -99,6 +99,11 @@
                               contour_area, contour_perimeter,
                               compute_contour_stats, process_contour,
                               batch_process_contours)
+    illumination_normalizer — нормализация освещения (IllumConfig,
+                              IllumResult, estimate_illumination,
+                              subtract_background, normalize_mean_std,
+                              apply_clahe, normalize_illumination,
+                              batch_normalize_illumination)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -429,6 +434,16 @@ from .contour_processor import (
     process_contour,
     batch_process_contours,
 )
+from .illumination_normalizer import (
+    IllumConfig,
+    IllumResult,
+    estimate_illumination,
+    subtract_background,
+    normalize_mean_std,
+    apply_clahe,
+    normalize_illumination,
+    batch_normalize_illumination,
+)
 
 __all__ = [
     "segment_fragment",
@@ -723,4 +738,13 @@ __all__ = [
     "compute_contour_stats",
     "process_contour",
     "batch_process_contours",
+    # Нормализация освещения
+    "IllumConfig",
+    "IllumResult",
+    "estimate_illumination",
+    "subtract_background",
+    "normalize_mean_std",
+    "apply_clahe",
+    "normalize_illumination",
+    "batch_normalize_illumination",
 ]
