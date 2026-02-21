@@ -56,6 +56,10 @@
                        assign_to_clusters, compute_inertia, silhouette_score_approx,
                        hierarchical_cluster, find_optimal_k, cluster_indices,
                        merge_clusters)
+    distance_utils  — метрики расстояния и сходства (euclidean_distance,
+                      cosine_distance, cosine_similarity, manhattan_distance,
+                      chebyshev_distance, hausdorff_distance, chamfer_distance,
+                      normalized_distance, pairwise_distances, nearest_neighbor_dist)
 """
 from .logger import (
     get_logger,
@@ -278,6 +282,18 @@ from .clustering_utils import (
     cluster_indices,
     merge_clusters,
 )
+from .distance_utils import (
+    euclidean_distance,
+    cosine_distance,
+    cosine_similarity,
+    manhattan_distance,
+    chebyshev_distance,
+    hausdorff_distance,
+    chamfer_distance,
+    normalized_distance,
+    pairwise_distances,
+    nearest_neighbor_dist,
+)
 
 __all__ = [
     # Логирование
@@ -480,4 +496,15 @@ __all__ = [
     "find_optimal_k",
     "cluster_indices",
     "merge_clusters",
+    # Метрики расстояния и сходства
+    "euclidean_distance",
+    "cosine_distance",
+    "cosine_similarity",
+    "manhattan_distance",
+    "chebyshev_distance",
+    "hausdorff_distance",
+    "chamfer_distance",
+    "normalized_distance",
+    "pairwise_distances",
+    "nearest_neighbor_dist",
 ]

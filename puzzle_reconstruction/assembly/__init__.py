@@ -42,6 +42,10 @@
                           compute_sequence_score, reverse_sequence,
                           rotate_sequence, sequence_to_pairs,
                           find_best_start, batch_sequence)
+    candidate_filter    — фильтрация кандидатов сборки (Candidate, FilterResult,
+                          filter_by_threshold, filter_top_k, filter_by_rank,
+                          deduplicate_candidates, normalize_scores,
+                          merge_candidate_lists, batch_filter)
 """
 from .greedy import greedy_assembly
 from .annealing import simulated_annealing
@@ -126,6 +130,17 @@ from .fragment_sequencer import (
     find_best_start,
     batch_sequence,
 )
+from .candidate_filter import (
+    Candidate,
+    FilterResult,
+    filter_by_threshold,
+    filter_top_k,
+    filter_by_rank,
+    deduplicate_candidates,
+    normalize_scores,
+    merge_candidate_lists,
+    batch_filter,
+)
 
 __all__ = [
     "greedy_assembly",
@@ -205,4 +220,14 @@ __all__ = [
     "sequence_to_pairs",
     "find_best_start",
     "batch_sequence",
+    # Фильтрация кандидатов сборки
+    "Candidate",
+    "FilterResult",
+    "filter_by_threshold",
+    "filter_top_k",
+    "filter_by_rank",
+    "deduplicate_candidates",
+    "normalize_scores",
+    "merge_candidate_lists",
+    "batch_filter",
 ]
