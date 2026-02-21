@@ -37,6 +37,11 @@
                           create_layout, add_cell, remove_cell,
                           compute_bounding_box, snap_to_grid, render_layout_image,
                           layout_to_dict, dict_to_layout)
+    fragment_sequencer  — определение порядка фрагментов (SequenceResult,
+                          sequence_greedy, sequence_by_score,
+                          compute_sequence_score, reverse_sequence,
+                          rotate_sequence, sequence_to_pairs,
+                          find_best_start, batch_sequence)
 """
 from .greedy import greedy_assembly
 from .annealing import simulated_annealing
@@ -110,6 +115,17 @@ from .layout_builder import (
     layout_to_dict,
     dict_to_layout,
 )
+from .fragment_sequencer import (
+    SequenceResult,
+    sequence_greedy,
+    sequence_by_score,
+    compute_sequence_score,
+    reverse_sequence,
+    rotate_sequence,
+    sequence_to_pairs,
+    find_best_start,
+    batch_sequence,
+)
 
 __all__ = [
     "greedy_assembly",
@@ -179,4 +195,14 @@ __all__ = [
     "render_layout_image",
     "layout_to_dict",
     "dict_to_layout",
+    # Определение порядка фрагментов
+    "SequenceResult",
+    "sequence_greedy",
+    "sequence_by_score",
+    "compute_sequence_score",
+    "reverse_sequence",
+    "rotate_sequence",
+    "sequence_to_pairs",
+    "find_best_start",
+    "batch_sequence",
 ]

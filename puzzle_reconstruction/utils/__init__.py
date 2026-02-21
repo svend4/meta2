@@ -44,6 +44,10 @@
                       find_peaks, find_valleys, compute_autocorrelation,
                       compute_cross_correlation, signal_energy, segment_signal,
                       resample_signal, phase_shift)
+    bbox_utils      — утилиты ограничивающих прямоугольников (BBox, bbox_iou,
+                      bbox_intersection, bbox_union, expand_bbox, crop_image,
+                      bboxes_from_mask, merge_overlapping_bboxes,
+                      bbox_center, bbox_aspect_ratio)
 """
 from .logger import (
     get_logger,
@@ -231,6 +235,18 @@ from .signal_utils import (
     resample_signal,
     phase_shift,
 )
+from .bbox_utils import (
+    BBox,
+    bbox_iou,
+    bbox_intersection,
+    bbox_union,
+    expand_bbox,
+    crop_image,
+    bboxes_from_mask,
+    merge_overlapping_bboxes,
+    bbox_center,
+    bbox_aspect_ratio,
+)
 
 __all__ = [
     # Логирование
@@ -401,4 +417,15 @@ __all__ = [
     "segment_signal",
     "resample_signal",
     "phase_shift",
+    # Утилиты ограничивающих прямоугольников
+    "BBox",
+    "bbox_iou",
+    "bbox_intersection",
+    "bbox_union",
+    "expand_bbox",
+    "crop_image",
+    "bboxes_from_mask",
+    "merge_overlapping_bboxes",
+    "bbox_center",
+    "bbox_aspect_ratio",
 ]
