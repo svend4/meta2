@@ -30,6 +30,9 @@
     shape_matcher    — сопоставление по форме контура (ShapeMatchResult,
                        hu_moments, hu_distance, zernike_approx,
                        match_shapes, find_best_shape_match, batch_match_shapes)
+    affine_matcher   — аффинное сопоставление (AffineMatchResult, estimate_affine,
+                       apply_affine_pts, affine_reprojection_error,
+                       score_affine_match, match_fragments_affine, batch_affine_match)
 """
 from .dtw import dtw_distance, dtw_distance_mirror
 from .pairwise import match_score
@@ -148,6 +151,15 @@ from .shape_matcher import (
     find_best_shape_match,
     batch_match_shapes,
 )
+from .affine_matcher import (
+    AffineMatchResult,
+    estimate_affine,
+    apply_affine_pts,
+    affine_reprojection_error,
+    score_affine_match,
+    match_fragments_affine,
+    batch_affine_match,
+)
 
 __all__ = [
     "dtw_distance",
@@ -256,4 +268,12 @@ __all__ = [
     "match_shapes",
     "find_best_shape_match",
     "batch_match_shapes",
+    # Аффинное сопоставление
+    "AffineMatchResult",
+    "estimate_affine",
+    "apply_affine_pts",
+    "affine_reprojection_error",
+    "score_affine_match",
+    "match_fragments_affine",
+    "batch_affine_match",
 ]

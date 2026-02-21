@@ -40,6 +40,10 @@
                       filter_by_response, filter_by_region, describe_keypoints,
                       match_descriptors, filter_matches_ransac, keypoints_to_array,
                       array_to_keypoints, compute_match_score)
+    signal_utils    — 1D обработка сигналов (smooth_signal, normalize_signal,
+                      find_peaks, find_valleys, compute_autocorrelation,
+                      compute_cross_correlation, signal_energy, segment_signal,
+                      resample_signal, phase_shift)
 """
 from .logger import (
     get_logger,
@@ -215,6 +219,18 @@ from .keypoint_utils import (
     array_to_keypoints,
     compute_match_score,
 )
+from .signal_utils import (
+    smooth_signal,
+    normalize_signal,
+    find_peaks,
+    find_valleys,
+    compute_autocorrelation,
+    compute_cross_correlation,
+    signal_energy,
+    segment_signal,
+    resample_signal,
+    phase_shift,
+)
 
 __all__ = [
     # Логирование
@@ -374,4 +390,15 @@ __all__ = [
     "keypoints_to_array",
     "array_to_keypoints",
     "compute_match_score",
+    # 1D обработка сигналов
+    "smooth_signal",
+    "normalize_signal",
+    "find_peaks",
+    "find_valleys",
+    "compute_autocorrelation",
+    "compute_cross_correlation",
+    "signal_energy",
+    "segment_signal",
+    "resample_signal",
+    "phase_shift",
 ]
