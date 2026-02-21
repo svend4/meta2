@@ -6,6 +6,7 @@
     geometry — геометрические операции (rotation_matrix_2d, polygon_area, poly_iou, …)
     cache    — LRU-кэш и дисковый кэш дескрипторов (DescriptorCache, DiskCache, @cached)
     io       — загрузка/сохранение фрагментов и Assembly (load_image_dir, save_assembly_json, …)
+    profiler — профилировщик шагов пайплайна (StepProfile, PipelineProfiler, @timed)
 """
 from .logger import (
     get_logger,
@@ -45,6 +46,14 @@ from .io import (
     load_fragments_npz,
     FragmentSetInfo,
 )
+from .profiler import (
+    StepProfile,
+    PipelineProfiler,
+    profile_function,
+    timed,
+    format_duration,
+    compare_profilers,
+)
 
 __all__ = [
     # Логирование
@@ -81,4 +90,11 @@ __all__ = [
     "save_fragments_npz",
     "load_fragments_npz",
     "FragmentSetInfo",
+    # Профилировщик
+    "StepProfile",
+    "PipelineProfiler",
+    "profile_function",
+    "timed",
+    "format_duration",
+    "compare_profilers",
 ]

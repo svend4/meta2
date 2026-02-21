@@ -6,8 +6,9 @@
     fractal/       — фрактальные характеристики края (Box, Divider, IFS, CSS)
 
 Модули:
-    synthesis      — синтез EdgeSignature из танграма и фрактала
-    shape_context  — Shape Context дескриптор (Belongie et al., 2002)
+    synthesis         — синтез EdgeSignature из танграма и фрактала
+    shape_context     — Shape Context дескриптор (Belongie et al., 2002)
+    word_segmentation — сегментация слов/строк (морфология, без OCR)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -28,6 +29,16 @@ from .shape_context import (
     log_polar_histogram,
     contour_similarity,
     ShapeContextResult,
+)
+from .word_segmentation import (
+    WordBox,
+    LineSegment,
+    WordSegmentationResult,
+    binarize,
+    segment_words,
+    merge_line_words,
+    segment_lines,
+    segment_document,
 )
 
 __all__ = [
@@ -54,4 +65,13 @@ __all__ = [
     "log_polar_histogram",
     "contour_similarity",
     "ShapeContextResult",
+    # Сегментация слов
+    "WordBox",
+    "LineSegment",
+    "WordSegmentationResult",
+    "binarize",
+    "segment_words",
+    "merge_line_words",
+    "segment_lines",
+    "segment_document",
 ]
