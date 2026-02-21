@@ -6,7 +6,8 @@
     geometry — геометрические операции (rotation_matrix_2d, polygon_area, poly_iou, …)
     cache    — LRU-кэш и дисковый кэш дескрипторов (DescriptorCache, DiskCache, @cached)
     io       — загрузка/сохранение фрагментов и Assembly (load_image_dir, save_assembly_json, …)
-    profiler — профилировщик шагов пайплайна (StepProfile, PipelineProfiler, @timed)
+    profiler   — профилировщик шагов пайплайна (StepProfile, PipelineProfiler, @timed)
+    visualizer — утилиты визуализации (word boxes, contours, matches, confidence bar)
 """
 from .logger import (
     get_logger,
@@ -54,6 +55,17 @@ from .profiler import (
     format_duration,
     compare_profilers,
 )
+from .visualizer import (
+    VisConfig,
+    draw_word_boxes,
+    draw_fragment_boxes,
+    draw_edge_matches,
+    draw_contour,
+    draw_assembly_layout,
+    draw_skew_angle,
+    draw_confidence_bar,
+    tile_images,
+)
 
 __all__ = [
     # Логирование
@@ -97,4 +109,14 @@ __all__ = [
     "timed",
     "format_duration",
     "compare_profilers",
+    # Визуализация
+    "VisConfig",
+    "draw_word_boxes",
+    "draw_fragment_boxes",
+    "draw_edge_matches",
+    "draw_contour",
+    "draw_assembly_layout",
+    "draw_skew_angle",
+    "draw_confidence_bar",
+    "tile_images",
 ]

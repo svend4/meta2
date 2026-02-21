@@ -8,6 +8,7 @@
     icp           — Iterative Closest Point для точного выравнивания контуров
     consensus     — консенсусное голосование по результатам нескольких методов
     graph_match   — графовый анализ (MST, спектральный порядок, random walk)
+    feature_match — дескрипторное сопоставление (ORB/SIFT/AKAZE + RANSAC)
 """
 from .dtw import dtw_distance, dtw_distance_mirror
 from .pairwise import match_score
@@ -29,6 +30,15 @@ from .graph_match import (
     random_walk_similarity,
     degree_centrality,
     analyze_graph,
+)
+from .feature_match import (
+    KeypointMatch,
+    FeatureMatchResult,
+    extract_features,
+    match_descriptors,
+    estimate_homography,
+    feature_match_pair,
+    edge_feature_score,
 )
 
 __all__ = [
@@ -53,4 +63,11 @@ __all__ = [
     "random_walk_similarity",
     "degree_centrality",
     "analyze_graph",
+    "KeypointMatch",
+    "FeatureMatchResult",
+    "extract_features",
+    "match_descriptors",
+    "estimate_homography",
+    "feature_match_pair",
+    "edge_feature_score",
 ]
