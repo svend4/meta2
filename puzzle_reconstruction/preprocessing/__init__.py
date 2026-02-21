@@ -29,6 +29,9 @@
     background_remover — удаление фона (BackgroundRemovalResult, remove_background_thresh,
                          remove_background_edges, remove_background_grabcut,
                          auto_remove_background, batch_remove_background)
+    patch_normalizer   — нормализация патчей (NormalizationParams, equalize_histogram,
+                         stretch_contrast, standardize_patch, normalize_patch,
+                         batch_normalize, compute_normalization_stats)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -172,6 +175,15 @@ from .background_remover import (
     auto_remove_background,
     batch_remove_background,
 )
+from .patch_normalizer import (
+    NormalizationParams,
+    equalize_histogram,
+    stretch_contrast,
+    standardize_patch,
+    normalize_patch,
+    batch_normalize as batch_normalize_patches,
+    compute_normalization_stats,
+)
 
 __all__ = [
     "segment_fragment",
@@ -296,4 +308,12 @@ __all__ = [
     "remove_background_grabcut",
     "auto_remove_background",
     "batch_remove_background",
+    # Нормализация патчей
+    "NormalizationParams",
+    "equalize_histogram",
+    "stretch_contrast",
+    "standardize_patch",
+    "normalize_patch",
+    "batch_normalize_patches",
+    "compute_normalization_stats",
 ]

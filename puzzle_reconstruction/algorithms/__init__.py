@@ -20,6 +20,10 @@
     position_estimator   — оценка абсолютных позиций фрагментов по попарным смещениям
                            (PositionEstimate, build_offset_graph, estimate_positions,
                            refine_positions, positions_to_array, align_to_origin)
+    overlap_resolver     — разрешение перекрытий (OverlapConflict,
+                           compute_separation_vector, detect_overlap_conflicts,
+                           resolve_single_conflict, resolve_all_conflicts,
+                           conflict_score)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -118,6 +122,14 @@ from .position_estimator import (
     positions_to_array,
     align_to_origin,
 )
+from .overlap_resolver import (
+    OverlapConflict,
+    compute_separation_vector,
+    detect_overlap_conflicts,
+    resolve_single_conflict,
+    resolve_all_conflicts,
+    conflict_score,
+)
 
 __all__ = [
     # Синтез
@@ -212,4 +224,11 @@ __all__ = [
     "refine_positions",
     "positions_to_array",
     "align_to_origin",
+    # Разрешение перекрытий
+    "OverlapConflict",
+    "compute_separation_vector",
+    "detect_overlap_conflicts",
+    "resolve_single_conflict",
+    "resolve_all_conflicts",
+    "conflict_score",
 ]
