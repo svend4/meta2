@@ -47,6 +47,10 @@
                            find_duplicate_positions, find_out_of_bounds,
                            compute_coverage, validate_placements,
                            batch_validate_placements)
+    layout_scorer        — оценка качества итоговой компоновки (LayoutScorerConfig,
+                           LayoutScoreResult, PlacedFragment, compute_coverage,
+                           compute_overlap_ratio, compute_uniformity, score_layout,
+                           rank_layouts, batch_score_layouts)
 """
 from .ocr import verify_full_assembly, render_assembly_image
 from .metrics import (
@@ -211,6 +215,17 @@ from .placement_validator import (
     validate_placements,
     batch_validate_placements,
 )
+from .layout_scorer import (
+    LayoutScorerConfig,
+    LayoutScoreResult,
+    PlacedFragment as LayoutScoredFragment,
+    compute_coverage as compute_layout_coverage,
+    compute_overlap_ratio,
+    compute_uniformity,
+    score_layout as score_layout_quality,
+    rank_layouts,
+    batch_score_layouts,
+)
 
 __all__ = [
     "verify_full_assembly",
@@ -359,4 +374,14 @@ __all__ = [
     "compute_placement_coverage",
     "validate_placements",
     "batch_validate_placements",
+    # Оценка качества итоговой компоновки
+    "LayoutScorerConfig",
+    "LayoutScoreResult",
+    "LayoutScoredFragment",
+    "compute_layout_coverage",
+    "compute_overlap_ratio",
+    "compute_uniformity",
+    "score_layout_quality",
+    "rank_layouts",
+    "batch_score_layouts",
 ]

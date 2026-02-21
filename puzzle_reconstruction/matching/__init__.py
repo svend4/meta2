@@ -39,6 +39,9 @@
     score_combiner   — комбинирование оценок совпадения (ScoreVector, CombinedScore,
                        weighted_combine, min_combine, max_combine, rank_combine,
                        normalize_score_vectors, batch_combine)
+    score_aggregator — агрегация оценок от нескольких матчеров (AggregationConfig,
+                       AggregatedScore, AggregationReport, aggregate_scores,
+                       aggregate_score_matrix, batch_aggregate_scores, filter_aggregated)
 """
 from .dtw import dtw_distance, dtw_distance_mirror
 from .pairwise import match_score
@@ -185,6 +188,15 @@ from .score_combiner import (
     normalize_score_vectors,
     batch_combine,
 )
+from .score_aggregator import (
+    AggregationConfig,
+    AggregatedScore,
+    AggregationReport,
+    aggregate_scores,
+    aggregate_score_matrix,
+    batch_aggregate_scores,
+    filter_aggregated,
+)
 
 __all__ = [
     "dtw_distance",
@@ -318,4 +330,12 @@ __all__ = [
     "rank_combine",
     "normalize_score_vectors",
     "batch_combine",
+    # Агрегация оценок от нескольких матчеров
+    "AggregationConfig",
+    "AggregatedScore",
+    "AggregationReport",
+    "aggregate_scores",
+    "aggregate_score_matrix",
+    "batch_aggregate_scores",
+    "filter_aggregated",
 ]
