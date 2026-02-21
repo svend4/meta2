@@ -64,6 +64,10 @@
                       moving_average, gaussian_smooth, median_smooth,
                       exponential_smooth, savgol_smooth, smooth_contour,
                       apply_smoothing, batch_smooth)
+    feature_selector — выбор признаков (FeatureSet, SelectionResult,
+                       variance_selection, correlation_selection, rank_features,
+                       pca_reduce, normalize_features, select_top_k,
+                       apply_selection, batch_select)
 """
 from .logger import (
     get_logger,
@@ -309,6 +313,18 @@ from .smoothing_utils import (
     apply_smoothing,
     batch_smooth,
 )
+from .feature_selector import (
+    FeatureSet,
+    SelectionResult,
+    variance_selection,
+    correlation_selection,
+    rank_features,
+    pca_reduce,
+    normalize_features,
+    select_top_k,
+    apply_selection,
+    batch_select,
+)
 
 __all__ = [
     # Логирование
@@ -532,4 +548,15 @@ __all__ = [
     "smooth_contour_signal",
     "apply_smoothing",
     "batch_smooth",
+    # Выбор признаков
+    "FeatureSet",
+    "SelectionResult",
+    "variance_selection",
+    "correlation_selection",
+    "rank_features",
+    "pca_reduce",
+    "normalize_features",
+    "select_top_k",
+    "apply_selection",
+    "batch_select",
 ]

@@ -35,6 +35,9 @@
                            check_spatial_coverage, find_uncovered_regions,
                            completeness_score, generate_completeness_report,
                            batch_check_coverage)
+    overlap_validator    — валидация перекрытий масок (OverlapRecord, ValidationReport,
+                           bbox_overlap, mask_iou, check_pair_overlap,
+                           validate_assembly, overlap_area_matrix, batch_validate)
 """
 from .ocr import verify_full_assembly, render_assembly_image
 from .metrics import (
@@ -165,6 +168,16 @@ from .completeness_checker import (
     generate_completeness_report,
     batch_check_coverage,
 )
+from .overlap_validator import (
+    OverlapRecord,
+    ValidationReport,
+    bbox_overlap,
+    mask_iou,
+    check_pair_overlap,
+    validate_assembly,
+    overlap_area_matrix,
+    batch_validate as batch_validate_overlap,
+)
 
 __all__ = [
     "verify_full_assembly",
@@ -282,4 +295,13 @@ __all__ = [
     "completeness_score",
     "generate_completeness_report",
     "batch_check_coverage",
+    # Валидация перекрытий масок
+    "OverlapRecord",
+    "ValidationReport",
+    "bbox_overlap",
+    "mask_iou",
+    "check_pair_overlap",
+    "validate_assembly",
+    "overlap_area_matrix",
+    "batch_validate_overlap",
 ]
