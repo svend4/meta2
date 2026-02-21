@@ -11,6 +11,7 @@
     feature_match — дескрипторное сопоставление (ORB/SIFT/AKAZE + RANSAC)
     color_match   — цветовое сопоставление (гистограммы, моменты, профили)
     texture_match — текстурное сопоставление (LBP, Gabor, ориентации градиентов)
+    geometric_match — геометрическое сопоставление (площадь, AR, моменты Ху)
 """
 from .dtw import dtw_distance, dtw_distance_mirror
 from .pairwise import match_score
@@ -62,6 +63,17 @@ from .texture_match import (
     texture_match_pair,
     texture_compatibility_matrix,
 )
+from .geometric_match import (
+    FragmentGeometry,
+    GeometricMatchResult,
+    compute_fragment_geometry,
+    aspect_ratio_similarity,
+    area_ratio_similarity,
+    hu_moments_similarity,
+    edge_length_similarity,
+    match_geometry,
+    batch_geometry_match,
+)
 
 __all__ = [
     "dtw_distance",
@@ -110,4 +122,14 @@ __all__ = [
     "gradient_orientation_hist",
     "texture_match_pair",
     "texture_compatibility_matrix",
+    # Геометрическое сопоставление
+    "FragmentGeometry",
+    "GeometricMatchResult",
+    "compute_fragment_geometry",
+    "aspect_ratio_similarity",
+    "area_ratio_similarity",
+    "hu_moments_similarity",
+    "edge_length_similarity",
+    "match_geometry",
+    "batch_geometry_match",
 ]

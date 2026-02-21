@@ -18,6 +18,7 @@
     binarizer       — бинаризация изображений (BinarizeResult, Otsu, Sauvola,
                       Niblack, Bernsen, adaptive, auto_binarize, batch_binarize)
     document_cleaner — очистка документов (тени, рамки, освещённость, пятна)
+    noise_analyzer   — анализ шума (σ, SNR, JPEG-артефакты, зернистость, качество)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -119,6 +120,15 @@ from .document_cleaner import (
     auto_clean,
     batch_clean,
 )
+from .noise_analyzer import (
+    NoiseAnalysisResult,
+    estimate_noise_sigma,
+    estimate_snr,
+    detect_jpeg_artifacts,
+    estimate_grain,
+    analyze_noise,
+    batch_analyze_noise,
+)
 
 __all__ = [
     "segment_fragment",
@@ -206,4 +216,12 @@ __all__ = [
     "remove_blobs",
     "auto_clean",
     "batch_clean",
+    # Анализ шума
+    "NoiseAnalysisResult",
+    "estimate_noise_sigma",
+    "estimate_snr",
+    "detect_jpeg_artifacts",
+    "estimate_grain",
+    "analyze_noise",
+    "batch_analyze_noise",
 ]
