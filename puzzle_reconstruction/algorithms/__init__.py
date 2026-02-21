@@ -41,6 +41,10 @@
                            dijkstra, shortest_path, all_pairs_shortest_paths,
                            topological_sort, find_connected_components,
                            minimum_spanning_tree, batch_dijkstra)
+    edge_extractor       — извлечение граничных профилей фрагментов (EdgeSegment,
+                           FragmentEdges, detect_boundary, extract_edge_points,
+                           split_edge_by_side, compute_edge_length, simplify_edge,
+                           extract_fragment_edges, batch_extract_edges)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -191,6 +195,17 @@ from .path_planner import (
     minimum_spanning_tree,
     batch_dijkstra,
 )
+from .edge_extractor import (
+    EdgeSegment,
+    FragmentEdges,
+    detect_boundary,
+    extract_edge_points,
+    split_edge_by_side,
+    compute_edge_length,
+    simplify_edge,
+    extract_fragment_edges,
+    batch_extract_edges,
+)
 
 __all__ = [
     # Синтез
@@ -332,4 +347,14 @@ __all__ = [
     "find_connected_components",
     "minimum_spanning_tree",
     "batch_dijkstra",
+    # Извлечение граничных профилей фрагментов
+    "EdgeSegment",
+    "FragmentEdges",
+    "detect_boundary",
+    "extract_edge_points",
+    "split_edge_by_side",
+    "compute_edge_length",
+    "simplify_edge",
+    "extract_fragment_edges",
+    "batch_extract_edges",
 ]

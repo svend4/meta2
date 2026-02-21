@@ -52,6 +52,10 @@
                       to_sparse_entries, from_sparse_entries, sparse_top_k,
                       threshold_matrix, symmetrize_matrix, normalize_matrix,
                       diagonal_zeros, matrix_sparsity, top_k_per_row)
+    clustering_utils — кластеризация фрагментов (ClusterResult, kmeans_cluster,
+                       assign_to_clusters, compute_inertia, silhouette_score_approx,
+                       hierarchical_cluster, find_optimal_k, cluster_indices,
+                       merge_clusters)
 """
 from .logger import (
     get_logger,
@@ -263,6 +267,17 @@ from .sparse_utils import (
     matrix_sparsity,
     top_k_per_row,
 )
+from .clustering_utils import (
+    ClusterResult,
+    kmeans_cluster,
+    assign_to_clusters,
+    compute_inertia,
+    silhouette_score_approx,
+    hierarchical_cluster,
+    find_optimal_k,
+    cluster_indices,
+    merge_clusters,
+)
 
 __all__ = [
     # Логирование
@@ -455,4 +470,14 @@ __all__ = [
     "diagonal_zeros",
     "matrix_sparsity",
     "top_k_per_row",
+    # Кластеризация фрагментов
+    "ClusterResult",
+    "kmeans_cluster",
+    "assign_to_clusters",
+    "compute_inertia",
+    "silhouette_score_approx",
+    "hierarchical_cluster",
+    "find_optimal_k",
+    "cluster_indices",
+    "merge_clusters",
 ]
