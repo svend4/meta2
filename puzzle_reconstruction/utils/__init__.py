@@ -79,6 +79,9 @@
                        ConfigSnapshot, validate_field_type, validate_config,
                        load_config, merge_configs, diff_configs,
                        make_config_snapshot, batch_validate)
+    result_cache     — кэш промежуточных результатов с TTL (CachePolicy, CacheRecord,
+                       CacheSummary, ResultCache, make_cache, cached_result,
+                       merge_caches, evict_expired)
 """
 from .logger import (
     get_logger,
@@ -376,6 +379,16 @@ from .config_manager import (
     make_config_snapshot,
     batch_validate as batch_validate_configs,
 )
+from .result_cache import (
+    CachePolicy,
+    CacheRecord,
+    CacheSummary,
+    ResultCache,
+    make_cache as make_result_cache,
+    cached_result,
+    merge_caches as merge_result_caches,
+    evict_expired,
+)
 
 __all__ = [
     # Логирование
@@ -646,4 +659,13 @@ __all__ = [
     "diff_configs",
     "make_config_snapshot",
     "batch_validate_configs",
+    # Кэш промежуточных результатов
+    "CachePolicy",
+    "CacheRecord",
+    "CacheSummary",
+    "ResultCache",
+    "make_result_cache",
+    "cached_result",
+    "merge_result_caches",
+    "evict_expired",
 ]

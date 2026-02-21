@@ -61,6 +61,10 @@
                           FragmentSortInfo, SortedFragment, sort_by_id, sort_by_area,
                           sort_by_score, sort_random, sort_fragments,
                           assign_positions, reorder_by_positions, batch_sort)
+    canvas_builder      — построение финального холста (CanvasConfig,
+                          CanvasFragmentPlacement, CanvasResult, compute_canvas_size,
+                          make_empty_canvas, place_fragment_on_canvas, build_canvas,
+                          crop_to_content, batch_build_canvases)
 """
 from .greedy import greedy_assembly
 from .annealing import simulated_annealing
@@ -204,6 +208,17 @@ from .fragment_sorter import (
     reorder_by_positions,
     batch_sort,
 )
+from .canvas_builder import (
+    CanvasConfig,
+    FragmentPlacement as CanvasFragmentPlacement,
+    CanvasResult,
+    compute_canvas_size,
+    make_empty_canvas,
+    place_fragment as place_fragment_on_canvas,
+    build_canvas,
+    crop_to_content,
+    batch_build_canvases,
+)
 
 __all__ = [
     "greedy_assembly",
@@ -337,4 +352,14 @@ __all__ = [
     "assign_positions",
     "reorder_by_positions",
     "batch_sort",
+    # Построение финального холста
+    "CanvasConfig",
+    "CanvasFragmentPlacement",
+    "CanvasResult",
+    "compute_canvas_size",
+    "make_empty_canvas",
+    "place_fragment_on_canvas",
+    "build_canvas",
+    "crop_to_content",
+    "batch_build_canvases",
 ]
