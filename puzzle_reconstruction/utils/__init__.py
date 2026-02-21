@@ -71,6 +71,8 @@
     graph_utils      — граф совместимости фрагментов (GraphEdge, FragmentGraph,
                        build_graph, dijkstra, shortest_path, minimum_spanning_tree,
                        connected_components, node_degrees, subgraph, batch_build_graphs)
+    cache_manager    — LRU-кэш промежуточных результатов (CacheEntry, CacheStats,
+                       LRUCache, make_cache, cached_call, merge_caches)
 """
 from .logger import (
     get_logger,
@@ -340,6 +342,14 @@ from .graph_utils import (
     subgraph,
     batch_build_graphs,
 )
+from .cache_manager import (
+    CacheEntry,
+    CacheStats,
+    LRUCache,
+    make_cache,
+    cached_call,
+    merge_caches,
+)
 
 __all__ = [
     # Логирование
@@ -585,4 +595,11 @@ __all__ = [
     "node_degrees",
     "subgraph",
     "batch_build_graphs",
+    # LRU-кэш
+    "CacheEntry",
+    "CacheStats",
+    "LRUCache",
+    "make_cache",
+    "cached_call",
+    "merge_caches",
 ]

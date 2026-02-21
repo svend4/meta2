@@ -10,6 +10,9 @@
                           BoundaryScore, ScoringConfig, intensity_compatibility,
                           gradient_compatibility, color_compatibility,
                           score_boundary, score_matrix, batch_score_boundaries)
+    global_ranker       — глобальное ранжирование фрагментов (RankedPair, RankingConfig,
+                          normalize_matrix, aggregate_score_matrices, rank_pairs,
+                          top_k_candidates, global_rank, score_vector, batch_global_rank)
 """
 from .consistency_checker import (
     ConsistencyIssue,
@@ -33,6 +36,17 @@ from .boundary_scorer import (
     score_matrix,
     batch_score_boundaries,
 )
+from .global_ranker import (
+    RankedPair,
+    RankingConfig,
+    normalize_matrix,
+    aggregate_score_matrices,
+    rank_pairs,
+    top_k_candidates,
+    global_rank,
+    score_vector,
+    batch_global_rank,
+)
 
 __all__ = [
     # Проверка согласованности
@@ -55,4 +69,14 @@ __all__ = [
     "score_boundary",
     "score_matrix",
     "batch_score_boundaries",
+    # Глобальное ранжирование
+    "RankedPair",
+    "RankingConfig",
+    "normalize_matrix",
+    "aggregate_score_matrices",
+    "rank_pairs",
+    "top_k_candidates",
+    "global_rank",
+    "score_vector",
+    "batch_global_rank",
 ]
