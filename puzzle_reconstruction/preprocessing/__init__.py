@@ -32,9 +32,13 @@
     patch_normalizer   — нормализация патчей (NormalizationParams, equalize_histogram,
                          stretch_contrast, standardize_patch, normalize_patch,
                          batch_normalize, compute_normalization_stats)
-    quality_assessor   — оценка качества изображений (QualityReport, estimate_blur,
-                         estimate_noise, estimate_contrast, estimate_completeness,
-                         assess_quality, filter_by_quality, batch_assess_quality)
+    quality_assessor        — оценка качества изображений (QualityReport, estimate_blur,
+                              estimate_noise, estimate_contrast, estimate_completeness,
+                              assess_quality, filter_by_quality, batch_assess_quality)
+    illumination_corrector  — коррекция освещённости (IlluminationParams,
+                              estimate_background, subtract_background,
+                              correct_by_homomorph, correct_by_retinex,
+                              correct_illumination, batch_correct, estimate_uniformity)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -197,6 +201,16 @@ from .quality_assessor import (
     filter_by_quality,
     batch_assess_quality,
 )
+from .illumination_corrector import (
+    IlluminationParams,
+    estimate_background,
+    subtract_background,
+    correct_by_homomorph,
+    correct_by_retinex,
+    correct_illumination,
+    batch_correct,
+    estimate_uniformity,
+)
 
 __all__ = [
     "segment_fragment",
@@ -338,4 +352,13 @@ __all__ = [
     "assess_quality",
     "filter_by_quality",
     "batch_assess_quality",
+    # Коррекция освещённости
+    "IlluminationParams",
+    "estimate_background",
+    "subtract_background",
+    "correct_by_homomorph",
+    "correct_by_retinex",
+    "correct_illumination",
+    "batch_correct",
+    "estimate_uniformity",
 ]

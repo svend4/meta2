@@ -27,6 +27,9 @@
                        normalize_minmax, normalize_zscore, normalize_rank,
                        calibrate_scores, combine_scores,
                        normalize_score_matrix, batch_normalize_scores)
+    shape_matcher    — сопоставление по форме контура (ShapeMatchResult,
+                       hu_moments, hu_distance, zernike_approx,
+                       match_shapes, find_best_shape_match, batch_match_shapes)
 """
 from .dtw import dtw_distance, dtw_distance_mirror
 from .pairwise import match_score
@@ -136,6 +139,15 @@ from .score_normalizer import (
     normalize_score_matrix,
     batch_normalize_scores,
 )
+from .shape_matcher import (
+    ShapeMatchResult,
+    hu_moments,
+    hu_distance,
+    zernike_approx,
+    match_shapes,
+    find_best_shape_match,
+    batch_match_shapes,
+)
 
 __all__ = [
     "dtw_distance",
@@ -236,4 +248,12 @@ __all__ = [
     "combine_scores",
     "normalize_score_matrix",
     "batch_normalize_scores",
+    # Сопоставление по форме контура
+    "ShapeMatchResult",
+    "hu_moments",
+    "hu_distance",
+    "zernike_approx",
+    "match_shapes",
+    "find_best_shape_match",
+    "batch_match_shapes",
 ]
