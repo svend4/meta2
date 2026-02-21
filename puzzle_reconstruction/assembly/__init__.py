@@ -23,6 +23,9 @@
                      create_state, place_fragment, remove_fragment,
                      add_adjacency, get_neighbors, compute_coverage,
                      is_complete, to_dict, from_dict)
+    placement_optimizer — оптимизация порядка размещения (PlacementResult,
+                          score_placement, find_best_next, greedy_place,
+                          remove_worst_placed, iterative_place)
 """
 from .greedy import greedy_assembly
 from .annealing import simulated_annealing
@@ -55,6 +58,14 @@ from .parallel import (
     AssemblyRacer,
     ALL_METHODS,
     DEFAULT_METHODS,
+)
+from .placement_optimizer import (
+    PlacementResult,
+    score_placement,
+    find_best_next,
+    greedy_place,
+    remove_worst_placed,
+    iterative_place,
 )
 
 __all__ = [
@@ -89,4 +100,11 @@ __all__ = [
     "is_complete",
     "to_dict",
     "from_dict",
+    # Оптимизация размещения
+    "PlacementResult",
+    "score_placement",
+    "find_best_next",
+    "greedy_place",
+    "remove_worst_placed",
+    "iterative_place",
 ]

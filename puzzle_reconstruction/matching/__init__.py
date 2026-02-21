@@ -15,6 +15,10 @@
     seam_score      — комплексная оценка шва (профиль, цвет, текстура, градиент)
     candidate_ranker — ранжирование пар-кандидатов (score_pair, rank_pairs,
                        filter_by_score, top_k, deduplicate_pairs, batch_rank)
+    patch_matcher    — попиксельное (патч-based) сопоставление краёв
+                       (PatchMatch, extract_edge_strip, ncc_score, ssd_score,
+                       ssim_score, match_edge_strips, match_patch_pair,
+                       batch_patch_match)
 """
 from .dtw import dtw_distance, dtw_distance_mirror
 from .pairwise import match_score
@@ -94,6 +98,16 @@ from .candidate_ranker import (
     deduplicate_pairs,
     batch_rank,
 )
+from .patch_matcher import (
+    PatchMatch,
+    extract_edge_strip,
+    ncc_score,
+    ssd_score,
+    ssim_score,
+    match_edge_strips,
+    match_patch_pair,
+    batch_patch_match,
+)
 
 __all__ = [
     "dtw_distance",
@@ -167,4 +181,13 @@ __all__ = [
     "top_k",
     "deduplicate_pairs",
     "batch_rank",
+    # Патч-based сопоставление краёв
+    "PatchMatch",
+    "extract_edge_strip",
+    "ncc_score",
+    "ssd_score",
+    "ssim_score",
+    "match_edge_strips",
+    "match_patch_pair",
+    "batch_patch_match",
 ]
