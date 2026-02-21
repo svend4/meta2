@@ -50,6 +50,10 @@
                           FragmentPlacement, arrange_grid, arrange_strip,
                           center_placements, group_bbox, shift_placements,
                           arrange, batch_arrange)
+    collision_detector  — обнаружение коллизий AABB (PlacedRect, CollisionInfo,
+                          aabb_overlap, compute_overlap, detect_collisions,
+                          collision_graph, is_collision_free, total_overlap_area,
+                          resolve_greedy, batch_detect)
 """
 from .greedy import greedy_assembly
 from .annealing import simulated_annealing
@@ -156,6 +160,18 @@ from .fragment_arranger import (
     arrange,
     batch_arrange,
 )
+from .collision_detector import (
+    PlacedRect,
+    CollisionInfo,
+    aabb_overlap,
+    compute_overlap,
+    detect_collisions,
+    collision_graph,
+    is_collision_free,
+    total_overlap_area,
+    resolve_greedy,
+    batch_detect,
+)
 
 __all__ = [
     "greedy_assembly",
@@ -255,4 +271,15 @@ __all__ = [
     "shift_placements",
     "arrange",
     "batch_arrange",
+    # Обнаружение коллизий
+    "PlacedRect",
+    "CollisionInfo",
+    "aabb_overlap",
+    "compute_overlap",
+    "detect_collisions",
+    "collision_graph",
+    "is_collision_free",
+    "total_overlap_area",
+    "resolve_greedy",
+    "batch_detect",
 ]
