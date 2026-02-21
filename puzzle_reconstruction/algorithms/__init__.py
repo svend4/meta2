@@ -70,6 +70,11 @@
                             concatenate_descriptors, weighted_average_descriptors,
                             pca_reduce, elementwise_aggregate, aggregate,
                             distance_matrix, batch_aggregate)
+    homography_estimator  — оценка гомографии (HomographyConfig, HomographyResult,
+                            normalize_points, dlt_homography,
+                            compute_reprojection_error, estimate_homography,
+                            decompose_homography, warp_points,
+                            batch_estimate_homographies)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -297,6 +302,17 @@ from .descriptor_aggregator import (
     distance_matrix,
     batch_aggregate,
 )
+from .homography_estimator import (
+    HomographyConfig,
+    HomographyResult,
+    normalize_points,
+    dlt_homography,
+    compute_reprojection_error,
+    estimate_homography,
+    decompose_homography,
+    warp_points,
+    batch_estimate_homographies,
+)
 
 __all__ = [
     # Синтез
@@ -508,4 +524,14 @@ __all__ = [
     "aggregate",
     "distance_matrix",
     "batch_aggregate",
+    # Оценка гомографии
+    "HomographyConfig",
+    "HomographyResult",
+    "normalize_points",
+    "dlt_homography",
+    "compute_reprojection_error",
+    "estimate_homography",
+    "decompose_homography",
+    "warp_points",
+    "batch_estimate_homographies",
 ]

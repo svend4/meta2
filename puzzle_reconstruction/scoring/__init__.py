@@ -13,6 +13,10 @@
     global_ranker       — глобальное ранжирование фрагментов (RankedPair, RankingConfig,
                           normalize_matrix, aggregate_score_matrices, rank_pairs,
                           top_k_candidates, global_rank, score_vector, batch_global_rank)
+    pair_filter         — фильтрация кандидатных пар (FilterConfig, CandidatePair,
+                          FilterReport, filter_by_score, filter_by_inlier_count,
+                          filter_top_k, deduplicate_pairs, filter_top_k_per_fragment,
+                          filter_pairs, merge_filter_results, batch_filter)
 """
 from .consistency_checker import (
     ConsistencyIssue,
@@ -47,6 +51,19 @@ from .global_ranker import (
     score_vector,
     batch_global_rank,
 )
+from .pair_filter import (
+    FilterConfig,
+    CandidatePair,
+    FilterReport,
+    filter_by_score,
+    filter_by_inlier_count,
+    filter_top_k,
+    deduplicate_pairs,
+    filter_top_k_per_fragment,
+    filter_pairs,
+    merge_filter_results,
+    batch_filter as batch_filter_pairs,
+)
 
 __all__ = [
     # Проверка согласованности
@@ -79,4 +96,16 @@ __all__ = [
     "global_rank",
     "score_vector",
     "batch_global_rank",
+    # Фильтрация кандидатных пар
+    "FilterConfig",
+    "CandidatePair",
+    "FilterReport",
+    "filter_by_score",
+    "filter_by_inlier_count",
+    "filter_top_k",
+    "deduplicate_pairs",
+    "filter_top_k_per_fragment",
+    "filter_pairs",
+    "merge_filter_results",
+    "batch_filter_pairs",
 ]
