@@ -74,6 +74,11 @@
                               compute_orientation_histogram,
                               extract_gradient_profile, compare_gradient_profiles,
                               batch_extract_gradient_profiles)
+    patch_sampler           — выборка патчей (SampleConfig, PatchSample,
+                              SampleResult, sample_grid_patches,
+                              sample_random_patches, sample_border_patches,
+                              sample_stride_patches, sample_patches,
+                              extract_patch_images, batch_sample_patches)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -345,6 +350,18 @@ from .gradient_analyzer import (
     compare_gradient_profiles,
     batch_extract_gradient_profiles,
 )
+from .patch_sampler import (
+    SampleConfig,
+    PatchSample,
+    SampleResult,
+    sample_grid_patches,
+    sample_random_patches,
+    sample_border_patches,
+    sample_stride_patches,
+    sample_patches,
+    extract_patch_images,
+    batch_sample_patches,
+)
 
 __all__ = [
     "segment_fragment",
@@ -585,4 +602,15 @@ __all__ = [
     "extract_gradient_profile",
     "compare_gradient_profiles",
     "batch_extract_gradient_profiles",
+    # Выборка патчей
+    "SampleConfig",
+    "PatchSample",
+    "SampleResult",
+    "sample_grid_patches",
+    "sample_random_patches",
+    "sample_border_patches",
+    "sample_stride_patches",
+    "sample_patches",
+    "extract_patch_images",
+    "batch_sample_patches",
 ]

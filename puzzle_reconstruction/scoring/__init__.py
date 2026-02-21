@@ -22,6 +22,10 @@
                           rank_normalize_matrix, softmax_normalize_matrix,
                           sigmoid_normalize_matrix, normalize_score_matrix,
                           combine_score_matrices, batch_normalize_matrices)
+    match_evaluator     — оценка качества сопоставления пар (EvalConfig, MatchEval,
+                          EvalReport, compute_precision, compute_recall,
+                          compute_f_score, evaluate_match, evaluate_batch_matches,
+                          aggregate_eval, filter_by_score, rank_matches)
 """
 from .consistency_checker import (
     ConsistencyIssue,
@@ -81,6 +85,19 @@ from .score_normalizer import (
     combine_score_matrices,
     batch_normalize_matrices,
 )
+from .match_evaluator import (
+    EvalConfig,
+    MatchEval,
+    EvalReport,
+    compute_precision,
+    compute_recall,
+    compute_f_score,
+    evaluate_match,
+    evaluate_batch_matches,
+    aggregate_eval,
+    filter_by_score as filter_evals_by_score,
+    rank_matches,
+)
 
 __all__ = [
     # Проверка согласованности
@@ -136,4 +153,16 @@ __all__ = [
     "normalize_score_matrix",
     "combine_score_matrices",
     "batch_normalize_matrices",
+    # Оценка качества сопоставления
+    "EvalConfig",
+    "MatchEval",
+    "EvalReport",
+    "compute_precision",
+    "compute_recall",
+    "compute_f_score",
+    "evaluate_match",
+    "evaluate_batch_matches",
+    "aggregate_eval",
+    "filter_evals_by_score",
+    "rank_matches",
 ]
