@@ -75,6 +75,10 @@
                        LRUCache, make_cache, cached_call, merge_caches)
     progress_tracker — трекер прогресса пайплайна (StepRecord, PipelineReport,
                        ProgressTracker, make_tracker, run_step, summarize_tracker)
+    config_manager   — управление конфигурацией (ConfigField, ConfigSpec,
+                       ConfigSnapshot, validate_field_type, validate_config,
+                       load_config, merge_configs, diff_configs,
+                       make_config_snapshot, batch_validate)
 """
 from .logger import (
     get_logger,
@@ -360,6 +364,18 @@ from .progress_tracker import (
     run_step,
     summarize_tracker,
 )
+from .config_manager import (
+    ConfigField,
+    ConfigSpec,
+    ConfigSnapshot,
+    validate_field_type,
+    validate_config,
+    load_config,
+    merge_configs,
+    diff_configs,
+    make_config_snapshot,
+    batch_validate as batch_validate_configs,
+)
 
 __all__ = [
     # Логирование
@@ -619,4 +635,15 @@ __all__ = [
     "make_tracker",
     "run_step",
     "summarize_tracker",
+    # Управление конфигурацией
+    "ConfigField",
+    "ConfigSpec",
+    "ConfigSnapshot",
+    "validate_field_type",
+    "validate_config",
+    "load_config",
+    "merge_configs",
+    "diff_configs",
+    "make_config_snapshot",
+    "batch_validate_configs",
 ]

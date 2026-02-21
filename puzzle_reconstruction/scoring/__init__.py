@@ -17,6 +17,11 @@
                           FilterReport, filter_by_score, filter_by_inlier_count,
                           filter_top_k, deduplicate_pairs, filter_top_k_per_fragment,
                           filter_pairs, merge_filter_results, batch_filter)
+    score_normalizer    — нормализация матриц оценок (NormMethod, NormalizedMatrix,
+                          minmax_normalize_matrix, zscore_normalize_matrix,
+                          rank_normalize_matrix, softmax_normalize_matrix,
+                          sigmoid_normalize_matrix, normalize_score_matrix,
+                          combine_score_matrices, batch_normalize_matrices)
 """
 from .consistency_checker import (
     ConsistencyIssue,
@@ -64,6 +69,18 @@ from .pair_filter import (
     merge_filter_results,
     batch_filter as batch_filter_pairs,
 )
+from .score_normalizer import (
+    NormMethod,
+    NormalizedMatrix,
+    minmax_normalize_matrix,
+    zscore_normalize_matrix,
+    rank_normalize_matrix,
+    softmax_normalize_matrix,
+    sigmoid_normalize_matrix,
+    normalize_score_matrix,
+    combine_score_matrices,
+    batch_normalize_matrices,
+)
 
 __all__ = [
     # Проверка согласованности
@@ -108,4 +125,15 @@ __all__ = [
     "filter_pairs",
     "merge_filter_results",
     "batch_filter_pairs",
+    # Нормализация матриц оценок
+    "NormMethod",
+    "NormalizedMatrix",
+    "minmax_normalize_matrix",
+    "zscore_normalize_matrix",
+    "rank_normalize_matrix",
+    "softmax_normalize_matrix",
+    "sigmoid_normalize_matrix",
+    "normalize_score_matrix",
+    "combine_score_matrices",
+    "batch_normalize_matrices",
 ]
