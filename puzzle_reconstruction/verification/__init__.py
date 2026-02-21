@@ -12,6 +12,7 @@
                           символов, угла текста и полей между фрагментами
     layout_checker      — статистическая проверка геометрической согласованности
                           (перекрытия, зазоры, сетка, соотношение сторон)
+    overlap_checker     — попиксельная проверка перекрытий полигонов (IoU, конфликты)
 """
 from .ocr import verify_full_assembly, render_assembly_image
 from .metrics import (
@@ -80,6 +81,15 @@ from .layout_checker import (
     check_layout,
     batch_check_layout,
 )
+from .overlap_checker import (
+    OverlapResult,
+    polygon_intersection_area,
+    polygon_union_area,
+    polygon_iou,
+    check_overlap_pair,
+    check_all_overlaps,
+    find_conflicting_pairs,
+)
 
 __all__ = [
     "verify_full_assembly",
@@ -141,4 +151,12 @@ __all__ = [
     "check_aspect_ratio",
     "check_layout",
     "batch_check_layout",
+    # Попиксельная проверка перекрытий
+    "OverlapResult",
+    "polygon_intersection_area",
+    "polygon_union_area",
+    "polygon_iou",
+    "check_overlap_pair",
+    "check_all_overlaps",
+    "find_conflicting_pairs",
 ]

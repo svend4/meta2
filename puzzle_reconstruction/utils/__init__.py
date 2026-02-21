@@ -16,6 +16,9 @@
     image_io        — загрузка/сохранение (ImageRecord, load_image, save_image,
                       load_directory, filter_by_extension, parse_fragment_id,
                       resize_to_max, batch_resize)
+    transform_utils — геометрические преобразования (rotate, flip, scale, crop_region,
+                      affine_from_params, compose_affines, apply_affine,
+                      apply_homography, batch_rotate)
 """
 from .logger import (
     get_logger,
@@ -113,6 +116,17 @@ from .image_io import (
     resize_to_max,
     batch_resize,
 )
+from .transform_utils import (
+    rotate_image,
+    flip_image,
+    scale_image,
+    crop_region,
+    affine_from_params,
+    compose_affines,
+    apply_affine,
+    apply_homography,
+    batch_rotate,
+)
 
 __all__ = [
     # Логирование
@@ -201,4 +215,14 @@ __all__ = [
     "parse_fragment_id",
     "resize_to_max",
     "batch_resize",
+    # Геометрические преобразования
+    "rotate_image",
+    "flip_image",
+    "scale_image",
+    "crop_region",
+    "affine_from_params",
+    "compose_affines",
+    "apply_affine",
+    "apply_homography",
+    "batch_rotate",
 ]
