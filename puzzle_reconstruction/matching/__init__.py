@@ -12,6 +12,7 @@
     color_match   — цветовое сопоставление (гистограммы, моменты, профили)
     texture_match — текстурное сопоставление (LBP, Gabor, ориентации градиентов)
     geometric_match — геометрическое сопоставление (площадь, AR, моменты Ху)
+    seam_score      — комплексная оценка шва (профиль, цвет, текстура, градиент)
 """
 from .dtw import dtw_distance, dtw_distance_mirror
 from .pairwise import match_score
@@ -74,6 +75,14 @@ from .geometric_match import (
     match_geometry,
     batch_geometry_match,
 )
+from .seam_score import (
+    SeamScoreResult,
+    compute_seam_score,
+    seam_score_matrix,
+    normalize_seam_scores,
+    rank_candidates,
+    batch_seam_scores,
+)
 
 __all__ = [
     "dtw_distance",
@@ -132,4 +141,11 @@ __all__ = [
     "edge_length_similarity",
     "match_geometry",
     "batch_geometry_match",
+    # Комплексная оценка шва
+    "SeamScoreResult",
+    "compute_seam_score",
+    "seam_score_matrix",
+    "normalize_seam_scores",
+    "rank_candidates",
+    "batch_seam_scores",
 ]

@@ -13,6 +13,9 @@
     image_stats    — статистический анализ изображений (ImageStats, энтропия, резкость,
                      гистограммные моменты, градиентные статистики, compare_images)
     patch_extractor — извлечение патчей (Patch, PatchSet, grid, sliding, random, border)
+    image_io        — загрузка/сохранение (ImageRecord, load_image, save_image,
+                      load_directory, filter_by_extension, parse_fragment_id,
+                      resize_to_max, batch_resize)
 """
 from .logger import (
     get_logger,
@@ -100,6 +103,16 @@ from .patch_extractor import (
     filter_patches,
     batch_extract_patches,
 )
+from .image_io import (
+    ImageRecord,
+    load_image,
+    save_image,
+    load_directory,
+    filter_by_extension,
+    parse_fragment_id,
+    resize_to_max,
+    batch_resize,
+)
 
 __all__ = [
     # Логирование
@@ -179,4 +192,13 @@ __all__ = [
     "extract_border_patches",
     "filter_patches",
     "batch_extract_patches",
+    # Ввод-вывод изображений
+    "ImageRecord",
+    "load_image",
+    "save_image",
+    "load_directory",
+    "filter_by_extension",
+    "parse_fragment_id",
+    "resize_to_max",
+    "batch_resize",
 ]
