@@ -10,6 +10,7 @@
     shape_context        — Shape Context дескриптор (Belongie et al., 2002)
     word_segmentation    — сегментация слов/строк (морфология, без OCR)
     fragment_classifier  — классификация типов фрагментов (угол/край/внутр.)
+    edge_profile         — 1D профили краёв (яркость, градиент, текстура, DTW)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -52,6 +53,18 @@ from .fragment_classifier import (
     classify_fragment_type,
     classify_fragment,
     batch_classify,
+)
+from .edge_profile import (
+    EdgeProfile,
+    ProfileMatchResult,
+    extract_intensity_profile,
+    extract_gradient_profile,
+    extract_texture_profile,
+    normalize_profile,
+    profile_correlation,
+    profile_dtw,
+    match_edge_profiles,
+    batch_profile_match,
 )
 
 __all__ = [
@@ -98,4 +111,15 @@ __all__ = [
     "classify_fragment_type",
     "classify_fragment",
     "batch_classify",
+    # Профили краёв
+    "EdgeProfile",
+    "ProfileMatchResult",
+    "extract_intensity_profile",
+    "extract_gradient_profile",
+    "extract_texture_profile",
+    "normalize_profile",
+    "profile_correlation",
+    "profile_dtw",
+    "match_edge_profiles",
+    "batch_profile_match",
 ]

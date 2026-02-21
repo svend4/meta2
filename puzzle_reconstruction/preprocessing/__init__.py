@@ -17,6 +17,7 @@
                       gamma, stretch, retinex, auto_enhance, batch_enhance)
     binarizer       — бинаризация изображений (BinarizeResult, Otsu, Sauvola,
                       Niblack, Bernsen, adaptive, auto_binarize, batch_binarize)
+    document_cleaner — очистка документов (тени, рамки, освещённость, пятна)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -109,6 +110,15 @@ from .binarizer import (
     auto_binarize,
     batch_binarize,
 )
+from .document_cleaner import (
+    CleanResult,
+    remove_shadow,
+    remove_border_artifacts,
+    normalize_illumination,
+    remove_blobs,
+    auto_clean,
+    batch_clean,
+)
 
 __all__ = [
     "segment_fragment",
@@ -188,4 +198,12 @@ __all__ = [
     "binarize_bernsen",
     "auto_binarize",
     "batch_binarize",
+    # Очистка документов
+    "CleanResult",
+    "remove_shadow",
+    "remove_border_artifacts",
+    "normalize_illumination",
+    "remove_blobs",
+    "auto_clean",
+    "batch_clean",
 ]
