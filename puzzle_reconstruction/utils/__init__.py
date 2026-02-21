@@ -28,6 +28,10 @@
     array_utils     — утилиты numpy-массивов (normalize_array, pad_to_shape,
                       crop_center, stack_arrays, chunk_array, sliding_window,
                       flatten_images, unflatten_images, compute_pairwise_norms)
+    contour_utils   — утилиты контуров (simplify_contour, interpolate_contour,
+                      contour_area, contour_perimeter, contour_bbox,
+                      contour_centroid, contour_iou, align_contour_orientation,
+                      contours_to_mask, mask_to_contour)
 """
 from .logger import (
     get_logger,
@@ -168,6 +172,18 @@ from .array_utils import (
     unflatten_images,
     compute_pairwise_norms,
 )
+from .contour_utils import (
+    simplify_contour,
+    interpolate_contour,
+    contour_area,
+    contour_perimeter,
+    contour_bbox,
+    contour_centroid,
+    contour_iou,
+    align_contour_orientation,
+    contours_to_mask,
+    mask_to_contour,
+)
 
 __all__ = [
     # Логирование
@@ -295,4 +311,15 @@ __all__ = [
     "flatten_images",
     "unflatten_images",
     "compute_pairwise_norms",
+    # Утилиты контуров
+    "simplify_contour",
+    "interpolate_contour",
+    "contour_area",
+    "contour_perimeter",
+    "contour_bbox",
+    "contour_centroid",
+    "contour_iou",
+    "align_contour_orientation",
+    "contours_to_mask",
+    "mask_to_contour",
 ]

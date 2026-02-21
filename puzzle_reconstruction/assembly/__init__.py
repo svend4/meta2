@@ -30,6 +30,9 @@
                           build_from_scores, build_from_distances, build_combined,
                           apply_forbidden_mask, normalize_costs,
                           to_assignment_matrix, top_k_candidates)
+    score_tracker       — отслеживание эволюции оценок (ScoreSnapshot, ScoreTracker,
+                          create_tracker, record_snapshot, detect_convergence,
+                          extract_best_iteration, summarize_tracker, smooth_scores)
 """
 from .greedy import greedy_assembly
 from .annealing import simulated_annealing
@@ -81,6 +84,16 @@ from .cost_matrix import (
     to_assignment_matrix,
     top_k_candidates,
 )
+from .score_tracker import (
+    ScoreSnapshot,
+    ScoreTracker,
+    create_tracker,
+    record_snapshot,
+    detect_convergence,
+    extract_best_iteration,
+    summarize_tracker,
+    smooth_scores,
+)
 
 __all__ = [
     "greedy_assembly",
@@ -130,4 +143,13 @@ __all__ = [
     "normalize_costs",
     "to_assignment_matrix",
     "top_k_candidates",
+    # Трекер оценок
+    "ScoreSnapshot",
+    "ScoreTracker",
+    "create_tracker",
+    "record_snapshot",
+    "detect_convergence",
+    "extract_best_iteration",
+    "summarize_tracker",
+    "smooth_scores",
 ]
