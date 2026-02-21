@@ -38,6 +38,10 @@
     overlap_validator    — валидация перекрытий масок (OverlapRecord, ValidationReport,
                            bbox_overlap, mask_iou, check_pair_overlap,
                            validate_assembly, overlap_area_matrix, batch_validate)
+    spatial_validator    — пространственная валидация сборки (SpatialIssue, SpatialReport,
+                           PlacedFragment, check_unique_ids, check_within_canvas,
+                           check_no_overlaps, check_coverage, check_gap_uniformity,
+                           validate_spatial, batch_validate)
 """
 from .ocr import verify_full_assembly, render_assembly_image
 from .metrics import (
@@ -178,6 +182,18 @@ from .overlap_validator import (
     overlap_area_matrix,
     batch_validate as batch_validate_overlap,
 )
+from .spatial_validator import (
+    SpatialIssue,
+    SpatialReport,
+    PlacedFragment,
+    check_unique_ids as check_unique_fragment_ids,
+    check_within_canvas,
+    check_no_overlaps,
+    check_coverage as check_spatial_coverage_frag,
+    check_gap_uniformity,
+    validate_spatial,
+    batch_validate as batch_validate_spatial,
+)
 
 __all__ = [
     "verify_full_assembly",
@@ -304,4 +320,15 @@ __all__ = [
     "validate_assembly",
     "overlap_area_matrix",
     "batch_validate_overlap",
+    # Пространственная валидация сборки
+    "SpatialIssue",
+    "SpatialReport",
+    "PlacedFragment",
+    "check_unique_fragment_ids",
+    "check_within_canvas",
+    "check_no_overlaps",
+    "check_spatial_coverage_frag",
+    "check_gap_uniformity",
+    "validate_spatial",
+    "batch_validate_spatial",
 ]

@@ -65,6 +65,11 @@
                            extract_patch, ncc_score, ssd_score, sad_score,
                            match_patch_in_image, find_matches, top_matches,
                            batch_patch_match)
+    descriptor_aggregator — агрегация дескрипторов (AggregatorConfig,
+                            AggregatedDescriptor, l2_normalize,
+                            concatenate_descriptors, weighted_average_descriptors,
+                            pca_reduce, elementwise_aggregate, aggregate,
+                            distance_matrix, batch_aggregate)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -280,6 +285,18 @@ from .patch_matcher import (
     top_matches,
     batch_patch_match,
 )
+from .descriptor_aggregator import (
+    AggregatorConfig,
+    AggregatedDescriptor,
+    l2_normalize,
+    concatenate_descriptors,
+    weighted_average_descriptors,
+    pca_reduce,
+    elementwise_aggregate,
+    aggregate,
+    distance_matrix,
+    batch_aggregate,
+)
 
 __all__ = [
     # Синтез
@@ -480,4 +497,15 @@ __all__ = [
     "find_matches",
     "top_matches",
     "batch_patch_match",
+    # Агрегация дескрипторов
+    "AggregatorConfig",
+    "AggregatedDescriptor",
+    "l2_normalize",
+    "concatenate_descriptors",
+    "weighted_average_descriptors",
+    "pca_reduce",
+    "elementwise_aggregate",
+    "aggregate",
+    "distance_matrix",
+    "batch_aggregate",
 ]
