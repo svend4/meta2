@@ -9,6 +9,7 @@
     consensus     — консенсусное голосование по результатам нескольких методов
     graph_match   — графовый анализ (MST, спектральный порядок, random walk)
     feature_match — дескрипторное сопоставление (ORB/SIFT/AKAZE + RANSAC)
+    color_match   — цветовое сопоставление (гистограммы, моменты, профили)
 """
 from .dtw import dtw_distance, dtw_distance_mirror
 from .pairwise import match_score
@@ -40,6 +41,16 @@ from .feature_match import (
     feature_match_pair,
     edge_feature_score,
 )
+from .color_match import (
+    ColorMatchResult,
+    compute_color_histogram,
+    histogram_distance,
+    compute_color_moments,
+    moments_distance,
+    edge_color_profile,
+    color_match_pair,
+    color_compatibility_matrix,
+)
 
 __all__ = [
     "dtw_distance",
@@ -70,4 +81,13 @@ __all__ = [
     "estimate_homography",
     "feature_match_pair",
     "edge_feature_score",
+    # Цветовое сопоставление
+    "ColorMatchResult",
+    "compute_color_histogram",
+    "histogram_distance",
+    "compute_color_moments",
+    "moments_distance",
+    "edge_color_profile",
+    "color_match_pair",
+    "color_compatibility_matrix",
 ]

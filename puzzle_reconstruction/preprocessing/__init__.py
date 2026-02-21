@@ -13,6 +13,8 @@
     perspective     — коррекция перспективных искажений (contour, Hough)
     noise_reduction — расширенное шумоподавление (DenoiseResult, NLM, bilateral,
                       morphological, smart_denoise, batch_denoise)
+    contrast        — улучшение контраста (ContrastResult, CLAHE, histeq,
+                      gamma, stretch, retinex, auto_enhance, batch_enhance)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -84,6 +86,17 @@ from .noise_reduction import (
     smart_denoise,
     batch_denoise,
 )
+from .contrast import (
+    ContrastResult,
+    measure_contrast,
+    enhance_clahe,
+    enhance_histeq,
+    enhance_gamma,
+    enhance_stretch,
+    enhance_retinex,
+    auto_enhance,
+    batch_enhance,
+)
 
 __all__ = [
     "segment_fragment",
@@ -144,4 +157,14 @@ __all__ = [
     "denoise_morphological",
     "smart_denoise",
     "batch_denoise",
+    # Улучшение контраста
+    "ContrastResult",
+    "measure_contrast",
+    "enhance_clahe",
+    "enhance_histeq",
+    "enhance_gamma",
+    "enhance_stretch",
+    "enhance_retinex",
+    "auto_enhance",
+    "batch_enhance",
 ]
