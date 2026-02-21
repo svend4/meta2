@@ -36,6 +36,9 @@
     spectral_matcher — спектральное сопоставление (SpectralMatchResult,
                        magnitude_spectrum, log_magnitude, spectrum_correlation,
                        phase_correlation, match_spectra, batch_spectral_match)
+    score_combiner   — комбинирование оценок совпадения (ScoreVector, CombinedScore,
+                       weighted_combine, min_combine, max_combine, rank_combine,
+                       normalize_score_vectors, batch_combine)
 """
 from .dtw import dtw_distance, dtw_distance_mirror
 from .pairwise import match_score
@@ -172,6 +175,16 @@ from .spectral_matcher import (
     match_spectra,
     batch_spectral_match,
 )
+from .score_combiner import (
+    ScoreVector,
+    CombinedScore,
+    weighted_combine,
+    min_combine,
+    max_combine,
+    rank_combine,
+    normalize_score_vectors,
+    batch_combine,
+)
 
 __all__ = [
     "dtw_distance",
@@ -296,4 +309,13 @@ __all__ = [
     "phase_correlation",
     "match_spectra",
     "batch_spectral_match",
+    # Комбинирование оценок совпадения
+    "ScoreVector",
+    "CombinedScore",
+    "weighted_combine",
+    "min_combine",
+    "max_combine",
+    "rank_combine",
+    "normalize_score_vectors",
+    "batch_combine",
 ]

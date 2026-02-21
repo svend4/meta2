@@ -60,6 +60,10 @@
                       cosine_distance, cosine_similarity, manhattan_distance,
                       chebyshev_distance, hausdorff_distance, chamfer_distance,
                       normalized_distance, pairwise_distances, nearest_neighbor_dist)
+    smoothing_utils — сглаживание сигналов и контуров (SmoothingParams,
+                      moving_average, gaussian_smooth, median_smooth,
+                      exponential_smooth, savgol_smooth, smooth_contour,
+                      apply_smoothing, batch_smooth)
 """
 from .logger import (
     get_logger,
@@ -294,6 +298,17 @@ from .distance_utils import (
     pairwise_distances,
     nearest_neighbor_dist,
 )
+from .smoothing_utils import (
+    SmoothingParams,
+    moving_average,
+    gaussian_smooth,
+    median_smooth,
+    exponential_smooth,
+    savgol_smooth,
+    smooth_contour as smooth_contour_signal,
+    apply_smoothing,
+    batch_smooth,
+)
 
 __all__ = [
     # Логирование
@@ -507,4 +522,14 @@ __all__ = [
     "normalized_distance",
     "pairwise_distances",
     "nearest_neighbor_dist",
+    # Сглаживание сигналов и контуров
+    "SmoothingParams",
+    "moving_average",
+    "gaussian_smooth",
+    "median_smooth",
+    "exponential_smooth",
+    "savgol_smooth",
+    "smooth_contour_signal",
+    "apply_smoothing",
+    "batch_smooth",
 ]
