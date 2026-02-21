@@ -37,6 +37,10 @@
                            label_connected, compute_region_props, filter_regions,
                            merge_close_regions, region_adjacency, largest_region,
                            regions_to_mask, batch_segment)
+    path_planner         — планирование пути обхода фрагментов (PathResult,
+                           dijkstra, shortest_path, all_pairs_shortest_paths,
+                           topological_sort, find_connected_components,
+                           minimum_spanning_tree, batch_dijkstra)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -177,6 +181,16 @@ from .region_segmenter import (
     regions_to_mask,
     batch_segment,
 )
+from .path_planner import (
+    PathResult,
+    dijkstra,
+    shortest_path,
+    all_pairs_shortest_paths,
+    topological_sort,
+    find_connected_components,
+    minimum_spanning_tree,
+    batch_dijkstra,
+)
 
 __all__ = [
     # Синтез
@@ -309,4 +323,13 @@ __all__ = [
     "largest_region",
     "regions_to_mask",
     "batch_segment",
+    # Планирование пути обхода фрагментов
+    "PathResult",
+    "dijkstra",
+    "shortest_path",
+    "all_pairs_shortest_paths",
+    "topological_sort",
+    "find_connected_components",
+    "minimum_spanning_tree",
+    "batch_dijkstra",
 ]

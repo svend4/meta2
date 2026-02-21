@@ -43,6 +43,10 @@
                               open_morph, close_morph, tophat, blackhat,
                               morphological_gradient, skeleton, remove_small_blobs,
                               fill_holes, apply_morph, batch_morph)
+    frequency_filter        — фильтрация в частотной области (FrequencyFilterParams,
+                              fft_image, ifft_image, gaussian_low_pass,
+                              gaussian_high_pass, band_pass_filter, notch_filter,
+                              apply_frequency_filter, batch_frequency_filter)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -230,6 +234,17 @@ from .morphology_ops import (
     apply_morph,
     batch_morph,
 )
+from .frequency_filter import (
+    FrequencyFilterParams,
+    fft_image,
+    ifft_image,
+    gaussian_low_pass,
+    gaussian_high_pass,
+    band_pass_filter,
+    notch_filter,
+    apply_frequency_filter,
+    batch_frequency_filter,
+)
 
 __all__ = [
     "segment_fragment",
@@ -394,4 +409,14 @@ __all__ = [
     "fill_holes",
     "apply_morph",
     "batch_morph",
+    # Фильтрация в частотной области
+    "FrequencyFilterParams",
+    "fft_image",
+    "ifft_image",
+    "gaussian_low_pass",
+    "gaussian_high_pass",
+    "band_pass_filter",
+    "notch_filter",
+    "apply_frequency_filter",
+    "batch_frequency_filter",
 ]
