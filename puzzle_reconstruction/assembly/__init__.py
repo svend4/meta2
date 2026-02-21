@@ -54,6 +54,9 @@
                           aabb_overlap, compute_overlap, detect_collisions,
                           collision_graph, is_collision_free, total_overlap_area,
                           resolve_greedy, batch_detect)
+    gap_analyzer        — анализ зазоров между фрагментами (FragmentBounds, GapInfo,
+                          GapStats, compute_gap, find_adjacent, analyze_all_gaps,
+                          gap_histogram, classify_gaps, summarize, batch_analyze)
 """
 from .greedy import greedy_assembly
 from .annealing import simulated_annealing
@@ -172,6 +175,18 @@ from .collision_detector import (
     resolve_greedy,
     batch_detect,
 )
+from .gap_analyzer import (
+    FragmentBounds,
+    GapInfo,
+    GapStats,
+    compute_gap,
+    find_adjacent,
+    analyze_all_gaps,
+    gap_histogram,
+    classify_gaps,
+    summarize,
+    batch_analyze,
+)
 
 __all__ = [
     "greedy_assembly",
@@ -282,4 +297,15 @@ __all__ = [
     "total_overlap_area",
     "resolve_greedy",
     "batch_detect",
+    # Анализ зазоров между фрагментами
+    "FragmentBounds",
+    "GapInfo",
+    "GapStats",
+    "compute_gap",
+    "find_adjacent",
+    "analyze_all_gaps",
+    "gap_histogram",
+    "classify_gaps",
+    "summarize",
+    "batch_analyze",
 ]

@@ -61,6 +61,10 @@
                            extract_keypoints, match_descriptors, compute_homography,
                            sift_match_pair, filter_matches_by_distance,
                            batch_sift_match)
+    patch_matcher        — патч-матчинг по скользящему окну (PatchConfig, PatchMatch,
+                           extract_patch, ncc_score, ssd_score, sad_score,
+                           match_patch_in_image, find_matches, top_matches,
+                           batch_patch_match)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -264,6 +268,18 @@ from .sift_matcher import (
     filter_matches_by_distance,
     batch_sift_match,
 )
+from .patch_matcher import (
+    PatchConfig,
+    PatchMatch,
+    extract_patch,
+    ncc_score,
+    ssd_score,
+    sad_score,
+    match_patch_in_image,
+    find_matches,
+    top_matches,
+    batch_patch_match,
+)
 
 __all__ = [
     # Синтез
@@ -453,4 +469,15 @@ __all__ = [
     "sift_match_pair",
     "filter_matches_by_distance",
     "batch_sift_match",
+    # Патч-матчинг
+    "PatchConfig",
+    "PatchMatch",
+    "extract_patch",
+    "ncc_score",
+    "ssd_score",
+    "sad_score",
+    "match_patch_in_image",
+    "find_matches",
+    "top_matches",
+    "batch_patch_match",
 ]
