@@ -65,6 +65,10 @@
                           CanvasFragmentPlacement, CanvasResult, compute_canvas_size,
                           make_empty_canvas, place_fragment_on_canvas, build_canvas,
                           crop_to_content, batch_build_canvases)
+    position_estimator  — оценка позиций фрагментов (PositionConfig, FragmentPosition,
+                          PositionEstimate, snap_to_grid, estimate_grid_positions,
+                          refine_positions, generate_position_candidates,
+                          batch_estimate_positions)
 """
 from .greedy import greedy_assembly
 from .annealing import simulated_annealing
@@ -219,6 +223,16 @@ from .canvas_builder import (
     crop_to_content,
     batch_build_canvases,
 )
+from .position_estimator import (
+    PositionConfig,
+    FragmentPosition,
+    PositionEstimate,
+    snap_to_grid as snap_coords_to_grid,
+    estimate_grid_positions,
+    refine_positions,
+    generate_position_candidates,
+    batch_estimate_positions,
+)
 
 __all__ = [
     "greedy_assembly",
@@ -362,4 +376,13 @@ __all__ = [
     "build_canvas",
     "crop_to_content",
     "batch_build_canvases",
+    # Оценка позиций фрагментов
+    "PositionConfig",
+    "FragmentPosition",
+    "PositionEstimate",
+    "snap_coords_to_grid",
+    "estimate_grid_positions",
+    "refine_positions",
+    "generate_position_candidates",
+    "batch_estimate_positions",
 ]

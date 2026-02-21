@@ -79,6 +79,12 @@
                               sample_random_patches, sample_border_patches,
                               sample_stride_patches, sample_patches,
                               extract_patch_images, batch_sample_patches)
+    frequency_analyzer      — частотный анализ (FreqConfig, FreqSpectrum,
+                              FreqDescriptor, compute_power_spectrum,
+                              compute_band_energies, compute_spectral_centroid,
+                              compute_spectral_entropy, extract_top_frequencies,
+                              extract_freq_descriptor, compare_freq_descriptors,
+                              batch_extract_freq_descriptors)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -362,6 +368,19 @@ from .patch_sampler import (
     extract_patch_images,
     batch_sample_patches,
 )
+from .frequency_analyzer import (
+    FreqConfig,
+    FreqSpectrum,
+    FreqDescriptor,
+    compute_power_spectrum,
+    compute_band_energies,
+    compute_spectral_centroid,
+    compute_spectral_entropy,
+    extract_top_frequencies,
+    extract_freq_descriptor,
+    compare_freq_descriptors,
+    batch_extract_freq_descriptors,
+)
 
 __all__ = [
     "segment_fragment",
@@ -613,4 +632,16 @@ __all__ = [
     "sample_patches",
     "extract_patch_images",
     "batch_sample_patches",
+    # Частотный анализ
+    "FreqConfig",
+    "FreqSpectrum",
+    "FreqDescriptor",
+    "compute_power_spectrum",
+    "compute_band_energies",
+    "compute_spectral_centroid",
+    "compute_spectral_entropy",
+    "extract_top_frequencies",
+    "extract_freq_descriptor",
+    "compare_freq_descriptors",
+    "batch_extract_freq_descriptors",
 ]
