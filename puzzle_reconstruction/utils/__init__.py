@@ -343,6 +343,14 @@
                           filter_by_score_range, filter_by_rank,
                           top_k_candidate_entries, candidate_rank_stats,
                           compare_rankings, batch_summarise_rankings)
+    filter_pipeline_utils — утилиты конвейерной фильтрации кандидатных пар
+                          (FilterStepConfig, FilterStepResult,
+                          FilterPipelineSummary, make_filter_step,
+                          steps_from_log, summarise_pipeline,
+                          filter_effective_steps, filter_by_removal_rate,
+                          most_aggressive_step, least_aggressive_step,
+                          pipeline_stats, compare_pipelines,
+                          batch_summarise_pipelines)
 """
 from .logger import (
     get_logger,
@@ -1372,6 +1380,21 @@ from .candidate_rank_utils import (
     compare_rankings,
     batch_summarise_rankings,
 )
+from .filter_pipeline_utils import (
+    FilterStepConfig,
+    FilterStepResult,
+    FilterPipelineSummary,
+    make_filter_step,
+    steps_from_log,
+    summarise_pipeline,
+    filter_effective_steps,
+    filter_by_removal_rate,
+    most_aggressive_step,
+    least_aggressive_step,
+    pipeline_stats,
+    compare_pipelines,
+    batch_summarise_pipelines,
+)
 
 __all__ = [
     # Логирование
@@ -2298,4 +2321,18 @@ __all__ = [
     "candidate_rank_stats",
     "compare_rankings",
     "batch_summarise_rankings",
+    # Конвейерная фильтрация кандидатных пар
+    "FilterStepConfig",
+    "FilterStepResult",
+    "FilterPipelineSummary",
+    "make_filter_step",
+    "steps_from_log",
+    "summarise_pipeline",
+    "filter_effective_steps",
+    "filter_by_removal_rate",
+    "most_aggressive_step",
+    "least_aggressive_step",
+    "pipeline_stats",
+    "compare_pipelines",
+    "batch_summarise_pipelines",
 ]
