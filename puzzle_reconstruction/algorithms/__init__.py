@@ -106,6 +106,9 @@
                             extract_seam_strip, color_continuity, gradient_continuity,
                             texture_continuity, evaluate_seam, batch_evaluate_seams,
                             rank_seams)
+    fourier_descriptor    — дескрипторы Фурье контуров (FourierConfig, FourierDescriptor,
+                            complex_representation, compute_contour_centroid,
+                            compute_fd, fd_similarity, batch_compute_fd, rank_by_fd)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -419,6 +422,16 @@ from .seam_evaluator import (
     batch_evaluate_seams,
     rank_seams,
 )
+from .fourier_descriptor import (
+    FourierConfig,
+    FourierDescriptor,
+    complex_representation,
+    compute_contour_centroid,
+    compute_fd,
+    fd_similarity,
+    batch_compute_fd,
+    rank_by_fd,
+)
 
 __all__ = [
     # Синтез
@@ -708,4 +721,13 @@ __all__ = [
     "evaluate_seam",
     "batch_evaluate_seams",
     "rank_seams",
+    # Дескрипторы Фурье контуров
+    "FourierConfig",
+    "FourierDescriptor",
+    "complex_representation",
+    "compute_contour_centroid",
+    "compute_fd",
+    "fd_similarity",
+    "batch_compute_fd",
+    "rank_by_fd",
 ]
