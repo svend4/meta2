@@ -192,6 +192,10 @@
                           hausdorff_distance, frechet_distance_approx,
                           curve_length, length_ratio,
                           compare_curves, batch_compare_curves)
+    segment_utils       — анализ сегментов маски (SegmentConfig, RegionInfo,
+                          label_mask, region_info, all_regions,
+                          filter_regions, largest_region, mask_from_labels,
+                          mask_statistics, mask_bounding_box, extract_boundary)
     rotation_utils      — утилиты поворота (RotationConfig,
                           rotate_image_angle, rotate_points_angle,
                           normalize_angle, angle_difference,
@@ -886,6 +890,19 @@ from .curve_metrics import (
     compare_curves,
     batch_compare_curves,
 )
+from .segment_utils import (
+    SegmentConfig,
+    RegionInfo,
+    label_mask,
+    region_info,
+    all_regions,
+    filter_regions,
+    largest_region,
+    mask_from_labels,
+    mask_statistics,
+    mask_bounding_box,
+    extract_boundary,
+)
 
 __all__ = [
     # Логирование
@@ -1493,4 +1510,16 @@ __all__ = [
     "length_ratio",
     "compare_curves",
     "batch_compare_curves",
+    # Анализ сегментов маски
+    "SegmentConfig",
+    "RegionInfo",
+    "label_mask",
+    "region_info",
+    "all_regions",
+    "filter_regions",
+    "largest_region",
+    "mask_from_labels",
+    "mask_statistics",
+    "mask_bounding_box",
+    "extract_boundary",
 ]
