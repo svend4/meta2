@@ -351,6 +351,13 @@
                           most_aggressive_step, least_aggressive_step,
                           pipeline_stats, compare_pipelines,
                           batch_summarise_pipelines)
+    score_norm_utils    — утилиты нормализации и калибровки оценок
+                          (ScoreNormConfig, ScoreNormEntry,
+                          ScoreNormSummary, make_norm_entry,
+                          entries_from_scores, summarise_norm,
+                          filter_by_normalized_range, filter_by_original_range,
+                          top_k_norm_entries, norm_entry_stats,
+                          compare_norm_summaries, batch_summarise_norm)
 """
 from .logger import (
     get_logger,
@@ -1395,6 +1402,20 @@ from .filter_pipeline_utils import (
     compare_pipelines,
     batch_summarise_pipelines,
 )
+from .score_norm_utils import (
+    ScoreNormConfig,
+    ScoreNormEntry,
+    ScoreNormSummary,
+    make_norm_entry,
+    entries_from_scores,
+    summarise_norm,
+    filter_by_normalized_range,
+    filter_by_original_range,
+    top_k_norm_entries,
+    norm_entry_stats,
+    compare_norm_summaries,
+    batch_summarise_norm,
+)
 
 __all__ = [
     # Логирование
@@ -2335,4 +2356,17 @@ __all__ = [
     "pipeline_stats",
     "compare_pipelines",
     "batch_summarise_pipelines",
+    # Нормализация и калибровка оценок
+    "ScoreNormConfig",
+    "ScoreNormEntry",
+    "ScoreNormSummary",
+    "make_norm_entry",
+    "entries_from_scores",
+    "summarise_norm",
+    "filter_by_normalized_range",
+    "filter_by_original_range",
+    "top_k_norm_entries",
+    "norm_entry_stats",
+    "compare_norm_summaries",
+    "batch_summarise_norm",
 ]
