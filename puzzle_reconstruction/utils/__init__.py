@@ -232,6 +232,15 @@
                           compose_transforms, invert_transform,
                           PairAlignResult, batch_nearest_neighbours,
                           transform_points, align_to_first)
+    descriptor_utils    — утилиты дескрипторов (DescriptorConfig,
+                          l2_normalize, l1_normalize, batch_l2_normalize,
+                          l2_distance, cosine_distance, chi2_distance,
+                          l1_distance, descriptor_distance,
+                          pairwise_l2, pairwise_cosine,
+                          DescriptorMatch, nn_match, ratio_test,
+                          mean_pool, max_pool, vlad_encode,
+                          batch_nn_match, top_k_matches,
+                          filter_matches_by_distance)
 """
 from .logger import (
     get_logger,
@@ -1033,6 +1042,28 @@ from .icp_utils import (
     transform_points,
     align_to_first,
 )
+from .descriptor_utils import (
+    DescriptorConfig,
+    l2_normalize as desc_l2_normalize,
+    l1_normalize as desc_l1_normalize,
+    batch_l2_normalize as desc_batch_l2_normalize,
+    l2_distance,
+    cosine_distance,
+    chi2_distance,
+    l1_distance,
+    descriptor_distance as desc_distance,
+    pairwise_l2,
+    pairwise_cosine,
+    DescriptorMatch,
+    nn_match,
+    ratio_test,
+    mean_pool,
+    max_pool,
+    vlad_encode,
+    batch_nn_match,
+    top_k_matches,
+    filter_matches_by_distance as filter_desc_matches,
+)
 
 __all__ = [
     # Логирование
@@ -1745,4 +1776,25 @@ __all__ = [
     "batch_nearest_neighbours",
     "transform_points",
     "align_to_first",
+    # Утилиты дескрипторов
+    "DescriptorConfig",
+    "desc_l2_normalize",
+    "desc_l1_normalize",
+    "desc_batch_l2_normalize",
+    "l2_distance",
+    "cosine_distance",
+    "chi2_distance",
+    "l1_distance",
+    "desc_distance",
+    "pairwise_l2",
+    "pairwise_cosine",
+    "DescriptorMatch",
+    "nn_match",
+    "ratio_test",
+    "mean_pool",
+    "max_pool",
+    "vlad_encode",
+    "batch_nn_match",
+    "top_k_matches",
+    "filter_desc_matches",
 ]
