@@ -30,6 +30,10 @@
                           build_from_scores, build_from_distances, build_combined,
                           apply_forbidden_mask, normalize_costs,
                           to_assignment_matrix, top_k_candidates)
+    fragment_scorer     — оценка качества размещения фрагментов (ScoreConfig,
+                          FragmentScore, AssemblyScore, score_fragment,
+                          score_assembly, top_k_placed, bottom_k_placed,
+                          batch_score)
     score_tracker       — отслеживание эволюции оценок (ScoreSnapshot, ScoreTracker,
                           create_tracker, record_snapshot, detect_convergence,
                           extract_best_iteration, summarize_tracker, smooth_scores)
@@ -133,6 +137,16 @@ from .cost_matrix import (
     normalize_costs,
     to_assignment_matrix,
     top_k_candidates,
+)
+from .fragment_scorer import (
+    ScoreConfig,
+    FragmentScore,
+    AssemblyScore,
+    score_fragment,
+    score_assembly,
+    top_k_placed,
+    bottom_k_placed,
+    batch_score as batch_score_assemblies,
 )
 from .score_tracker import (
     ScoreSnapshot,
@@ -479,4 +493,13 @@ __all__ = [
     "resolve_overlaps",
     "compute_total_overlap",
     "overlap_ratio",
+    # Оценка качества размещения фрагментов
+    "ScoreConfig",
+    "FragmentScore",
+    "AssemblyScore",
+    "score_fragment",
+    "score_assembly",
+    "top_k_placed",
+    "bottom_k_placed",
+    "batch_score_assemblies",
 ]
