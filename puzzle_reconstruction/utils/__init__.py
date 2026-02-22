@@ -139,6 +139,10 @@
                        rank_sequence, normalize_sequence, invert_sequence,
                        sliding_scores, align_sequences, kendall_tau_distance,
                        longest_increasing, segment_by_threshold, batch_rank)
+    topology_utils   — топологические утилиты (TopologyConfig,
+                       compute_euler_number, count_holes, compute_solidity,
+                       compute_extent, compute_convexity, compute_compactness,
+                       is_simply_connected, shape_complexity, batch_topology)
 """
 from .logger import (
     get_logger,
@@ -667,6 +671,18 @@ from .sequence_utils import (
     segment_by_threshold,
     batch_rank,
 )
+from .topology_utils import (
+    TopologyConfig,
+    compute_euler_number,
+    count_holes,
+    compute_solidity,
+    compute_extent,
+    compute_convexity,
+    compute_compactness,
+    is_simply_connected,
+    shape_complexity,
+    batch_topology,
+)
 
 __all__ = [
     # Логирование
@@ -1127,4 +1143,15 @@ __all__ = [
     "longest_increasing",
     "segment_by_threshold",
     "batch_rank",
+    # Топологические утилиты
+    "TopologyConfig",
+    "compute_euler_number",
+    "count_holes",
+    "compute_solidity",
+    "compute_extent",
+    "compute_convexity",
+    "compute_compactness",
+    "is_simply_connected",
+    "shape_complexity",
+    "batch_topology",
 ]
