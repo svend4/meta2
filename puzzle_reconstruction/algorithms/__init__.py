@@ -102,6 +102,10 @@
                             color_similarity, texture_similarity, shape_similarity,
                             boundary_proximity, score_region_pair, batch_score_regions,
                             rank_region_pairs)
+    seam_evaluator        — оценка качества шва между фрагментами (SeamConfig, SeamScore,
+                            extract_seam_strip, color_continuity, gradient_continuity,
+                            texture_continuity, evaluate_seam, batch_evaluate_seams,
+                            rank_seams)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -404,6 +408,17 @@ from .region_scorer import (
     batch_score_regions,
     rank_region_pairs,
 )
+from .seam_evaluator import (
+    SeamConfig,
+    SeamScore,
+    extract_seam_strip,
+    color_continuity,
+    gradient_continuity,
+    texture_continuity,
+    evaluate_seam,
+    batch_evaluate_seams,
+    rank_seams,
+)
 
 __all__ = [
     # Синтез
@@ -683,4 +698,14 @@ __all__ = [
     "score_region_pair",
     "batch_score_regions",
     "rank_region_pairs",
+    # Оценка качества шва
+    "SeamConfig",
+    "SeamScore",
+    "extract_seam_strip",
+    "color_continuity",
+    "gradient_continuity",
+    "texture_continuity",
+    "evaluate_seam",
+    "batch_evaluate_seams",
+    "rank_seams",
 ]
