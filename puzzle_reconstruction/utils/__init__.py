@@ -187,6 +187,11 @@
                           compute_alignment_error, align_curves_procrustes,
                           align_curves_icp, alignment_score,
                           batch_align_curves)
+    curve_metrics       — метрики сравнения кривых (CurveMetricConfig,
+                          CurveComparisonResult, curve_l2, curve_l2_mirror,
+                          hausdorff_distance, frechet_distance_approx,
+                          curve_length, length_ratio,
+                          compare_curves, batch_compare_curves)
     rotation_utils      — утилиты поворота (RotationConfig,
                           rotate_image_angle, rotate_points_angle,
                           normalize_angle, angle_difference,
@@ -869,6 +874,18 @@ from .alignment_utils import (
     alignment_score,
     batch_align_curves,
 )
+from .curve_metrics import (
+    CurveMetricConfig,
+    CurveComparisonResult,
+    curve_l2,
+    curve_l2_mirror,
+    hausdorff_distance,
+    frechet_distance_approx,
+    curve_length,
+    length_ratio,
+    compare_curves,
+    batch_compare_curves,
+)
 
 __all__ = [
     # Логирование
@@ -1465,4 +1482,15 @@ __all__ = [
     "align_curves_icp",
     "alignment_score",
     "batch_align_curves",
+    # Метрики сравнения кривых
+    "CurveMetricConfig",
+    "CurveComparisonResult",
+    "curve_l2",
+    "curve_l2_mirror",
+    "hausdorff_distance",
+    "frechet_distance_approx",
+    "curve_length",
+    "length_ratio",
+    "compare_curves",
+    "batch_compare_curves",
 ]
