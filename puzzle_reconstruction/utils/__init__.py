@@ -119,6 +119,9 @@
                        apply_erosion, apply_dilation, apply_opening, apply_closing,
                        get_skeleton, label_regions, filter_regions_by_size,
                        compute_region_stats, batch_morphology)
+    voting_utils     — голосование и консенсус (VoteConfig,
+                       cast_pair_votes, aggregate_pair_votes, cast_position_votes,
+                       majority_vote, weighted_vote, rank_fusion, batch_vote)
 """
 from .logger import (
     get_logger,
@@ -581,6 +584,16 @@ from .morph_utils import (
     compute_region_stats,
     batch_morphology,
 )
+from .voting_utils import (
+    VoteConfig,
+    cast_pair_votes,
+    aggregate_pair_votes,
+    cast_position_votes,
+    majority_vote,
+    weighted_vote,
+    rank_fusion,
+    batch_vote,
+)
 
 __all__ = [
     # Логирование
@@ -981,4 +994,13 @@ __all__ = [
     "filter_regions_by_size",
     "compute_region_stats",
     "batch_morphology",
+    # Голосование и консенсус
+    "VoteConfig",
+    "cast_pair_votes",
+    "aggregate_pair_votes",
+    "cast_position_votes",
+    "majority_vote",
+    "weighted_vote",
+    "rank_fusion",
+    "batch_vote",
 ]

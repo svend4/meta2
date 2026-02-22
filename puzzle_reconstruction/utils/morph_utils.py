@@ -183,9 +183,13 @@ def get_skeleton(img: np.ndarray) -> np.ndarray:
     skeleton = np.zeros_like(binary)
     kernel = cv2.getStructuringElement(cv2.MORPH_CROSS, (3, 3))
     tmp = binary.copy()
+    # Use BORDER_CONSTANT so pixels outside the image are treated as
+    # background (0), ensuring the loop always terminates.
     while True:
-        eroded = cv2.erode(tmp, kernel)
-        opened = cv2.dilate(eroded, kernel)
+        eroded = cv2.erode(tmp, kernel,
+                           borderType=cv2.BORDER_CONSTANT, borderValue=0)
+        opened = cv2.dilate(eroded, kernel,
+                            borderType=cv2.BORDER_CONSTANT, borderValue=0)
         diff = cv2.subtract(tmp, opened)
         skeleton = cv2.bitwise_or(skeleton, diff)
         tmp = eroded.copy()
@@ -270,7 +274,7 @@ def compute_region_stats(
         Пустой список, если нет компонент.
     """
     binary = _ensure_binary(img)
-    n, stats, centroids, label_map = cv2.connectedComponentsWithStats(
+    n, label_map, stats, centroids = cv2.connectedComponentsWithStats(
         binary, connectivity=connectivity
     )
     result = []
