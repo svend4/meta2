@@ -45,6 +45,10 @@
     rank_fusion         — объединение ранговых списков (normalize_scores,
                           reciprocal_rank_fusion, borda_count, score_fusion,
                           fuse_rankings)
+    evidence_aggregator — агрегация доказательных сигналов (EvidenceConfig,
+                          EvidenceScore, aggregate_evidence, weight_evidence,
+                          threshold_evidence, compute_confidence,
+                          rank_by_evidence, batch_aggregate)
 """
 from .consistency_checker import (
     ConsistencyIssue,
@@ -166,6 +170,16 @@ from .rank_fusion import (
     score_fusion,
     fuse_rankings,
 )
+from .evidence_aggregator import (
+    EvidenceConfig,
+    EvidenceScore,
+    aggregate_evidence,
+    weight_evidence,
+    threshold_evidence,
+    compute_confidence,
+    rank_by_evidence,
+    batch_aggregate,
+)
 
 __all__ = [
     # Проверка согласованности
@@ -277,4 +291,13 @@ __all__ = [
     "borda_count",
     "score_fusion",
     "fuse_rankings",
+    # Агрегация доказательных сигналов
+    "EvidenceConfig",
+    "EvidenceScore",
+    "aggregate_evidence",
+    "weight_evidence",
+    "threshold_evidence",
+    "compute_confidence",
+    "rank_by_evidence",
+    "batch_aggregate",
 ]
