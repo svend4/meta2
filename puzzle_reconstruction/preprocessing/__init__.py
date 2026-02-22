@@ -104,6 +104,10 @@
                               subtract_background, normalize_mean_std,
                               apply_clahe, normalize_illumination,
                               batch_normalize_illumination)
+    edge_sharpener          — повышение резкости краёв (SharpenerConfig,
+                              SharpenerResult, unsharp_mask, laplacian_sharpen,
+                              high_pass_sharpen, sharpen_image, sharpen_edges,
+                              batch_sharpen)
 """
 from .segmentation import segment_fragment
 from .contour import extract_contour
@@ -444,6 +448,16 @@ from .illumination_normalizer import (
     normalize_illumination,
     batch_normalize_illumination,
 )
+from .edge_sharpener import (
+    SharpenerConfig,
+    SharpenerResult,
+    unsharp_mask as edge_unsharp_mask,
+    laplacian_sharpen,
+    high_pass_sharpen,
+    sharpen_image as edge_sharpen_image,
+    sharpen_edges,
+    batch_sharpen,
+)
 
 __all__ = [
     "segment_fragment",
@@ -747,4 +761,13 @@ __all__ = [
     "apply_clahe",
     "normalize_illumination",
     "batch_normalize_illumination",
+    # Повышение резкости краёв
+    "SharpenerConfig",
+    "SharpenerResult",
+    "edge_unsharp_mask",
+    "laplacian_sharpen",
+    "high_pass_sharpen",
+    "edge_sharpen_image",
+    "sharpen_edges",
+    "batch_sharpen",
 ]
