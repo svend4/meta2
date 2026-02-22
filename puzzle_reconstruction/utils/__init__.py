@@ -276,6 +276,13 @@
                           rank_regions, top_k_regions, region_score_stats,
                           batch_evaluate_regions,
                           normalize_scores as normalize_region_scores)
+    edge_profile_utils  — утилиты профилей краёв фрагментов
+                          (EdgeProfileConfig, EdgeProfile,
+                          build_edge_profile, profile_l2_distance,
+                          profile_cosine_similarity, profile_correlation,
+                          resample_profile, flip_profile, mean_profile,
+                          batch_build_profiles, pairwise_l2_matrix,
+                          best_matching_profile)
 """
 from .logger import (
     get_logger,
@@ -1181,6 +1188,20 @@ from .region_score_utils import (
     batch_evaluate_regions,
     normalize_scores as normalize_region_scores,
 )
+from .edge_profile_utils import (
+    EdgeProfileConfig,
+    EdgeProfile,
+    build_edge_profile,
+    profile_l2_distance,
+    profile_cosine_similarity,
+    profile_correlation,
+    resample_profile,
+    flip_profile,
+    mean_profile,
+    batch_build_profiles,
+    pairwise_l2_matrix,
+    best_matching_profile,
+)
 
 __all__ = [
     # Логирование
@@ -1991,4 +2012,17 @@ __all__ = [
     "region_score_stats",
     "batch_evaluate_regions",
     "normalize_region_scores",
+    # Профили краёв фрагментов
+    "EdgeProfileConfig",
+    "EdgeProfile",
+    "build_edge_profile",
+    "profile_l2_distance",
+    "profile_cosine_similarity",
+    "profile_correlation",
+    "resample_profile",
+    "flip_profile",
+    "mean_profile",
+    "batch_build_profiles",
+    "pairwise_l2_matrix",
+    "best_matching_profile",
 ]
