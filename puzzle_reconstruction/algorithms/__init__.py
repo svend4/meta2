@@ -109,6 +109,10 @@
     fourier_descriptor    — дескрипторы Фурье контуров (FourierConfig, FourierDescriptor,
                             complex_representation, compute_contour_centroid,
                             compute_fd, fd_similarity, batch_compute_fd, rank_by_fd)
+    color_space           — анализ цветовых пространств (ColorSpaceConfig, ColorHistogram,
+                            bgr_to_space, compute_channel_hist, compute_color_histogram,
+                            histogram_intersection, histogram_chi2,
+                            batch_compute_histograms)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -432,6 +436,16 @@ from .fourier_descriptor import (
     batch_compute_fd,
     rank_by_fd,
 )
+from .color_space import (
+    ColorSpaceConfig,
+    ColorHistogram,
+    bgr_to_space,
+    compute_channel_hist,
+    compute_color_histogram,
+    histogram_intersection,
+    histogram_chi2,
+    batch_compute_histograms,
+)
 
 __all__ = [
     # Синтез
@@ -730,4 +744,13 @@ __all__ = [
     "fd_similarity",
     "batch_compute_fd",
     "rank_by_fd",
+    # Анализ цветовых пространств
+    "ColorSpaceConfig",
+    "ColorHistogram",
+    "bgr_to_space",
+    "compute_channel_hist",
+    "compute_color_histogram",
+    "histogram_intersection",
+    "histogram_chi2",
+    "batch_compute_histograms",
 ]
