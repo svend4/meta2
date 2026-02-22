@@ -135,6 +135,10 @@
                        compute_sobel, compute_laplacian, threshold_gradient,
                        suppress_non_maximum, compute_edge_density,
                        batch_compute_gradients)
+    sequence_utils   — операции над последовательностями (SequenceConfig,
+                       rank_sequence, normalize_sequence, invert_sequence,
+                       sliding_scores, align_sequences, kendall_tau_distance,
+                       longest_increasing, segment_by_threshold, batch_rank)
 """
 from .logger import (
     get_logger,
@@ -651,6 +655,18 @@ from .text_utils import (
     align_text_blocks,
     batch_clean_text,
 )
+from .sequence_utils import (
+    SequenceConfig,
+    rank_sequence,
+    normalize_sequence,
+    invert_sequence,
+    sliding_scores,
+    align_sequences,
+    kendall_tau_distance,
+    longest_increasing,
+    segment_by_threshold,
+    batch_rank,
+)
 
 __all__ = [
     # Логирование
@@ -1100,4 +1116,15 @@ __all__ = [
     "suppress_non_maximum",
     "compute_edge_density",
     "batch_compute_gradients",
+    # Операции над последовательностями
+    "SequenceConfig",
+    "rank_sequence",
+    "normalize_sequence",
+    "invert_sequence",
+    "sliding_scores",
+    "align_sequences",
+    "kendall_tau_distance",
+    "longest_increasing",
+    "segment_by_threshold",
+    "batch_rank",
 ]
