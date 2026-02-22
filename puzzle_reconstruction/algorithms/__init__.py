@@ -113,6 +113,9 @@
                             bgr_to_space, compute_channel_hist, compute_color_histogram,
                             histogram_intersection, histogram_chi2,
                             batch_compute_histograms)
+    color_palette         — доминантные цвета фрагментов (ColorPaletteConfig, ColorPalette,
+                            extract_dominant_colors, palette_distance,
+                            compute_palette, batch_compute_palettes, rank_by_palette)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -457,6 +460,15 @@ from .fragment_quality import (
     rank_fragments,
     batch_assess,
 )
+from .color_palette import (
+    ColorPaletteConfig,
+    ColorPalette,
+    extract_dominant_colors,
+    palette_distance,
+    compute_palette,
+    batch_compute_palettes,
+    rank_by_palette,
+)
 
 __all__ = [
     # Синтез
@@ -774,4 +786,12 @@ __all__ = [
     "assess_fragment",
     "rank_fragments",
     "batch_assess",
+    # Доминантные цвета фрагментов
+    "ColorPaletteConfig",
+    "ColorPalette",
+    "extract_dominant_colors",
+    "palette_distance",
+    "compute_palette",
+    "batch_compute_palettes",
+    "rank_by_palette",
 ]
