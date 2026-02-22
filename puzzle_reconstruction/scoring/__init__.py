@@ -42,6 +42,9 @@
                           ChannelScore, MatchScore, score_channel,
                           compute_match_score, aggregate_match_scores,
                           build_score_table, filter_confident_pairs)
+    rank_fusion         — объединение ранговых списков (normalize_scores,
+                          reciprocal_rank_fusion, borda_count, score_fusion,
+                          fuse_rankings)
 """
 from .consistency_checker import (
     ConsistencyIssue,
@@ -156,6 +159,13 @@ from .match_scorer import (
     build_score_table,
     filter_confident_pairs,
 )
+from .rank_fusion import (
+    normalize_scores,
+    reciprocal_rank_fusion,
+    borda_count,
+    score_fusion,
+    fuse_rankings,
+)
 
 __all__ = [
     # Проверка согласованности
@@ -261,4 +271,10 @@ __all__ = [
     "aggregate_match_scores",
     "build_score_table",
     "filter_confident_pairs",
+    # Объединение ранговых списков
+    "normalize_scores",
+    "reciprocal_rank_fusion",
+    "borda_count",
+    "score_fusion",
+    "fuse_rankings",
 ]
