@@ -976,6 +976,19 @@ from .image_transform_utils import (
     batch_pad,
     batch_resize_to_max,
 )
+from .fragment_filter_utils import (
+    FragmentFilterConfig,
+    FragmentQuality,
+    compute_fragment_area,
+    compute_aspect_ratio,
+    compute_fill_ratio,
+    evaluate_fragment,
+    deduplicate_fragments,
+    filter_fragments,
+    sort_by_area,
+    top_k_fragments,
+    fragment_quality_summary,
+)
 
 __all__ = [
     # Логирование
@@ -1643,4 +1656,16 @@ __all__ = [
     "batch_rotate_images_v2",
     "batch_pad",
     "batch_resize_to_max",
+    # Фильтрация фрагментов
+    "FragmentFilterConfig",
+    "FragmentQuality",
+    "compute_fragment_area",
+    "compute_aspect_ratio",
+    "compute_fill_ratio",
+    "evaluate_fragment",
+    "deduplicate_fragments",
+    "filter_fragments",
+    "sort_by_area",
+    "top_k_fragments",
+    "fragment_quality_summary",
 ]
