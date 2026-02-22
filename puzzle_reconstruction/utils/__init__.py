@@ -316,6 +316,15 @@
                           top_k_annealing_entries, annealing_score_stats,
                           best_annealing_entry, compare_summaries,
                           batch_summarise_annealing)
+    consensus_score_utils — утилиты оценки качества консенсуса
+                          (ConsensusScoreConfig, ConsensusScoreEntry,
+                          ConsensusSummary, make_consensus_entry,
+                          entries_from_votes, summarise_consensus,
+                          filter_consensus_pairs, filter_non_consensus,
+                          filter_by_vote_fraction,
+                          top_k_consensus_entries, consensus_score_stats,
+                          agreement_score, compare_consensus,
+                          batch_summarise_consensus)
 """
 from .logger import (
     get_logger,
@@ -1297,6 +1306,22 @@ from .annealing_score_utils import (
     compare_summaries,
     batch_summarise as batch_summarise_annealing,
 )
+from .consensus_score_utils import (
+    ConsensusScoreConfig,
+    ConsensusScoreEntry,
+    ConsensusSummary,
+    make_consensus_entry,
+    entries_from_votes,
+    summarise_consensus,
+    filter_consensus_pairs,
+    filter_non_consensus,
+    filter_by_vote_fraction,
+    top_k_consensus_entries,
+    consensus_score_stats,
+    agreement_score,
+    compare_consensus,
+    batch_summarise_consensus,
+)
 
 __all__ = [
     # Логирование
@@ -2178,4 +2203,19 @@ __all__ = [
     "best_annealing_entry",
     "compare_summaries",
     "batch_summarise_annealing",
+    # Оценки качества консенсуса
+    "ConsensusScoreConfig",
+    "ConsensusScoreEntry",
+    "ConsensusSummary",
+    "make_consensus_entry",
+    "entries_from_votes",
+    "summarise_consensus",
+    "filter_consensus_pairs",
+    "filter_non_consensus",
+    "filter_by_vote_fraction",
+    "top_k_consensus_entries",
+    "consensus_score_stats",
+    "agreement_score",
+    "compare_consensus",
+    "batch_summarise_consensus",
 ]
