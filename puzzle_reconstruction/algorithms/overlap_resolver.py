@@ -60,7 +60,7 @@ def _get_placed_contour(
     contours: List[np.ndarray],
 ) -> Optional[np.ndarray]:
     """Возвращает контур фрагмента, сдвинутый на его позицию."""
-    idx = frag.fragment_idx
+    idx = frag.idx
     if idx >= len(contours):
         return None
     cnt = contours[idx].reshape(-1, 2).astype(np.float64)
@@ -148,7 +148,7 @@ def detect_overlap_conflicts(
                 continue
 
             result = check_overlap_pair(cnt_i, cnt_j, iou_thresh=threshold)
-            if result.overlaps:
+            if result.has_overlap:
                 shift = compute_separation_vector(cnt_i, cnt_j)
                 conflicts.append(OverlapConflict(
                     idx1=i, idx2=j,
@@ -208,10 +208,10 @@ def resolve_single_conflict(
     new_placed = dict(state.placed)
     old_frag   = new_placed[move_idx]
     new_placed[move_idx] = PlacedFragment(
-        fragment_idx=old_frag.fragment_idx,
+        idx=old_frag.idx,
         position=new_pos,
-        rotation=old_frag.rotation,
-        score=old_frag.score,
+        angle=old_frag.angle,
+        scale=old_frag.scale,
         meta=old_frag.meta,
     )
 

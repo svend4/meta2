@@ -262,6 +262,13 @@
                           best_cyclic_offset, align_profiles,
                           match_profiles, batch_match_profiles,
                           top_k_profile_matches)
+    placement_metrics_utils — утилиты метрик качества размещения
+                          (PlacementMetricsConfig, PlacementMetrics,
+                          placement_density, bbox_of_contour, bbox_area,
+                          bbox_intersection_area, compute_coverage,
+                          compute_pairwise_overlap, quality_score,
+                          assess_placement, compare_metrics, best_of,
+                          normalize_metrics, batch_quality_scores)
 """
 from .logger import (
     get_logger,
@@ -1136,6 +1143,22 @@ from .contour_profile_utils import (
     batch_match_profiles,
     top_k_profile_matches,
 )
+from .placement_metrics_utils import (
+    PlacementMetricsConfig,
+    PlacementMetrics,
+    placement_density,
+    bbox_of_contour,
+    bbox_area,
+    bbox_intersection_area,
+    compute_coverage,
+    compute_pairwise_overlap,
+    quality_score as placement_quality_score,
+    assess_placement,
+    compare_metrics as compare_placement_metrics,
+    best_of as best_placement_of,
+    normalize_metrics as normalize_placement_metrics,
+    batch_quality_scores as batch_placement_quality_scores,
+)
 
 __all__ = [
     # Логирование
@@ -1917,4 +1940,19 @@ __all__ = [
     "match_profiles",
     "batch_match_profiles",
     "top_k_profile_matches",
+    # Метрики размещения фрагментов
+    "PlacementMetricsConfig",
+    "PlacementMetrics",
+    "placement_density",
+    "bbox_of_contour",
+    "bbox_area",
+    "bbox_intersection_area",
+    "compute_coverage",
+    "compute_pairwise_overlap",
+    "placement_quality_score",
+    "assess_placement",
+    "compare_placement_metrics",
+    "best_placement_of",
+    "normalize_placement_metrics",
+    "batch_placement_quality_scores",
 ]
