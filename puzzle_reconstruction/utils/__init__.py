@@ -291,6 +291,13 @@
                           rotation_score_stats, angle_agreement,
                           batch_make_entries, top_k_entries,
                           group_by_method)
+    overlap_score_utils — утилиты оценки и анализа перекрытий фрагментов
+                          (OverlapScoreConfig, OverlapScoreEntry,
+                          OverlapSummary, make_overlap_entry,
+                          summarise_overlaps, filter_significant_overlaps,
+                          filter_by_area, top_k_overlaps, overlap_stats,
+                          penalty_score, batch_make_overlap_entries,
+                          group_by_fragment)
 """
 from .logger import (
     get_logger,
@@ -1226,6 +1233,20 @@ from .rotation_score_utils import (
     top_k_entries as top_k_rotation_entries,
     group_by_method as group_rotations_by_method,
 )
+from .overlap_score_utils import (
+    OverlapScoreConfig,
+    OverlapScoreEntry,
+    OverlapSummary,
+    make_overlap_entry,
+    summarise_overlaps,
+    filter_significant_overlaps,
+    filter_by_area as filter_overlaps_by_area,
+    top_k_overlaps,
+    overlap_stats,
+    penalty_score,
+    batch_make_overlap_entries,
+    group_by_fragment,
+)
 
 __all__ = [
     # Логирование
@@ -2064,4 +2085,17 @@ __all__ = [
     "batch_make_rotation_entries",
     "top_k_rotation_entries",
     "group_rotations_by_method",
+    # Оценки и анализ перекрытий фрагментов
+    "OverlapScoreConfig",
+    "OverlapScoreEntry",
+    "OverlapSummary",
+    "make_overlap_entry",
+    "summarise_overlaps",
+    "filter_significant_overlaps",
+    "filter_overlaps_by_area",
+    "top_k_overlaps",
+    "overlap_stats",
+    "penalty_score",
+    "batch_make_overlap_entries",
+    "group_by_fragment",
 ]
