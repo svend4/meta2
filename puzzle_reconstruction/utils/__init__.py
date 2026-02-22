@@ -122,6 +122,10 @@
     voting_utils     — голосование и консенсус (VoteConfig,
                        cast_pair_votes, aggregate_pair_votes, cast_position_votes,
                        majority_vote, weighted_vote, rank_fusion, batch_vote)
+    patch_utils      — извлечение и сравнение патчей (PatchConfig,
+                       extract_patch, extract_patches, normalize_patch,
+                       compare_patches, patch_ssd, patch_ncc, patch_mse,
+                       batch_compare)
 """
 from .logger import (
     get_logger,
@@ -594,6 +598,17 @@ from .voting_utils import (
     rank_fusion,
     batch_vote,
 )
+from .patch_utils import (
+    PatchConfig,
+    extract_patch,
+    extract_patches,
+    normalize_patch,
+    compare_patches,
+    patch_ssd,
+    patch_ncc,
+    patch_mse,
+    batch_compare,
+)
 
 __all__ = [
     # Логирование
@@ -1003,4 +1018,14 @@ __all__ = [
     "weighted_vote",
     "rank_fusion",
     "batch_vote",
+    # Патчи
+    "PatchConfig",
+    "extract_patch",
+    "extract_patches",
+    "normalize_patch",
+    "compare_patches",
+    "patch_ssd",
+    "patch_ncc",
+    "patch_mse",
+    "batch_compare",
 ]
