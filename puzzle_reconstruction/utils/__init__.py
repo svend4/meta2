@@ -103,6 +103,10 @@
                        polygon_bounding_box, polygon_aspect_ratio,
                        translate_polygon, scale_polygon, rotate_polygon,
                        polygon_similarity)
+    score_aggregator — агрегация оценок совместимости (AggregationMethod,
+                       ScoreVector, AggregationResult, weighted_sum,
+                       harmonic_mean, geometric_mean, aggregate_pair,
+                       aggregate_matrix, top_k_pairs, batch_aggregate)
 """
 from .logger import (
     get_logger,
@@ -476,6 +480,18 @@ from .polygon_utils import (
     rotate_polygon,
     polygon_similarity,
 )
+from .score_aggregator import (
+    AggregationMethod,
+    ScoreVector,
+    AggregationResult,
+    weighted_sum,
+    harmonic_mean,
+    geometric_mean,
+    aggregate_pair,
+    aggregate_matrix,
+    top_k_pairs,
+    batch_aggregate,
+)
 
 __all__ = [
     # Логирование
@@ -815,4 +831,15 @@ __all__ = [
     "scale_polygon",
     "rotate_polygon",
     "polygon_similarity",
+    # Агрегация оценок совместимости
+    "AggregationMethod",
+    "ScoreVector",
+    "AggregationResult",
+    "weighted_sum",
+    "harmonic_mean",
+    "geometric_mean",
+    "aggregate_pair",
+    "aggregate_matrix",
+    "top_k_pairs",
+    "batch_aggregate",
 ]
