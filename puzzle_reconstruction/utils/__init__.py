@@ -196,6 +196,14 @@
                           label_mask, region_info, all_regions,
                           filter_regions, largest_region, mask_from_labels,
                           mask_statistics, mask_bounding_box, extract_boundary)
+    polygon_ops_utils   — операции над полигонами (PolygonOpsConfig,
+                          PolygonOverlapResult, PolygonStats,
+                          signed_area, polygon_area, polygon_perimeter,
+                          polygon_centroid, polygon_bounding_box,
+                          polygon_stats, point_in_polygon, polygon_overlap,
+                          remove_collinear, ensure_ccw, ensure_cw,
+                          polygon_similarity, batch_polygon_stats,
+                          batch_polygon_overlap)
     rotation_utils      — утилиты поворота (RotationConfig,
                           rotate_image_angle, rotate_points_angle,
                           normalize_angle, angle_difference,
@@ -903,6 +911,25 @@ from .segment_utils import (
     mask_bounding_box,
     extract_boundary,
 )
+from .polygon_ops_utils import (
+    PolygonOpsConfig,
+    PolygonOverlapResult,
+    PolygonStats,
+    signed_area,
+    polygon_area as poly_ops_area,
+    polygon_perimeter as poly_ops_perimeter,
+    polygon_centroid as poly_ops_centroid,
+    polygon_bounding_box as poly_ops_bbox,
+    polygon_stats,
+    point_in_polygon as poly_ops_point_in,
+    polygon_overlap,
+    remove_collinear,
+    ensure_ccw,
+    ensure_cw,
+    polygon_similarity as poly_ops_similarity,
+    batch_polygon_stats,
+    batch_polygon_overlap,
+)
 
 __all__ = [
     # Логирование
@@ -1522,4 +1549,22 @@ __all__ = [
     "mask_statistics",
     "mask_bounding_box",
     "extract_boundary",
+    # Операции над полигонами
+    "PolygonOpsConfig",
+    "PolygonOverlapResult",
+    "PolygonStats",
+    "signed_area",
+    "poly_ops_area",
+    "poly_ops_perimeter",
+    "poly_ops_centroid",
+    "poly_ops_bbox",
+    "polygon_stats",
+    "poly_ops_point_in",
+    "polygon_overlap",
+    "remove_collinear",
+    "ensure_ccw",
+    "ensure_cw",
+    "poly_ops_similarity",
+    "batch_polygon_stats",
+    "batch_polygon_overlap",
 ]
