@@ -94,6 +94,10 @@
                             compute_arc_length, smooth_and_resample,
                             align_contours, contour_similarity as smooth_contour_similarity,
                             batch_smooth)
+    patch_aligner         — субпиксельное выравнивание патчей (AlignConfig, AlignResult,
+                            phase_correlate, ncc_score as aligner_ncc_score,
+                            align_patches, refine_alignment,
+                            batch_align as batch_align_patches)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -375,6 +379,15 @@ from .contour_smoother import (
     align_contours,
     contour_similarity as smooth_contour_similarity,
     batch_smooth,
+)
+from .patch_aligner import (
+    AlignConfig,
+    AlignResult,
+    phase_correlate,
+    ncc_score as aligner_ncc_score,
+    align_patches,
+    refine_alignment,
+    batch_align as batch_align_patches,
 )
 
 __all__ = [
