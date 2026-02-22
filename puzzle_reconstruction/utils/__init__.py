@@ -254,6 +254,14 @@
                           compute_delta, is_improving, find_plateau_start,
                           smooth_values, tracker_stats, compare_trackers,
                           merge_trackers, window_stats, top_k_records)
+    contour_profile_utils — утилиты профилей контуров и рёбер
+                          (ProfileConfig, ProfileMatchResult,
+                          sample_profile_along_contour, contour_curvature,
+                          smooth_profile, normalize_profile,
+                          profile_l2_distance, profile_cosine_similarity,
+                          best_cyclic_offset, align_profiles,
+                          match_profiles, batch_match_profiles,
+                          top_k_profile_matches)
 """
 from .logger import (
     get_logger,
@@ -1113,6 +1121,21 @@ from .tracker_utils import (
     window_stats,
     top_k_records,
 )
+from .contour_profile_utils import (
+    ProfileConfig,
+    ProfileMatchResult,
+    sample_profile_along_contour,
+    contour_curvature,
+    smooth_profile,
+    normalize_profile as normalize_profile_values,
+    profile_l2_distance,
+    profile_cosine_similarity,
+    best_cyclic_offset,
+    align_profiles,
+    match_profiles,
+    batch_match_profiles,
+    top_k_profile_matches,
+)
 
 __all__ = [
     # Логирование
@@ -1880,4 +1903,18 @@ __all__ = [
     "merge_trackers",
     "window_stats",
     "top_k_records",
+    # Профили контуров
+    "ProfileConfig",
+    "ProfileMatchResult",
+    "sample_profile_along_contour",
+    "contour_curvature",
+    "smooth_profile",
+    "normalize_profile_values",
+    "profile_l2_distance",
+    "profile_cosine_similarity",
+    "best_cyclic_offset",
+    "align_profiles",
+    "match_profiles",
+    "batch_match_profiles",
+    "top_k_profile_matches",
 ]
