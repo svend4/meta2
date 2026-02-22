@@ -170,6 +170,12 @@
                           sample_positions_grid, sample_permutation,
                           weighted_sample, acceptance_probability,
                           sample_swap_pair, batch_uniform_sample)
+    annealing_schedule  — температурные расписания для SA (ScheduleConfig,
+                          TemperatureRecord, linear_schedule,
+                          geometric_schedule, exponential_schedule,
+                          cosine_schedule, stepped_schedule,
+                          get_temperature, estimate_steps,
+                          batch_temperatures)
 """
 from .logger import (
     get_logger,
@@ -782,6 +788,18 @@ from .sampling_utils import (
     sample_swap_pair,
     batch_uniform_sample,
 )
+from .annealing_schedule import (
+    ScheduleConfig,
+    TemperatureRecord,
+    linear_schedule,
+    geometric_schedule,
+    exponential_schedule,
+    cosine_schedule,
+    stepped_schedule,
+    get_temperature,
+    estimate_steps,
+    batch_temperatures,
+)
 
 __all__ = [
     # Логирование
@@ -1319,4 +1337,15 @@ __all__ = [
     "acceptance_probability",
     "sample_swap_pair",
     "batch_uniform_sample",
+    # Температурные расписания для SA
+    "ScheduleConfig",
+    "TemperatureRecord",
+    "linear_schedule",
+    "geometric_schedule",
+    "exponential_schedule",
+    "cosine_schedule",
+    "stepped_schedule",
+    "get_temperature",
+    "estimate_steps",
+    "batch_temperatures",
 ]

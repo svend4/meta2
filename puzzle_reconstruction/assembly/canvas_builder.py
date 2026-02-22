@@ -358,8 +358,10 @@ def crop_to_content(
     if not rows.any():
         return canvas  # Entirely background
 
-    r_min, r_max = int(np.where(rows)[0][[0, -1]])
-    c_min, c_max = int(np.where(cols)[0][[0, -1]])
+    row_idx = np.where(rows)[0]
+    col_idx = np.where(cols)[0]
+    r_min, r_max = int(row_idx[0]), int(row_idx[-1])
+    c_min, c_max = int(col_idx[0]), int(col_idx[-1])
     return canvas[r_min: r_max + 1, c_min: c_max + 1]
 
 
