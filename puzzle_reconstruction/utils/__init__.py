@@ -115,6 +115,10 @@
                        sample_uniform, sample_curvature, sample_random,
                        sample_corners, sample_contour, normalize_contour,
                        batch_sample)
+    morph_utils      — морфологическая обработка (MorphConfig,
+                       apply_erosion, apply_dilation, apply_opening, apply_closing,
+                       get_skeleton, label_regions, filter_regions_by_size,
+                       compute_region_stats, batch_morphology)
 """
 from .logger import (
     get_logger,
@@ -565,6 +569,18 @@ from .frequency_utils import (
     high_pass_filter,
     compare_frequency_spectra,
 )
+from .morph_utils import (
+    MorphConfig,
+    apply_erosion,
+    apply_dilation,
+    apply_opening,
+    apply_closing,
+    get_skeleton,
+    label_regions,
+    filter_regions_by_size,
+    compute_region_stats,
+    batch_morphology,
+)
 
 __all__ = [
     # Логирование
@@ -954,4 +970,15 @@ __all__ = [
     "low_pass_filter",
     "high_pass_filter",
     "compare_frequency_spectra",
+    # Морфологическая обработка
+    "MorphConfig",
+    "apply_erosion",
+    "apply_dilation",
+    "apply_opening",
+    "apply_closing",
+    "get_skeleton",
+    "label_regions",
+    "filter_regions_by_size",
+    "compute_region_stats",
+    "batch_morphology",
 ]
