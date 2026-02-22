@@ -247,6 +247,13 @@
                           resize_keep_aspect, pad_to_square, make_thumbnail,
                           paste_with_mask, compute_grid_layout, make_mosaic,
                           save_image, horizontal_concat)
+    tracker_utils       — утилиты отслеживания итерационного прогресса
+                          (TrackerConfig, StepRecord, IterTracker,
+                          create_iter_tracker, record_step, get_values,
+                          get_steps, get_best_record, get_worst_record,
+                          compute_delta, is_improving, find_plateau_start,
+                          smooth_values, tracker_stats, compare_trackers,
+                          merge_trackers, window_stats, top_k_records)
 """
 from .logger import (
     get_logger,
@@ -1086,6 +1093,26 @@ from .render_utils import (
     save_image as render_save_image,
     horizontal_concat,
 )
+from .tracker_utils import (
+    TrackerConfig,
+    StepRecord,
+    IterTracker,
+    create_iter_tracker,
+    record_step,
+    get_values,
+    get_steps,
+    get_best_record,
+    get_worst_record,
+    compute_delta,
+    is_improving,
+    find_plateau_start,
+    smooth_values,
+    tracker_stats,
+    compare_trackers,
+    merge_trackers,
+    window_stats,
+    top_k_records,
+)
 
 __all__ = [
     # Логирование
@@ -1834,4 +1861,23 @@ __all__ = [
     "make_mosaic",
     "render_save_image",
     "horizontal_concat",
+    # Трекер итераций
+    "TrackerConfig",
+    "StepRecord",
+    "IterTracker",
+    "create_iter_tracker",
+    "record_step",
+    "get_values",
+    "get_steps",
+    "get_best_record",
+    "get_worst_record",
+    "compute_delta",
+    "is_improving",
+    "find_plateau_start",
+    "smooth_values",
+    "tracker_stats",
+    "compare_trackers",
+    "merge_trackers",
+    "window_stats",
+    "top_k_records",
 ]
