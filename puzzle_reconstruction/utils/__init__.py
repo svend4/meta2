@@ -130,6 +130,11 @@
                        clean_ocr_text, estimate_text_density, find_text_lines,
                        segment_words, compute_text_score, compare_text_blocks,
                        align_text_blocks, batch_clean_text)
+    gradient_utils   — градиентный анализ изображений (GradientConfig,
+                       compute_gradient_magnitude, compute_gradient_direction,
+                       compute_sobel, compute_laplacian, threshold_gradient,
+                       suppress_non_maximum, compute_edge_density,
+                       batch_compute_gradients)
 """
 from .logger import (
     get_logger,
@@ -623,6 +628,17 @@ from .blend_utils import (
     vertical_blend,
     batch_blend,
 )
+from .gradient_utils import (
+    GradientConfig,
+    compute_gradient_magnitude,
+    compute_gradient_direction,
+    compute_sobel,
+    compute_laplacian,
+    threshold_gradient,
+    suppress_non_maximum,
+    compute_edge_density,
+    batch_compute_gradients,
+)
 from .text_utils import (
     TextConfig,
     TextBlock,
@@ -1074,4 +1090,14 @@ __all__ = [
     "horizontal_blend",
     "vertical_blend",
     "batch_blend",
+    # Градиентный анализ изображений
+    "GradientConfig",
+    "compute_gradient_magnitude",
+    "compute_gradient_direction",
+    "compute_sobel",
+    "compute_laplacian",
+    "threshold_gradient",
+    "suppress_non_maximum",
+    "compute_edge_density",
+    "batch_compute_gradients",
 ]

@@ -170,7 +170,7 @@ def feather_mask(
         mask[-fp:, :] *= ramp[::-1, np.newaxis]
         # Left and right
         mask[:, :fp] *= ramp[np.newaxis, :]
-        mask[:, -fp:] *= ramp[::-1, np.newaxis]
+        mask[:, -fp:] *= ramp[np.newaxis, ::-1]
     return mask
 
 
