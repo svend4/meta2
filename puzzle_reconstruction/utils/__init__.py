@@ -156,6 +156,11 @@
                        describe, zscore_array, iqr, winsorize,
                        percentile_rank, outlier_mask, running_stats,
                        weighted_mean, weighted_std, batch_describe)
+    threshold_utils  — пороговая обработка (ThresholdConfig,
+                       apply_threshold, binarize, adaptive_threshold,
+                       soft_threshold, threshold_matrix,
+                       hysteresis_threshold, otsu_threshold,
+                       count_above, fraction_above, batch_threshold)
 """
 from .logger import (
     get_logger,
@@ -732,6 +737,19 @@ from .stats_utils import (
     weighted_std,
     batch_describe,
 )
+from .threshold_utils import (
+    ThresholdConfig,
+    apply_threshold,
+    binarize,
+    adaptive_threshold,
+    soft_threshold,
+    threshold_matrix as threshold_score_matrix,
+    hysteresis_threshold,
+    otsu_threshold,
+    count_above,
+    fraction_above,
+    batch_threshold,
+)
 
 __all__ = [
     # Логирование
@@ -1236,4 +1254,16 @@ __all__ = [
     "weighted_mean",
     "weighted_std",
     "batch_describe",
+    # Пороговая обработка
+    "ThresholdConfig",
+    "apply_threshold",
+    "binarize",
+    "adaptive_threshold",
+    "soft_threshold",
+    "threshold_score_matrix",
+    "hysteresis_threshold",
+    "otsu_threshold",
+    "count_above",
+    "fraction_above",
+    "batch_threshold",
 ]
