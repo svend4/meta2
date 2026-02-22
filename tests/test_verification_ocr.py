@@ -1,4 +1,4 @@
-"""Тесты для puzzle_reconstruction/verification/ocr.py.
+"""Расширенные тесты для puzzle_reconstruction/verification/ocr.py.
 
 OCR-функции используют pytesseract (опциональная зависимость).
 Большинство функций возвращают нейтральную оценку 0.5, если OCR недоступен.
@@ -57,7 +57,7 @@ def make_assembly(n=2):
     )
 
 
-# ─── _score_text_quality ──────────────────────────────────────────────────────
+# ─── TestScoreTextQuality ─────────────────────────────────────────────────────
 
 class TestScoreTextQuality:
     def test_empty_string_returns_zero(self):
@@ -91,8 +91,40 @@ class TestScoreTextQuality:
     def test_returns_float_type(self):
         assert type(_score_text_quality("test")) is float
 
+    def test_all_alpha_high_score(self):
+        result = _score_text_quality("abcdefghij")
+        assert result > 0.5
 
-# ─── _extract_edge_strip ──────────────────────────────────────────────────────
+    def test_mixed_clean_dirty(self):
+        result = _score_text_quality("hello ### world")
+        assert 0.0 <= result <= 1.0
+
+    def test_single_char_alpha(self):
+        result = _score_text_quality("a")
+        assert 0.0 <= result <= 1.0
+
+    def test_single_char_garbage(self):
+        result = _score_text_quality("@")
+        assert 0.0 <= result <= 1.0
+
+    def test_newlines_treated_as_space(self):
+        result = _score_text_quality("hello\nworld\n")
+        assert result > 0.0
+
+    def test_punctuation_allowed(self):
+        result = _score_text_quality("Hello, world!")
+        assert result > 0.7
+
+    def test_clip_max_one(self):
+        result = _score_text_quality("the beautiful magnificent wonderfully extraordinary")
+        assert result <= 1.0
+
+    def test_clip_min_zero(self):
+        result = _score_text_quality("#@!$%^&*()")
+        assert result >= 0.0
+
+
+# ─── TestExtractEdgeStrip ─────────────────────────────────────────────────────
 
 class TestExtractEdgeStrip:
     def test_right_strip_returns_ndarray(self):
@@ -107,18 +139,28 @@ class TestExtractEdgeStrip:
         result = _extract_edge_strip(img, edge, width=20, side="left")
         assert isinstance(result, np.ndarray)
 
-    def test_right_strip_shape(self):
+    def test_right_strip_height_preserved(self):
         img = make_bgr(h=64, w=64)
         edge = make_edge()
         result = _extract_edge_strip(img, edge, width=20, side="right")
         assert result.shape[0] == 64
-        assert result.shape[1] <= 20
 
-    def test_left_strip_shape(self):
+    def test_left_strip_height_preserved(self):
         img = make_bgr(h=64, w=64)
         edge = make_edge()
         result = _extract_edge_strip(img, edge, width=20, side="left")
         assert result.shape[0] == 64
+
+    def test_right_strip_width_at_most_w(self):
+        img = make_bgr(h=64, w=64)
+        edge = make_edge()
+        result = _extract_edge_strip(img, edge, width=20, side="right")
+        assert result.shape[1] <= 20
+
+    def test_left_strip_width_at_most_w(self):
+        img = make_bgr(h=64, w=64)
+        edge = make_edge()
+        result = _extract_edge_strip(img, edge, width=20, side="left")
         assert result.shape[1] <= 20
 
     def test_width_exceeds_image_clamped(self):
@@ -127,8 +169,20 @@ class TestExtractEdgeStrip:
         result = _extract_edge_strip(img, edge, width=50, side="right")
         assert result.shape[1] <= 30
 
+    def test_full_width_strip(self):
+        img = make_bgr(h=32, w=32)
+        edge = make_edge()
+        result = _extract_edge_strip(img, edge, width=32, side="left")
+        assert result.shape == (32, 32, 3)
 
-# ─── _rotate_image ────────────────────────────────────────────────────────────
+    def test_dtype_preserved(self):
+        img = make_bgr()
+        edge = make_edge()
+        result = _extract_edge_strip(img, edge, width=10, side="right")
+        assert result.dtype == np.uint8
+
+
+# ─── TestRotateImage ──────────────────────────────────────────────────────────
 
 class TestRotateImage:
     def test_returns_ndarray(self):
@@ -151,8 +205,18 @@ class TestRotateImage:
         result = _rotate_image(img, 0.1)
         assert result.dtype == np.uint8
 
+    def test_pi_angle_same_shape(self):
+        img = make_bgr(32, 32)
+        result = _rotate_image(img, np.pi)
+        assert result.shape == img.shape
 
-# ─── text_coherence_score ─────────────────────────────────────────────────────
+    def test_negative_angle(self):
+        img = make_bgr(64, 64)
+        result = _rotate_image(img, -np.pi / 4)
+        assert result.shape == img.shape
+
+
+# ─── TestTextCoherenceScore ───────────────────────────────────────────────────
 
 class TestTextCoherenceScore:
     def test_returns_float(self):
@@ -190,8 +254,24 @@ class TestTextCoherenceScore:
         result = text_coherence_score(img_a, img_b, edge_a, edge_b, strip_width=60)
         assert 0.0 <= result <= 1.0
 
+    def test_different_image_sizes(self):
+        img_a = make_bgr(h=32, w=32)
+        img_b = make_bgr(h=64, w=64)
+        edge_a = make_edge()
+        edge_b = make_edge()
+        result = text_coherence_score(img_a, img_b, edge_a, edge_b)
+        assert isinstance(result, float)
 
-# ─── verify_full_assembly ─────────────────────────────────────────────────────
+    def test_narrow_strip_width(self):
+        img_a = make_bgr(h=64, w=64)
+        img_b = make_bgr(h=64, w=64)
+        edge_a = make_edge()
+        edge_b = make_edge()
+        result = text_coherence_score(img_a, img_b, edge_a, edge_b, strip_width=5)
+        assert 0.0 <= result <= 1.0
+
+
+# ─── TestVerifyFullAssembly ───────────────────────────────────────────────────
 
 class TestVerifyFullAssembly:
     def test_returns_float(self):
@@ -216,8 +296,19 @@ class TestVerifyFullAssembly:
         result = verify_full_assembly(asm, lang="eng")
         assert 0.0 <= result <= 1.0
 
+    def test_empty_placements_returns_neutral(self):
+        asm = make_assembly(n=2)
+        asm.placements = {}
+        result = verify_full_assembly(asm)
+        assert result == pytest.approx(0.5)
 
-# ─── render_assembly_image ────────────────────────────────────────────────────
+    def test_single_fragment(self):
+        asm = make_assembly(n=1)
+        result = verify_full_assembly(asm)
+        assert 0.0 <= result <= 1.0
+
+
+# ─── TestRenderAssemblyImage ──────────────────────────────────────────────────
 
 class TestRenderAssemblyImage:
     def test_returns_ndarray_or_none(self):
@@ -243,3 +334,15 @@ class TestRenderAssemblyImage:
         result = render_assembly_image(asm)
         if result is not None:
             assert result.dtype == np.uint8
+
+    def test_larger_assembly(self):
+        asm = make_assembly(n=4)
+        result = render_assembly_image(asm)
+        if result is not None:
+            assert result.shape[2] == 3
+
+    def test_single_fragment_assembly(self):
+        asm = make_assembly(n=1)
+        result = render_assembly_image(asm)
+        if result is not None:
+            assert isinstance(result, np.ndarray)

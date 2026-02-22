@@ -152,6 +152,10 @@
                        apply_window_function, rolling_mean, rolling_std,
                        rolling_max, rolling_min, compute_overlap,
                        split_into_windows, merge_windows, batch_rolling)
+    stats_utils      — статистические утилиты (StatsConfig,
+                       describe, zscore_array, iqr, winsorize,
+                       percentile_rank, outlier_mask, running_stats,
+                       weighted_mean, weighted_std, batch_describe)
 """
 from .logger import (
     get_logger,
@@ -715,6 +719,19 @@ from .window_utils import (
     merge_windows,
     batch_rolling,
 )
+from .stats_utils import (
+    StatsConfig,
+    describe,
+    zscore_array,
+    iqr,
+    winsorize,
+    percentile_rank,
+    outlier_mask,
+    running_stats,
+    weighted_mean,
+    weighted_std,
+    batch_describe,
+)
 
 __all__ = [
     # Логирование
@@ -1207,4 +1224,16 @@ __all__ = [
     "split_into_windows",
     "merge_windows",
     "batch_rolling",
+    # Статистические утилиты
+    "StatsConfig",
+    "describe",
+    "zscore_array",
+    "iqr",
+    "winsorize",
+    "percentile_rank",
+    "outlier_mask",
+    "running_stats",
+    "weighted_mean",
+    "weighted_std",
+    "batch_describe",
 ]
