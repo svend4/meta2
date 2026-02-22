@@ -116,6 +116,9 @@
     color_palette         — доминантные цвета фрагментов (ColorPaletteConfig, ColorPalette,
                             extract_dominant_colors, palette_distance,
                             compute_palette, batch_compute_palettes, rank_by_palette)
+    edge_filter           — фильтрация совпадений краёв (EdgeFilterConfig,
+                            filter_by_score, filter_top_k, filter_compatible,
+                            deduplicate_pairs, apply_edge_filter, batch_filter_edges)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -469,6 +472,15 @@ from .color_palette import (
     batch_compute_palettes,
     rank_by_palette,
 )
+from .edge_filter import (
+    EdgeFilterConfig,
+    filter_by_score as filter_edges_by_score,
+    filter_top_k as filter_edges_top_k,
+    filter_compatible,
+    deduplicate_pairs as deduplicate_edge_pairs,
+    apply_edge_filter,
+    batch_filter_edges,
+)
 
 __all__ = [
     # Синтез
@@ -794,4 +806,12 @@ __all__ = [
     "compute_palette",
     "batch_compute_palettes",
     "rank_by_palette",
+    # Фильтрация совпадений краёв
+    "EdgeFilterConfig",
+    "filter_edges_by_score",
+    "filter_edges_top_k",
+    "filter_compatible",
+    "deduplicate_edge_pairs",
+    "apply_edge_filter",
+    "batch_filter_edges",
 ]
