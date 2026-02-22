@@ -334,6 +334,15 @@
                           filter_by_blur, top_k_quality_entries,
                           quality_score_stats, compare_quality,
                           batch_summarise_quality)
+    candidate_rank_utils — утилиты ранжирования и фильтрации кандидатных пар
+                          (CandidateRankConfig, CandidateRankEntry,
+                          CandidateRankSummary, make_candidate_entry,
+                          entries_from_candidate_pairs,
+                          summarise_rankings, filter_selected_candidates,
+                          filter_rejected_candidates,
+                          filter_by_score_range, filter_by_rank,
+                          top_k_candidate_entries, candidate_rank_stats,
+                          compare_rankings, batch_summarise_rankings)
 """
 from .logger import (
     get_logger,
@@ -1347,6 +1356,22 @@ from .quality_score_utils import (
     compare_quality,
     batch_summarise_quality,
 )
+from .candidate_rank_utils import (
+    CandidateRankConfig,
+    CandidateRankEntry,
+    CandidateRankSummary,
+    make_candidate_entry,
+    entries_from_pairs as entries_from_candidate_pairs,
+    summarise_rankings,
+    filter_selected as filter_selected_candidates,
+    filter_rejected_candidates,
+    filter_by_score_range,
+    filter_by_rank,
+    top_k_candidate_entries,
+    candidate_rank_stats,
+    compare_rankings,
+    batch_summarise_rankings,
+)
 
 __all__ = [
     # Логирование
@@ -2258,4 +2283,19 @@ __all__ = [
     "quality_score_stats",
     "compare_quality",
     "batch_summarise_quality",
+    # Ранжирование и фильтрация кандидатных пар
+    "CandidateRankConfig",
+    "CandidateRankEntry",
+    "CandidateRankSummary",
+    "make_candidate_entry",
+    "entries_from_candidate_pairs",
+    "summarise_rankings",
+    "filter_selected_candidates",
+    "filter_rejected_candidates",
+    "filter_by_score_range",
+    "filter_by_rank",
+    "top_k_candidate_entries",
+    "candidate_rank_stats",
+    "compare_rankings",
+    "batch_summarise_rankings",
 ]
