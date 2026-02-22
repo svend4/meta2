@@ -165,6 +165,11 @@
                           lerp, lerp_array, bilinear_interpolate, resample_1d,
                           fill_missing, interpolate_scores,
                           smooth_interpolate, batch_resample)
+    sampling_utils      — случайная выборка для оптимизации (SamplingConfig,
+                          uniform_sample, sample_angle, sample_position,
+                          sample_positions_grid, sample_permutation,
+                          weighted_sample, acceptance_probability,
+                          sample_swap_pair, batch_uniform_sample)
 """
 from .logger import (
     get_logger,
@@ -765,6 +770,18 @@ from .interpolation_utils import (
     smooth_interpolate,
     batch_resample,
 )
+from .sampling_utils import (
+    SamplingConfig,
+    uniform_sample,
+    sample_angle,
+    sample_position,
+    sample_positions_grid,
+    sample_permutation,
+    weighted_sample,
+    acceptance_probability,
+    sample_swap_pair,
+    batch_uniform_sample,
+)
 
 __all__ = [
     # Логирование
@@ -1291,4 +1308,15 @@ __all__ = [
     "interpolate_scores",
     "smooth_interpolate",
     "batch_resample",
+    # Случайная выборка для оптимизации
+    "SamplingConfig",
+    "uniform_sample",
+    "sample_angle",
+    "sample_position",
+    "sample_positions_grid",
+    "sample_permutation",
+    "weighted_sample",
+    "acceptance_probability",
+    "sample_swap_pair",
+    "batch_uniform_sample",
 ]
