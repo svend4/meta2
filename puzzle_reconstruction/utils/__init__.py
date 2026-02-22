@@ -176,6 +176,11 @@
                           cosine_schedule, stepped_schedule,
                           get_temperature, estimate_steps,
                           batch_temperatures)
+    rotation_utils      — утилиты поворота (RotationConfig,
+                          rotate_image_angle, rotate_points_angle,
+                          normalize_angle, angle_difference,
+                          nearest_discrete, angles_to_matrix,
+                          batch_rotate_images, estimate_rotation)
 """
 from .logger import (
     get_logger,
@@ -800,6 +805,17 @@ from .annealing_schedule import (
     estimate_steps,
     batch_temperatures,
 )
+from .rotation_utils import (
+    RotationConfig,
+    rotate_image_angle,
+    rotate_points_angle,
+    normalize_angle,
+    angle_difference,
+    nearest_discrete,
+    angles_to_matrix,
+    batch_rotate_images,
+    estimate_rotation,
+)
 
 __all__ = [
     # Логирование
@@ -1348,4 +1364,14 @@ __all__ = [
     "get_temperature",
     "estimate_steps",
     "batch_temperatures",
+    # Утилиты поворота изображений и точек
+    "RotationConfig",
+    "rotate_image_angle",
+    "rotate_points_angle",
+    "normalize_angle",
+    "angle_difference",
+    "nearest_discrete",
+    "angles_to_matrix",
+    "batch_rotate_images",
+    "estimate_rotation",
 ]
