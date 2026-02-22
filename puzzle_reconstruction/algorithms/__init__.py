@@ -98,6 +98,10 @@
                             phase_correlate, ncc_score as aligner_ncc_score,
                             align_patches, refine_alignment,
                             batch_align as batch_align_patches)
+    region_scorer         — оценка совместимости регионов (RegionScorerConfig, RegionScore,
+                            color_similarity, texture_similarity, shape_similarity,
+                            boundary_proximity, score_region_pair, batch_score_regions,
+                            rank_region_pairs)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -389,6 +393,17 @@ from .patch_aligner import (
     refine_alignment,
     batch_align as batch_align_patches,
 )
+from .region_scorer import (
+    RegionScorerConfig,
+    RegionScore,
+    color_similarity,
+    texture_similarity,
+    shape_similarity,
+    boundary_proximity,
+    score_region_pair,
+    batch_score_regions,
+    rank_region_pairs,
+)
 
 __all__ = [
     # Синтез
@@ -650,4 +665,22 @@ __all__ = [
     "align_contours",
     "smooth_contour_similarity",
     "batch_smooth",
+    # Субпиксельное выравнивание патчей
+    "AlignConfig",
+    "AlignResult",
+    "phase_correlate",
+    "aligner_ncc_score",
+    "align_patches",
+    "refine_alignment",
+    "batch_align_patches",
+    # Оценка совместимости регионов
+    "RegionScorerConfig",
+    "RegionScore",
+    "color_similarity",
+    "texture_similarity",
+    "shape_similarity",
+    "boundary_proximity",
+    "score_region_pair",
+    "batch_score_regions",
+    "rank_region_pairs",
 ]
