@@ -989,6 +989,21 @@ from .fragment_filter_utils import (
     top_k_fragments,
     fragment_quality_summary,
 )
+from .config_utils import (
+    validate_section,
+    validate_range,
+    merge_dicts,
+    flatten_dict,
+    unflatten_dict,
+    overrides_from_env,
+    ConfigProfile,
+    PROFILES,
+    apply_profile,
+    list_profiles,
+    load_json_config,
+    save_json_config,
+    diff_configs,
+)
 
 __all__ = [
     # Логирование
@@ -1668,4 +1683,18 @@ __all__ = [
     "sort_by_area",
     "top_k_fragments",
     "fragment_quality_summary",
+    # Утилиты конфигурации
+    "validate_section",
+    "validate_range",
+    "merge_dicts",
+    "flatten_dict",
+    "unflatten_dict",
+    "overrides_from_env",
+    "ConfigProfile",
+    "PROFILES",
+    "apply_profile",
+    "list_profiles",
+    "load_json_config",
+    "save_json_config",
+    "diff_configs",
 ]
