@@ -148,6 +148,10 @@
                        find_inflection_points, compute_turning_angle,
                        smooth_curvature, corner_score, find_corners,
                        batch_curvature)
+    window_utils     — оконная обработка сигналов (WindowConfig,
+                       apply_window_function, rolling_mean, rolling_std,
+                       rolling_max, rolling_min, compute_overlap,
+                       split_into_windows, merge_windows, batch_rolling)
 """
 from .logger import (
     get_logger,
@@ -699,6 +703,18 @@ from .curvature_utils import (
     find_corners,
     batch_curvature,
 )
+from .window_utils import (
+    WindowConfig,
+    apply_window_function,
+    rolling_mean,
+    rolling_std,
+    rolling_max,
+    rolling_min,
+    compute_overlap,
+    split_into_windows,
+    merge_windows,
+    batch_rolling,
+)
 
 __all__ = [
     # Логирование
@@ -1180,4 +1196,15 @@ __all__ = [
     "corner_score",
     "find_corners",
     "batch_curvature",
+    # Оконная обработка сигналов
+    "WindowConfig",
+    "apply_window_function",
+    "rolling_mean",
+    "rolling_std",
+    "rolling_max",
+    "rolling_min",
+    "compute_overlap",
+    "split_into_windows",
+    "merge_windows",
+    "batch_rolling",
 ]

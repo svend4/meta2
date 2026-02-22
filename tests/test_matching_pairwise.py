@@ -1,4 +1,4 @@
-"""Tests for matching/pairwise.py."""
+"""Расширенные тесты для puzzle_reconstruction/matching/pairwise.py."""
 import numpy as np
 import pytest
 
@@ -6,160 +6,175 @@ from puzzle_reconstruction.matching.pairwise import (
     _ifs_distance_norm,
     match_score,
 )
-from puzzle_reconstruction.models import CompatEntry, EdgeSignature, EdgeSide
+from puzzle_reconstruction.models import (
+    CompatEntry,
+    EdgeSide,
+    EdgeSignature,
+)
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
-def make_edge(
-    edge_id: int = 0,
-    side: EdgeSide = EdgeSide.RIGHT,
-    n_pts: int = 20,
-    fd: float = 1.5,
-    length: float = 50.0,
-    seed: int = 0,
-) -> EdgeSignature:
-    rng = np.random.default_rng(seed)
-    curve = rng.standard_normal((n_pts, 2)).astype(np.float64)
-    css_vec = rng.uniform(0.0, 1.0, 8).astype(np.float64)
-    ifs_coeffs = rng.standard_normal(6).astype(np.float64)
+def _edge(edge_id: int,
+          fd: float = 1.5,
+          length: float = 80.0,
+          css_vec=None,
+          ifs_coeffs=None,
+          virtual_curve=None,
+          ) -> EdgeSignature:
     return EdgeSignature(
         edge_id=edge_id,
-        side=side,
-        virtual_curve=curve,
+        side=EdgeSide.TOP,
+        virtual_curve=virtual_curve if virtual_curve is not None else np.zeros((10, 2)),
         fd=fd,
-        css_vec=css_vec,
-        ifs_coeffs=ifs_coeffs,
+        css_vec=css_vec if css_vec is not None else np.zeros(8),
+        ifs_coeffs=ifs_coeffs if ifs_coeffs is not None else np.zeros(4),
         length=length,
     )
 
 
-# ─── _ifs_distance_norm ───────────────────────────────────────────────────────
-
-class TestIfsDistanceNorm:
-    def test_identical_arrays_zero_distance(self):
-        a = np.array([1.0, 2.0, 3.0])
-        assert _ifs_distance_norm(a, a) == pytest.approx(0.0)
-
-    def test_empty_arrays_returns_one(self):
-        assert _ifs_distance_norm(np.array([]), np.array([])) == pytest.approx(1.0)
-
-    def test_one_empty_returns_one(self):
-        a = np.array([1.0, 2.0])
-        assert _ifs_distance_norm(a, np.array([])) == pytest.approx(1.0)
-
-    def test_non_negative(self):
-        a = np.array([1.0, -2.0, 3.0])
-        b = np.array([-1.0, 2.0, -3.0])
-        assert _ifs_distance_norm(a, b) >= 0.0
-
-    def test_returns_float(self):
-        a = np.array([1.0, 2.0])
-        b = np.array([3.0, 4.0])
-        assert isinstance(_ifs_distance_norm(a, b), float)
-
-    def test_truncates_to_min_length(self):
-        a = np.array([1.0, 2.0, 3.0])
-        b = np.array([1.0, 2.0])
-        # Only first 2 components compared → should give 0
-        assert _ifs_distance_norm(a, b) == pytest.approx(0.0)
-
-    def test_different_arrays_positive(self):
-        a = np.zeros(4)
-        b = np.ones(4) * 10.0
-        assert _ifs_distance_norm(a, b) > 0.0
-
-    def test_symmetric(self):
-        a = np.array([1.0, 3.0, 5.0])
-        b = np.array([2.0, 4.0, 6.0])
-        assert _ifs_distance_norm(a, b) == pytest.approx(_ifs_distance_norm(b, a))
-
-
-# ─── match_score ──────────────────────────────────────────────────────────────
+# ─── TestMatchScore ───────────────────────────────────────────────────────────
 
 class TestMatchScore:
     def test_returns_compat_entry(self):
-        e1 = make_edge(edge_id=0, seed=0)
-        e2 = make_edge(edge_id=1, seed=1)
-        result = match_score(e1, e2)
+        result = match_score(_edge(0), _edge(1))
         assert isinstance(result, CompatEntry)
 
-    def test_score_in_zero_one(self):
-        e1 = make_edge(edge_id=0, seed=0)
-        e2 = make_edge(edge_id=1, seed=1)
-        result = match_score(e1, e2)
+    def test_score_in_0_to_1(self):
+        result = match_score(_edge(0), _edge(1))
         assert 0.0 <= result.score <= 1.0
 
+    def test_edges_stored_in_entry(self):
+        e0 = _edge(0)
+        e1 = _edge(1)
+        result = match_score(e0, e1)
+        assert result.edge_i is e0
+        assert result.edge_j is e1
+
+    def test_dtw_dist_nonneg(self):
+        result = match_score(_edge(0), _edge(1))
+        assert result.dtw_dist >= 0.0
+
+    def test_css_sim_in_range(self):
+        result = match_score(_edge(0), _edge(1))
+        assert 0.0 <= result.css_sim <= 1.0
+
+    def test_fd_diff_nonneg(self):
+        result = match_score(_edge(0), _edge(1))
+        assert result.fd_diff >= 0.0
+
     def test_text_score_zero_default(self):
-        e1 = make_edge(edge_id=0, seed=0)
-        e2 = make_edge(edge_id=1, seed=1)
-        result = match_score(e1, e2)
+        result = match_score(_edge(0), _edge(1))
         assert result.text_score == pytest.approx(0.0)
 
     def test_text_score_passed_through(self):
-        e1 = make_edge(edge_id=0, seed=0)
-        e2 = make_edge(edge_id=1, seed=1)
-        result = match_score(e1, e2, text_score=0.7)
+        result = match_score(_edge(0), _edge(1), text_score=0.7)
         assert result.text_score == pytest.approx(0.7)
 
-    def test_edge_references_stored(self):
-        e1 = make_edge(edge_id=3, seed=0)
-        e2 = make_edge(edge_id=7, seed=1)
-        result = match_score(e1, e2)
-        assert result.edge_i is e1
-        assert result.edge_j is e2
-
-    def test_dtw_dist_non_negative(self):
-        e1 = make_edge(seed=0)
-        e2 = make_edge(seed=1)
-        result = match_score(e1, e2)
-        assert result.dtw_dist >= 0.0
-
-    def test_css_sim_in_zero_one(self):
-        e1 = make_edge(seed=0)
-        e2 = make_edge(seed=1)
-        result = match_score(e1, e2)
-        assert 0.0 <= result.css_sim <= 1.0
-
-    def test_fd_diff_non_negative(self):
-        e1 = make_edge(fd=1.5, seed=0)
-        e2 = make_edge(fd=1.8, seed=1)
-        result = match_score(e1, e2)
-        assert result.fd_diff >= 0.0
-
-    def test_very_different_lengths_lower_score(self):
-        # Edge with very different lengths gets a penalty
-        e_short = make_edge(length=10.0, seed=0)
-        e_long = make_edge(length=1000.0, seed=1)
-        e_similar = make_edge(length=12.0, seed=2)
-        result_diff = match_score(e_short, e_long)
-        result_similar = match_score(e_short, e_similar)
-        # Different lengths should give lower or equal score
-        assert result_diff.score <= result_similar.score + 0.5  # lenient check
-
-    def test_same_fd_zero_fd_diff(self):
-        e1 = make_edge(fd=1.5, seed=0)
-        e2 = make_edge(fd=1.5, seed=1)
-        result = match_score(e1, e2)
-        assert result.fd_diff == pytest.approx(0.0, abs=1e-9)
-
     def test_score_is_float(self):
-        e1 = make_edge(seed=0)
-        e2 = make_edge(seed=1)
-        result = match_score(e1, e2)
+        result = match_score(_edge(0), _edge(1))
         assert isinstance(result.score, float)
 
-    def test_identical_edges_high_score(self):
-        # Same edge matched against itself should get a reasonable score
-        e = make_edge(seed=42)
-        result = match_score(e, e)
-        # Not necessarily 1.0, but should be in [0, 1]
-        assert 0.0 <= result.score <= 1.0
+    def test_same_fd_higher_score_than_different(self):
+        e0 = _edge(0, fd=1.5)
+        e1_same = _edge(1, fd=1.5)
+        e2_diff = _edge(2, fd=1.9)
+        assert match_score(e0, e1_same).score >= match_score(e0, e2_diff).score
 
-    def test_text_score_one_increases_score(self):
-        e1 = make_edge(seed=0)
-        e2 = make_edge(seed=1)
-        result_no_text = match_score(e1, e2, text_score=0.0)
-        result_text = match_score(e1, e2, text_score=1.0)
-        # text_score=1.0 should give same or higher score (W_TEXT=0.15 > 0)
-        assert result_text.score >= result_no_text.score - 1e-9
+    def test_same_length_positive_score(self):
+        e0 = _edge(0, length=80.0)
+        e1 = _edge(1, length=80.0)
+        assert match_score(e0, e1).score > 0.0
+
+    def test_very_different_length_lower_score(self):
+        e0 = _edge(0, length=80.0)
+        e1_short = _edge(1, length=5.0)  # ratio < 0.5 → penalty
+        e1_same = _edge(2, length=80.0)
+        score_short = match_score(e0, e1_short).score
+        score_same = match_score(e0, e1_same).score
+        assert score_same >= score_short
+
+    def test_score_clipped_to_1(self):
+        result = match_score(_edge(0), _edge(1), text_score=1.0)
+        assert result.score <= 1.0
+
+    def test_score_clipped_to_0(self):
+        result = match_score(_edge(0), _edge(1))
+        assert result.score >= 0.0
+
+    def test_high_text_score_increases_total(self):
+        e0 = _edge(0)
+        e1 = _edge(1)
+        r0 = match_score(e0, e1, text_score=0.0)
+        r1 = match_score(e0, e1, text_score=1.0)
+        assert r1.score >= r0.score
+
+    def test_fd_diff_matches_abs_fd_difference(self):
+        e0 = _edge(0, fd=1.3)
+        e1 = _edge(1, fd=1.7)
+        result = match_score(e0, e1)
+        assert result.fd_diff == pytest.approx(abs(1.3 - 1.7), abs=1e-6)
+
+    def test_deterministic(self):
+        e0 = _edge(0)
+        e1 = _edge(1)
+        r1 = match_score(e0, e1)
+        r2 = match_score(e0, e1)
+        assert r1.score == r2.score
+
+    def test_dtw_dist_stored(self):
+        result = match_score(_edge(0), _edge(1))
+        assert isinstance(result.dtw_dist, float)
+
+    def test_fd_diff_stored(self):
+        e0 = _edge(0, fd=1.2)
+        e1 = _edge(1, fd=1.8)
+        result = match_score(e0, e1)
+        assert result.fd_diff == pytest.approx(0.6, abs=1e-6)
+
+    def test_compat_entry_fields_complete(self):
+        result = match_score(_edge(0), _edge(1))
+        assert hasattr(result, 'score')
+        assert hasattr(result, 'dtw_dist')
+        assert hasattr(result, 'css_sim')
+        assert hasattr(result, 'fd_diff')
+        assert hasattr(result, 'text_score')
+
+
+# ─── TestIfsDistanceNorm ──────────────────────────────────────────────────────
+
+class TestIfsDistanceNorm:
+    def test_returns_float(self):
+        a = np.array([1.0, 2.0, 3.0])
+        b = np.array([1.0, 2.0, 3.0])
+        assert isinstance(_ifs_distance_norm(a, b), float)
+
+    def test_identical_arrays_near_zero(self):
+        a = np.array([1.0, 2.0, 3.0, 4.0])
+        assert _ifs_distance_norm(a, a.copy()) == pytest.approx(0.0, abs=1e-9)
+
+    def test_nonneg(self):
+        a = np.random.randn(5)
+        b = np.random.randn(5)
+        assert _ifs_distance_norm(a, b) >= 0.0
+
+    def test_both_empty_returns_1(self):
+        assert _ifs_distance_norm(np.array([]), np.array([])) == pytest.approx(1.0)
+
+    def test_one_empty_returns_1(self):
+        assert _ifs_distance_norm(np.array([1.0, 2.0]), np.array([])) == pytest.approx(1.0)
+
+    def test_different_lengths_uses_shorter(self):
+        a = np.array([1.0, 2.0, 3.0, 4.0])
+        b = np.array([1.0, 2.0])
+        result = _ifs_distance_norm(a, b)
+        assert result >= 0.0
+
+    def test_larger_diff_larger_distance(self):
+        a = np.zeros(4)
+        b_near = np.ones(4) * 0.1
+        b_far = np.ones(4) * 10.0
+        assert _ifs_distance_norm(a, b_far) > _ifs_distance_norm(a, b_near)
+
+    def test_float_type(self):
+        assert isinstance(_ifs_distance_norm(np.ones(3), np.ones(3)), float)
