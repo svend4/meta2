@@ -816,6 +816,15 @@ from .rotation_utils import (
     batch_rotate_images,
     estimate_rotation,
 )
+from .fragment_stats import (
+    FragmentMetrics,
+    CollectionStats,
+    compute_fragment_metrics,
+    compute_collection_stats,
+    area_histogram,
+    compare_collections,
+    outlier_indices,
+)
 
 __all__ = [
     # Логирование
@@ -1374,4 +1383,12 @@ __all__ = [
     "angles_to_matrix",
     "batch_rotate_images",
     "estimate_rotation",
+    # Статистика фрагментов
+    "FragmentMetrics",
+    "CollectionStats",
+    "compute_fragment_metrics",
+    "compute_collection_stats",
+    "area_histogram",
+    "compare_collections",
+    "outlier_indices",
 ]
