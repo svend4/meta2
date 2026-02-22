@@ -62,8 +62,24 @@
     pair_scorer        — агрегированная оценка совместимости пар (ScoringWeights,
                        PairScoreResult, aggregate_channels, score_fragment_pair,
                        select_top_pairs, build_score_matrix, batch_score_pairs)
+    curve_descriptor   — компактные дескрипторы кривых (CurveDescriptorConfig,
+                       CurveDescriptor, compute_fourier_descriptor,
+                       compute_curvature_profile, describe_curve,
+                       descriptor_distance, descriptor_similarity,
+                       batch_describe_curves, find_best_match)
 """
 from .dtw import dtw_distance, dtw_distance_mirror
+from .curve_descriptor import (
+    CurveDescriptorConfig,
+    CurveDescriptor,
+    compute_fourier_descriptor,
+    compute_curvature_profile,
+    describe_curve,
+    descriptor_distance,
+    descriptor_similarity,
+    batch_describe_curves,
+    find_best_match,
+)
 from .pairwise import match_score
 from .compat_matrix import build_compat_matrix
 from .icp import icp_align, contour_icp, align_fragment_edge, ICPResult
@@ -455,4 +471,14 @@ __all__ = [
     "select_top_pairs",
     "build_score_matrix",
     "batch_score_pairs",
+    # Дескрипторы кривых краёв
+    "CurveDescriptorConfig",
+    "CurveDescriptor",
+    "compute_fourier_descriptor",
+    "compute_curvature_profile",
+    "describe_curve",
+    "descriptor_distance",
+    "descriptor_similarity",
+    "batch_describe_curves",
+    "find_best_match",
 ]
