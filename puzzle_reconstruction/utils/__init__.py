@@ -306,6 +306,16 @@
                           top_k_steps, rank_fragments,
                           placement_score_stats, compare_placements,
                           batch_summarise)
+    annealing_score_utils — утилиты оценки качества результатов отжига
+                          (AnnealingScoreConfig, AnnealingScoreEntry,
+                          AnnealingSummary, make_annealing_entry,
+                          entries_from_log, summarise_annealing,
+                          filter_accepted, filter_rejected,
+                          filter_annealing_by_min_score,
+                          filter_by_temperature_range,
+                          top_k_annealing_entries, annealing_score_stats,
+                          best_annealing_entry, compare_summaries,
+                          batch_summarise_annealing)
 """
 from .logger import (
     get_logger,
@@ -1270,6 +1280,23 @@ from .placement_score_utils import (
     compare_placements,
     batch_summarise as batch_summarise_placements,
 )
+from .annealing_score_utils import (
+    AnnealingScoreConfig,
+    AnnealingScoreEntry,
+    AnnealingSummary,
+    make_annealing_entry,
+    entries_from_log,
+    summarise_annealing,
+    filter_accepted,
+    filter_rejected,
+    filter_by_min_score as filter_annealing_by_min_score,
+    filter_by_temperature_range,
+    top_k_entries as top_k_annealing_entries,
+    annealing_score_stats,
+    best_entry as best_annealing_entry,
+    compare_summaries,
+    batch_summarise as batch_summarise_annealing,
+)
 
 __all__ = [
     # Логирование
@@ -2135,4 +2162,20 @@ __all__ = [
     "placement_score_stats",
     "compare_placements",
     "batch_summarise_placements",
+    # Оценки качества результатов отжига
+    "AnnealingScoreConfig",
+    "AnnealingScoreEntry",
+    "AnnealingSummary",
+    "make_annealing_entry",
+    "entries_from_log",
+    "summarise_annealing",
+    "filter_accepted",
+    "filter_rejected",
+    "filter_annealing_by_min_score",
+    "filter_by_temperature_range",
+    "top_k_annealing_entries",
+    "annealing_score_stats",
+    "best_annealing_entry",
+    "compare_summaries",
+    "batch_summarise_annealing",
 ]
