@@ -825,6 +825,16 @@ from .fragment_stats import (
     compare_collections,
     outlier_indices,
 )
+from .spatial_index import (
+    SpatialConfig,
+    SpatialEntry,
+    SpatialIndex,
+    build_spatial_index,
+    query_radius,
+    query_knn,
+    pairwise_distances,
+    cluster_by_distance,
+)
 
 __all__ = [
     # Логирование
@@ -1391,4 +1401,13 @@ __all__ = [
     "area_histogram",
     "compare_collections",
     "outlier_indices",
+    # Пространственный индекс
+    "SpatialConfig",
+    "SpatialEntry",
+    "SpatialIndex",
+    "build_spatial_index",
+    "query_radius",
+    "query_knn",
+    "pairwise_distances",
+    "cluster_by_distance",
 ]
