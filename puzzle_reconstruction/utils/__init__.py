@@ -613,6 +613,16 @@ from .patch_utils import (
     patch_mse,
     batch_compare,
 )
+from .blend_utils import (
+    BlendConfig,
+    alpha_blend,
+    weighted_blend,
+    feather_mask,
+    paste_with_mask,
+    horizontal_blend,
+    vertical_blend,
+    batch_blend,
+)
 from .text_utils import (
     TextConfig,
     TextBlock,
@@ -1055,4 +1065,13 @@ __all__ = [
     "compare_text_blocks",
     "align_text_blocks",
     "batch_clean_text",
+    # Смешивание и наложение изображений
+    "BlendConfig",
+    "alpha_blend",
+    "weighted_blend",
+    "feather_mask",
+    "paste_with_mask",
+    "horizontal_blend",
+    "vertical_blend",
+    "batch_blend",
 ]
