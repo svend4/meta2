@@ -283,6 +283,14 @@
                           resample_profile, flip_profile, mean_profile,
                           batch_build_profiles, pairwise_l2_matrix,
                           best_matching_profile)
+    rotation_score_utils — утилиты оценки качества результатов поворота
+                          (RotationScoreConfig, RotationScoreEntry,
+                          make_entry, filter_by_confidence,
+                          filter_by_method, filter_by_angle_range,
+                          rank_by_confidence, best_entry, aggregate_angles,
+                          rotation_score_stats, angle_agreement,
+                          batch_make_entries, top_k_entries,
+                          group_by_method)
 """
 from .logger import (
     get_logger,
@@ -1202,6 +1210,22 @@ from .edge_profile_utils import (
     pairwise_l2_matrix,
     best_matching_profile,
 )
+from .rotation_score_utils import (
+    RotationScoreConfig,
+    RotationScoreEntry,
+    make_entry as make_rotation_entry,
+    filter_by_confidence as filter_rotations_by_confidence,
+    filter_by_method as filter_rotations_by_method,
+    filter_by_angle_range,
+    rank_by_confidence as rank_rotations_by_confidence,
+    best_entry as best_rotation_entry,
+    aggregate_angles,
+    rotation_score_stats,
+    angle_agreement,
+    batch_make_entries as batch_make_rotation_entries,
+    top_k_entries as top_k_rotation_entries,
+    group_by_method as group_rotations_by_method,
+)
 
 __all__ = [
     # Логирование
@@ -2025,4 +2049,19 @@ __all__ = [
     "batch_build_profiles",
     "pairwise_l2_matrix",
     "best_matching_profile",
+    # Оценки качества результатов поворота
+    "RotationScoreConfig",
+    "RotationScoreEntry",
+    "make_rotation_entry",
+    "filter_rotations_by_confidence",
+    "filter_rotations_by_method",
+    "filter_by_angle_range",
+    "rank_rotations_by_confidence",
+    "best_rotation_entry",
+    "aggregate_angles",
+    "rotation_score_stats",
+    "angle_agreement",
+    "batch_make_rotation_entries",
+    "top_k_rotation_entries",
+    "group_rotations_by_method",
 ]
