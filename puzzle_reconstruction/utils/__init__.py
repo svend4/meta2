@@ -522,6 +522,17 @@ from .tile_utils import (
     compute_tile_grid,
     batch_tile_images,
 )
+from .distance_matrix import (
+    DistanceConfig,
+    euclidean_distance_matrix,
+    cosine_distance_matrix,
+    manhattan_distance_matrix,
+    build_distance_matrix,
+    normalize_distance_matrix,
+    to_similarity_matrix,
+    threshold_distance_matrix,
+    top_k_distance_pairs,
+)
 from .edge_profiler import (
     ProfileConfig,
     EdgeProfile,
