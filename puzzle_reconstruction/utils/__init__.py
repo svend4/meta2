@@ -204,6 +204,13 @@
                           remove_collinear, ensure_ccw, ensure_cw,
                           polygon_similarity, batch_polygon_stats,
                           batch_polygon_overlap)
+    score_matrix_utils  — утилиты матриц оценок (ScoreMatrixConfig,
+                          MatrixStats, RankEntry,
+                          zero_diagonal, symmetrize, threshold_matrix,
+                          normalize_rows, top_k_indices,
+                          matrix_stats, top_k_per_row,
+                          filter_by_threshold, intra_fragment_mask,
+                          apply_intra_fragment_mask, batch_matrix_stats)
     rotation_utils      — утилиты поворота (RotationConfig,
                           rotate_image_angle, rotate_points_angle,
                           normalize_angle, angle_difference,
@@ -930,6 +937,22 @@ from .polygon_ops_utils import (
     batch_polygon_stats,
     batch_polygon_overlap,
 )
+from .score_matrix_utils import (
+    ScoreMatrixConfig,
+    MatrixStats,
+    RankEntry,
+    zero_diagonal,
+    symmetrize,
+    threshold_matrix as threshold_score_mat,
+    normalize_rows as normalize_score_rows,
+    top_k_indices,
+    matrix_stats,
+    top_k_per_row as score_top_k_per_row,
+    filter_by_threshold,
+    intra_fragment_mask,
+    apply_intra_fragment_mask,
+    batch_matrix_stats,
+)
 
 __all__ = [
     # Логирование
@@ -1567,4 +1590,19 @@ __all__ = [
     "poly_ops_similarity",
     "batch_polygon_stats",
     "batch_polygon_overlap",
+    # Утилиты матриц оценок
+    "ScoreMatrixConfig",
+    "MatrixStats",
+    "RankEntry",
+    "zero_diagonal",
+    "symmetrize",
+    "threshold_score_mat",
+    "normalize_score_rows",
+    "top_k_indices",
+    "matrix_stats",
+    "score_top_k_per_row",
+    "filter_by_threshold",
+    "intra_fragment_mask",
+    "apply_intra_fragment_mask",
+    "batch_matrix_stats",
 ]
