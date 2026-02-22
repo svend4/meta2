@@ -111,6 +111,10 @@
                        tile_image, reassemble_tiles, tile_overlap_ratio,
                        filter_tiles_by_content, compute_tile_grid,
                        batch_tile_images)
+    contour_sampler  — дискретизация контуров (SamplerConfig, SampledContour,
+                       sample_uniform, sample_curvature, sample_random,
+                       sample_corners, sample_contour, normalize_contour,
+                       batch_sample)
 """
 from .logger import (
     get_logger,
@@ -518,6 +522,17 @@ from .tile_utils import (
     compute_tile_grid,
     batch_tile_images,
 )
+from .contour_sampler import (
+    SamplerConfig,
+    SampledContour,
+    sample_uniform,
+    sample_curvature,
+    sample_random,
+    sample_corners,
+    sample_contour,
+    normalize_contour as normalize_sampled_contour,
+    batch_sample as batch_sample_contours,
+)
 
 __all__ = [
     # Логирование
@@ -888,4 +903,14 @@ __all__ = [
     "filter_tiles_by_content",
     "compute_tile_grid",
     "batch_tile_images",
+    # Дискретизация контуров
+    "SamplerConfig",
+    "SampledContour",
+    "sample_uniform",
+    "sample_curvature",
+    "sample_random",
+    "sample_corners",
+    "sample_contour",
+    "normalize_sampled_contour",
+    "batch_sample_contours",
 ]
