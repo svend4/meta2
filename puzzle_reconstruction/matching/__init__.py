@@ -59,6 +59,9 @@
                        PatchScore, PatchValidResult, compute_patch_score,
                        aggregate_patch_scores, validate_patch_pair,
                        batch_validate_patches, filter_valid_pairs)
+    pair_scorer        — агрегированная оценка совместимости пар (ScoringWeights,
+                       PairScoreResult, aggregate_channels, score_fragment_pair,
+                       select_top_pairs, build_score_matrix, batch_score_pairs)
 """
 from .dtw import dtw_distance, dtw_distance_mirror
 from .pairwise import match_score
@@ -256,6 +259,15 @@ from .patch_validator import (
     batch_validate_patches,
     filter_valid_pairs,
 )
+from .pair_scorer import (
+    ScoringWeights,
+    PairScoreResult,
+    aggregate_channels,
+    score_pair as score_fragment_pair,
+    select_top_pairs,
+    build_score_matrix,
+    batch_score_pairs,
+)
 
 __all__ = [
     "dtw_distance",
@@ -435,4 +447,12 @@ __all__ = [
     "validate_patch_pair",
     "batch_validate_patches",
     "filter_valid_pairs",
+    # Агрегированная оценка совместимости пары фрагментов
+    "ScoringWeights",
+    "PairScoreResult",
+    "aggregate_channels",
+    "score_fragment_pair",
+    "select_top_pairs",
+    "build_score_matrix",
+    "batch_score_pairs",
 ]
