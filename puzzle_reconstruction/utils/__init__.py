@@ -241,6 +241,12 @@
                           mean_pool, max_pool, vlad_encode,
                           batch_nn_match, top_k_matches,
                           filter_matches_by_distance)
+    render_utils        — утилиты рендеринга (CanvasConfig, MosaicConfig,
+                          rotation_matrix_2d, bounding_box_of_rotated,
+                          compute_canvas_size, make_blank_canvas,
+                          resize_keep_aspect, pad_to_square, make_thumbnail,
+                          paste_with_mask, compute_grid_layout, make_mosaic,
+                          save_image, horizontal_concat)
 """
 from .logger import (
     get_logger,
@@ -1064,6 +1070,22 @@ from .descriptor_utils import (
     top_k_matches,
     filter_matches_by_distance as filter_desc_matches,
 )
+from .render_utils import (
+    CanvasConfig,
+    MosaicConfig,
+    rotation_matrix_2d as render_rotation_matrix_2d,
+    bounding_box_of_rotated,
+    compute_canvas_size,
+    make_blank_canvas,
+    resize_keep_aspect,
+    pad_to_square,
+    make_thumbnail,
+    paste_with_mask as render_paste_with_mask,
+    compute_grid_layout,
+    make_mosaic,
+    save_image as render_save_image,
+    horizontal_concat,
+)
 
 __all__ = [
     # Логирование
@@ -1797,4 +1819,19 @@ __all__ = [
     "batch_nn_match",
     "top_k_matches",
     "filter_desc_matches",
+    # Рендеринг
+    "CanvasConfig",
+    "MosaicConfig",
+    "render_rotation_matrix_2d",
+    "bounding_box_of_rotated",
+    "compute_canvas_size",
+    "make_blank_canvas",
+    "resize_keep_aspect",
+    "pad_to_square",
+    "make_thumbnail",
+    "render_paste_with_mask",
+    "compute_grid_layout",
+    "make_mosaic",
+    "render_save_image",
+    "horizontal_concat",
 ]
