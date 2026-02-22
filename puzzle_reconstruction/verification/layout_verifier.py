@@ -28,7 +28,7 @@ from typing import Dict, List, Optional, Set, Tuple
 
 import numpy as np
 
-from ..models import Assembly, Fragment, Placement
+from ..models import Assembly, Fragment
 
 
 # ─── ConstraintType ───────────────────────────────────────────────────────────

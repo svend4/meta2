@@ -123,7 +123,7 @@ from .tangram.inscriber import fit_tangram
 from .fractal.box_counting import box_counting_fd
 from .fractal.divider import divider_fd
 from .fractal.css import css_similarity_mirror
-from .fractal.ifs import fit_ifs
+from .fractal.ifs import fit_ifs_coefficients as fit_ifs
 
 from .shape_context import (
     compute_shape_context,
@@ -446,6 +446,17 @@ from .color_space import (
     histogram_chi2,
     batch_compute_histograms,
 )
+from .fragment_quality import (
+    QualityConfig,
+    QualityReport,
+    measure_blur,
+    measure_contrast,
+    measure_mask_coverage,
+    measure_edge_sharpness,
+    assess_fragment,
+    rank_fragments,
+    batch_assess,
+)
 
 __all__ = [
     # Синтез
@@ -753,4 +764,14 @@ __all__ = [
     "histogram_intersection",
     "histogram_chi2",
     "batch_compute_histograms",
+    # Оценка качества фрагментов
+    "QualityConfig",
+    "QualityReport",
+    "measure_blur",
+    "measure_contrast",
+    "measure_mask_coverage",
+    "measure_edge_sharpness",
+    "assess_fragment",
+    "rank_fragments",
+    "batch_assess",
 ]
