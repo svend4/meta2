@@ -181,6 +181,12 @@
                           score_edge_curvature, score_edge_length,
                           score_edge_endpoints, aggregate_edge_scores,
                           rank_edge_pairs, batch_score_edges)
+    alignment_utils     — выравнивание и регистрация кривых (AlignmentConfig,
+                          AlignmentResult, normalize_for_alignment,
+                          find_best_rotation, find_best_translation,
+                          compute_alignment_error, align_curves_procrustes,
+                          align_curves_icp, alignment_score,
+                          batch_align_curves)
     rotation_utils      — утилиты поворота (RotationConfig,
                           rotate_image_angle, rotate_points_angle,
                           normalize_angle, angle_difference,
@@ -851,6 +857,18 @@ from .spatial_index import (
     pairwise_distances,
     cluster_by_distance,
 )
+from .alignment_utils import (
+    AlignmentConfig,
+    AlignmentResult,
+    normalize_for_alignment,
+    find_best_rotation,
+    find_best_translation,
+    compute_alignment_error,
+    align_curves_procrustes,
+    align_curves_icp,
+    alignment_score,
+    batch_align_curves,
+)
 
 __all__ = [
     # Логирование
@@ -1436,4 +1454,15 @@ __all__ = [
     "query_knn",
     "pairwise_distances",
     "cluster_by_distance",
+    # Выравнивание и регистрация кривых
+    "AlignmentConfig",
+    "AlignmentResult",
+    "normalize_for_alignment",
+    "find_best_rotation",
+    "find_best_translation",
+    "compute_alignment_error",
+    "align_curves_procrustes",
+    "align_curves_icp",
+    "alignment_score",
+    "batch_align_curves",
 ]
