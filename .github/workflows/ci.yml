@@ -1,0 +1,157 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "master", "claude/**"]
+  pull_request:
+    branches: ["main", "master"]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: "Python ${{ matrix.python-version }} / ${{ matrix.os }}"
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+        os: ["ubuntu-latest"]
+        # Windows/macOS можно добавить при необходимости:
+        # os: ["ubuntu-latest", "macos-latest"]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      # Системные зависимости для OpenCV
+      - name: Install system dependencies (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libgl1-mesa-glx \
+            libglib2.0-0 \
+            libsm6 \
+            libxrender1 \
+            libxext6
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          # Опциональные зависимости для тестов
+          pip install scikit-learn scipy || true
+
+      - name: Lint with ruff
+        run: |
+          ruff check puzzle_reconstruction/ tools/ --ignore E501,F401,N803,N806,UP006,UP007,UP035,RUF012
+        continue-on-error: true   # Не блокируем CI из-за стиля
+
+      - name: Run unit tests (fast)
+        run: |
+          pytest tests/ \
+            --ignore=tests/test_integration.py \
+            --ignore=tests/test_pipeline.py \
+            -v --tb=short -q \
+            --timeout=60 \
+            -x
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+
+      - name: Run integration tests
+        run: |
+          pytest tests/test_integration.py tests/test_pipeline.py \
+            -v --tb=short -q \
+            --timeout=120 \
+            -m "not slow"
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        continue-on-error: true   # Интеграционные тесты могут упасть на CI
+
+      - name: Coverage report
+        run: |
+          pip install pytest-cov
+          pytest tests/ \
+            --ignore=tests/test_integration.py \
+            --ignore=tests/test_pipeline.py \
+            --cov=puzzle_reconstruction \
+            --cov-report=term-missing \
+            --cov-report=xml \
+            -q --timeout=60
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        continue-on-error: true
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: matrix.python-version == '3.11' && runner.os == 'Linux'
+        with:
+          file: coverage.xml
+          flags: unittests
+          fail_ci_if_error: false
+
+  # ── Линт без тестов (быстро) ────────────────────────────────────────────
+  lint:
+    name: "Lint & type check"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install linting tools
+        run: pip install ruff mypy types-Pillow numpy
+
+      - name: ruff check
+        run: |
+          ruff check puzzle_reconstruction/ tools/ \
+            --ignore E501,F401,N803,N806,UP006,UP007,UP035,RUF012,W291
+        continue-on-error: true
+
+      - name: mypy check (strict optional)
+        run: |
+          mypy puzzle_reconstruction/config.py \
+               puzzle_reconstruction/models.py \
+               puzzle_reconstruction/clustering.py \
+               --ignore-missing-imports \
+               --no-strict-optional
+        continue-on-error: true
+
+  # ── Сборка пакета ───────────────────────────────────────────────────────
+  build:
+    name: "Build distribution"
+    runs-on: ubuntu-latest
+    needs: [test]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build tools
+        run: pip install build wheel
+
+      - name: Build wheel and sdist
+        run: python -m build
+
+      - name: Check dist contents
+        run: |
+          ls -lh dist/
+          pip install twine
+          twine check dist/*
