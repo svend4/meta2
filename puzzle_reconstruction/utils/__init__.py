@@ -223,6 +223,15 @@
                           normalize_angle, angle_difference,
                           nearest_discrete, angles_to_matrix,
                           batch_rotate_images, estimate_rotation)
+    icp_utils           — утилиты ICP-выравнивания (ICPConfig,
+                          centroid, center_points, scale_points,
+                          resample_uniform, nearest_neighbours,
+                          filter_correspondences, svd_rotation,
+                          svd_translation, compute_rmse,
+                          rmse_after_transform, has_converged,
+                          compose_transforms, invert_transform,
+                          PairAlignResult, batch_nearest_neighbours,
+                          transform_points, align_to_first)
 """
 from .logger import (
     get_logger,
@@ -1004,6 +1013,26 @@ from .config_utils import (
     save_json_config,
     diff_configs,
 )
+from .icp_utils import (
+    ICPConfig,
+    centroid,
+    center_points,
+    scale_points,
+    resample_uniform,
+    nearest_neighbours,
+    filter_correspondences,
+    svd_rotation,
+    svd_translation,
+    compute_rmse,
+    rmse_after_transform,
+    has_converged,
+    compose_transforms,
+    invert_transform,
+    PairAlignResult,
+    batch_nearest_neighbours,
+    transform_points,
+    align_to_first,
+)
 
 __all__ = [
     # Логирование
@@ -1697,4 +1726,23 @@ __all__ = [
     "load_json_config",
     "save_json_config",
     "diff_configs",
+    # Утилиты ICP-выравнивания
+    "ICPConfig",
+    "centroid",
+    "center_points",
+    "scale_points",
+    "resample_uniform",
+    "nearest_neighbours",
+    "filter_correspondences",
+    "svd_rotation",
+    "svd_translation",
+    "compute_rmse",
+    "rmse_after_transform",
+    "has_converged",
+    "compose_transforms",
+    "invert_transform",
+    "PairAlignResult",
+    "batch_nearest_neighbours",
+    "transform_points",
+    "align_to_first",
 ]
