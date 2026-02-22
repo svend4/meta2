@@ -522,6 +522,17 @@ from .tile_utils import (
     compute_tile_grid,
     batch_tile_images,
 )
+from .edge_profiler import (
+    ProfileConfig,
+    EdgeProfile,
+    compute_brightness_profile,
+    compute_gradient_profile,
+    compute_diff_profile,
+    normalize_profile,
+    aggregate_profiles,
+    compare_profiles,
+    batch_profile_edges,
+)
 from .contour_sampler import (
     SamplerConfig,
     SampledContour,
