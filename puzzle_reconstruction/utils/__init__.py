@@ -176,6 +176,11 @@
                           cosine_schedule, stepped_schedule,
                           get_temperature, estimate_steps,
                           batch_temperatures)
+    edge_scorer         — оценка совместимости краёв (EdgeScoreConfig,
+                          EdgeScoreResult, score_edge_overlap,
+                          score_edge_curvature, score_edge_length,
+                          score_edge_endpoints, aggregate_edge_scores,
+                          rank_edge_pairs, batch_score_edges)
     rotation_utils      — утилиты поворота (RotationConfig,
                           rotate_image_angle, rotate_points_angle,
                           normalize_angle, angle_difference,
@@ -793,6 +798,17 @@ from .sampling_utils import (
     sample_swap_pair,
     batch_uniform_sample,
 )
+from .edge_scorer import (
+    EdgeScoreConfig,
+    EdgeScoreResult,
+    score_edge_overlap,
+    score_edge_curvature,
+    score_edge_length,
+    score_edge_endpoints,
+    aggregate_edge_scores,
+    rank_edge_pairs,
+    batch_score_edges,
+)
 from .annealing_schedule import (
     ScheduleConfig,
     TemperatureRecord,
@@ -1372,6 +1388,16 @@ __all__ = [
     "acceptance_probability",
     "sample_swap_pair",
     "batch_uniform_sample",
+    # Оценка совместимости краёв
+    "EdgeScoreConfig",
+    "EdgeScoreResult",
+    "score_edge_overlap",
+    "score_edge_curvature",
+    "score_edge_length",
+    "score_edge_endpoints",
+    "aggregate_edge_scores",
+    "rank_edge_pairs",
+    "batch_score_edges",
     # Температурные расписания для SA
     "ScheduleConfig",
     "TemperatureRecord",
