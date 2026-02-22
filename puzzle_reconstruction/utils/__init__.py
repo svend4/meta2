@@ -325,6 +325,15 @@
                           top_k_consensus_entries, consensus_score_stats,
                           agreement_score, compare_consensus,
                           batch_summarise_consensus)
+    quality_score_utils — утилиты оценки качества фрагментов и изображений
+                          (QualityScoreConfig, QualityScoreEntry,
+                          QualitySummary, make_quality_entry,
+                          entries_from_quality_reports,
+                          summarise_quality, filter_quality_acceptable,
+                          filter_quality_rejected, filter_by_overall,
+                          filter_by_blur, top_k_quality_entries,
+                          quality_score_stats, compare_quality,
+                          batch_summarise_quality)
 """
 from .logger import (
     get_logger,
@@ -1322,6 +1331,22 @@ from .consensus_score_utils import (
     compare_consensus,
     batch_summarise_consensus,
 )
+from .quality_score_utils import (
+    QualityScoreConfig,
+    QualityScoreEntry,
+    QualitySummary,
+    make_quality_entry,
+    entries_from_reports as entries_from_quality_reports,
+    summarise_quality,
+    filter_acceptable as filter_quality_acceptable,
+    filter_rejected as filter_quality_rejected,
+    filter_by_overall,
+    filter_by_blur,
+    top_k_quality_entries,
+    quality_score_stats,
+    compare_quality,
+    batch_summarise_quality,
+)
 
 __all__ = [
     # Логирование
@@ -2218,4 +2243,19 @@ __all__ = [
     "agreement_score",
     "compare_consensus",
     "batch_summarise_consensus",
+    # Оценки качества фрагментов и изображений
+    "QualityScoreConfig",
+    "QualityScoreEntry",
+    "QualitySummary",
+    "make_quality_entry",
+    "entries_from_quality_reports",
+    "summarise_quality",
+    "filter_quality_acceptable",
+    "filter_quality_rejected",
+    "filter_by_overall",
+    "filter_by_blur",
+    "top_k_quality_entries",
+    "quality_score_stats",
+    "compare_quality",
+    "batch_summarise_quality",
 ]
