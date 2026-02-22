@@ -143,6 +143,11 @@
                        compute_euler_number, count_holes, compute_solidity,
                        compute_extent, compute_convexity, compute_compactness,
                        is_simply_connected, shape_complexity, batch_topology)
+    curvature_utils  — утилиты кривизны контуров (CurvatureConfig,
+                       compute_curvature, compute_total_curvature,
+                       find_inflection_points, compute_turning_angle,
+                       smooth_curvature, corner_score, find_corners,
+                       batch_curvature)
 """
 from .logger import (
     get_logger,
@@ -683,6 +688,17 @@ from .topology_utils import (
     shape_complexity,
     batch_topology,
 )
+from .curvature_utils import (
+    CurvatureConfig,
+    compute_curvature,
+    compute_total_curvature,
+    find_inflection_points,
+    compute_turning_angle,
+    smooth_curvature,
+    corner_score,
+    find_corners,
+    batch_curvature,
+)
 
 __all__ = [
     # Логирование
@@ -1154,4 +1170,14 @@ __all__ = [
     "is_simply_connected",
     "shape_complexity",
     "batch_topology",
+    # Утилиты кривизны контуров
+    "CurvatureConfig",
+    "compute_curvature",
+    "compute_total_curvature",
+    "find_inflection_points",
+    "compute_turning_angle",
+    "smooth_curvature",
+    "corner_score",
+    "find_corners",
+    "batch_curvature",
 ]

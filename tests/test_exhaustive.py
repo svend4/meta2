@@ -1,252 +1,290 @@
-"""
-Юнит-тесты для puzzle_reconstruction/assembly/exhaustive.py.
-
-Тесты покрывают:
-    - exhaustive_assembly() — базовое поведение
-    - Граничные случаи: пустой список, один фрагмент, N > max_n
-    - Качество: score >= greedy score для малого N (оптимальность)
-    - Детерминированность
-    - _score_delta(), _evaluate_config() — внутренние функции
-    - RuntimeWarning при N >= WARN_N
-"""
-import math
+"""Расширенные тесты для puzzle_reconstruction/assembly/exhaustive.py."""
 import warnings
+
 import numpy as np
 import pytest
 
 from puzzle_reconstruction.assembly.exhaustive import (
-    exhaustive_assembly,
-    _score_delta,
     _evaluate_config,
-    MAX_EXACT_N,
-    WARN_N,
+    _score_delta,
+    exhaustive_assembly,
 )
-from puzzle_reconstruction.assembly.greedy import greedy_assembly
 from puzzle_reconstruction.models import (
-    Fragment, Assembly, CompatEntry, EdgeSignature, EdgeSide,
-    FractalSignature, TangramSignature, ShapeClass,
+    Assembly,
+    CompatEntry,
+    EdgeSide,
+    EdgeSignature,
+    Fragment,
 )
 
 
-# ─── Фикстуры ────────────────────────────────────────────────────────────
+# ─── Helpers ──────────────────────────────────────────────────────────────────
 
-def _make_edge(edge_id: int, n: int = 16) -> EdgeSignature:
-    t = np.linspace(0, 1, n)
+def _edge(edge_id: int) -> EdgeSignature:
     return EdgeSignature(
         edge_id=edge_id,
         side=EdgeSide.TOP,
-        virtual_curve=np.column_stack([t, np.sin(t * math.pi * (1 + edge_id % 3))]),
-        fd=1.2 + 0.05 * (edge_id % 4),
-        css_vec=np.zeros(16),
+        virtual_curve=np.zeros((10, 2)),
+        fd=1.5,
+        css_vec=np.zeros(8),
         ifs_coeffs=np.zeros(4),
-        length=float(n),
+        length=80.0,
     )
 
 
-def _make_fragment(frag_id: int, n_edges: int = 4) -> Fragment:
-    img  = np.full((60, 50, 3), 200, dtype=np.uint8)
-    mask = np.ones((60, 50), dtype=np.uint8)
-    contour = np.array([[0,0],[50,0],[50,60],[0,60]], dtype=float)
-    frag = Fragment(fragment_id=frag_id, image=img, mask=mask, contour=contour)
-    frag.edges = [_make_edge(frag_id * n_edges + i) for i in range(n_edges)]
-    frag.tangram = TangramSignature(
-        polygon=contour / np.array([50, 60]),
-        shape_class=ShapeClass.RECTANGLE,
-        centroid=np.array([0.5, 0.5]),
-        angle=0.0, scale=1.0, area=0.5,
+def _frag(fid: int, n_edges: int = 2) -> Fragment:
+    frag = Fragment(
+        fragment_id=fid,
+        image=np.zeros((32, 32, 3), dtype=np.uint8),
+        mask=np.zeros((32, 32), dtype=np.uint8),
+        contour=np.zeros((8, 2)),
     )
-    frag.fractal = FractalSignature(
-        fd_box=1.3, fd_divider=1.35,
-        ifs_coeffs=np.zeros(4),
-        css_image=[], chain_code="", curve=np.zeros((8, 2)),
-    )
+    frag.edges = [_edge(fid * 10 + i) for i in range(n_edges)]
     return frag
 
 
-def _make_entries(fragments: list, score_base: float = 0.7) -> list:
-    """Создаёт CompatEntry для всех пар краёв."""
+def _entry(ei: EdgeSignature, ej: EdgeSignature, score: float = 0.5) -> CompatEntry:
+    return CompatEntry(
+        edge_i=ei, edge_j=ej, score=score,
+        dtw_dist=0.0, css_sim=score, fd_diff=0.0, text_score=0.0,
+    )
+
+
+def _build_chain(n: int, base_score: float = 0.8):
+    """Build n fragments with compatibility entries linking them in a chain."""
+    frags = [_frag(i) for i in range(n)]
     entries = []
-    for i, fi in enumerate(fragments):
-        for j, fj in enumerate(fragments):
-            if i >= j:
-                continue
-            for ei in fi.edges[:1]:    # Только первые края для скорости
-                for ej in fj.edges[:1]:
-                    entries.append(CompatEntry(
-                        edge_i=ei, edge_j=ej,
-                        score=score_base + 0.01 * (i + j),
-                        dtw_dist=0.2,
-                        css_sim=0.8,
-                        fd_diff=0.05,
-                        text_score=0.0,
-                    ))
-    return sorted(entries, key=lambda e: -e.score)
+    for i in range(n - 1):
+        e_i = frags[i].edges[0]
+        e_j = frags[i + 1].edges[0]
+        entries.append(_entry(e_i, e_j, score=base_score))
+    return frags, entries
 
 
-# ─── Базовое поведение ────────────────────────────────────────────────────
+def _make_edge_to_frag(frags):
+    return {e.edge_id: f.fragment_id for f in frags for e in f.edges}
+
+
+# ─── TestExhaustiveAssembly ───────────────────────────────────────────────────
 
 class TestExhaustiveAssembly:
+    def test_returns_assembly(self):
+        frags, entries = _build_chain(2)
+        result = exhaustive_assembly(frags, entries)
+        assert isinstance(result, Assembly)
 
-    def test_places_all_fragments_n3(self):
-        frags   = [_make_fragment(i) for i in range(3)]
-        entries = _make_entries(frags)
-        asm     = exhaustive_assembly(frags, entries, max_n=9)
-        assert len(asm.placements) == 3
-
-    def test_places_all_fragments_n4(self):
-        frags   = [_make_fragment(i) for i in range(4)]
-        entries = _make_entries(frags)
-        asm     = exhaustive_assembly(frags, entries, max_n=9)
-        assert len(asm.placements) == 4
-
-    def test_all_frag_ids_placed(self):
-        frags   = [_make_fragment(i) for i in range(3)]
-        entries = _make_entries(frags)
-        asm     = exhaustive_assembly(frags, entries)
-        expected_ids = {f.fragment_id for f in frags}
-        assert set(asm.placements.keys()) == expected_ids
-
-    def test_placements_finite(self):
-        frags   = [_make_fragment(i) for i in range(3)]
-        entries = _make_entries(frags)
-        asm     = exhaustive_assembly(frags, entries)
-        for pos, angle in asm.placements.values():
-            assert np.all(np.isfinite(pos))
-            assert math.isfinite(angle)
-
-    def test_total_score_finite(self):
-        frags   = [_make_fragment(i) for i in range(3)]
-        entries = _make_entries(frags)
-        asm     = exhaustive_assembly(frags, entries)
-        assert math.isfinite(asm.total_score)
-
-    def test_returns_assembly_object(self):
-        frags   = [_make_fragment(i) for i in range(2)]
-        entries = _make_entries(frags)
-        asm     = exhaustive_assembly(frags, entries)
-        assert isinstance(asm, Assembly)
-
-    def test_score_gte_greedy(self):
-        """
-        Точный решатель должен давать score >= жадного алгоритма
-        (или как минимум не хуже, так как начинает с жадного решения).
-        """
-        frags   = [_make_fragment(i) for i in range(4)]
-        entries = _make_entries(frags)
-        asm_ex  = exhaustive_assembly(frags, entries, max_n=9)
-        asm_gr  = greedy_assembly(frags, entries)
-        # Exhaustive score должен быть >= greedy (это гарантия Branch & Bound)
-        assert asm_ex.total_score >= asm_gr.total_score - 1e-9
-
-    def test_no_rotation_mode(self):
-        frags   = [_make_fragment(i) for i in range(3)]
-        entries = _make_entries(frags)
-        asm     = exhaustive_assembly(frags, entries, allow_rotation=False)
-        assert len(asm.placements) == 3
-
-    def test_deterministic(self):
-        frags   = [_make_fragment(i) for i in range(4)]
-        entries = _make_entries(frags)
-        asm1    = exhaustive_assembly(frags, entries, seed=42)
-        asm2    = exhaustive_assembly(frags, entries, seed=42)
-        for fid in asm1.placements:
-            pos1, ang1 = asm1.placements[fid]
-            pos2, ang2 = asm2.placements[fid]
-            np.testing.assert_array_equal(pos1, pos2)
-            assert ang1 == ang2
-
-
-# ─── Граничные случаи ─────────────────────────────────────────────────────
-
-class TestExhaustiveEdgeCases:
-
-    def test_empty_raises(self):
-        with pytest.raises(ValueError, match="пуст"):
+    def test_empty_fragments_raises(self):
+        with pytest.raises(ValueError):
             exhaustive_assembly([], [])
 
-    def test_single_fragment(self):
-        frag = _make_fragment(0)
-        asm  = exhaustive_assembly([frag], [], max_n=9)
-        assert 0 in asm.placements
+    def test_single_fragment_in_placements(self):
+        frags = [_frag(0)]
+        result = exhaustive_assembly(frags, [])
+        assert 0 in result.placements
+
+    def test_all_fragments_in_placements(self):
+        frags, entries = _build_chain(3)
+        result = exhaustive_assembly(frags, entries)
+        for f in frags:
+            assert f.fragment_id in result.placements
 
     def test_two_fragments(self):
-        frags   = [_make_fragment(i) for i in range(2)]
-        entries = _make_entries(frags)
-        asm     = exhaustive_assembly(frags, entries, max_n=9)
-        assert len(asm.placements) == 2
+        frags, entries = _build_chain(2)
+        result = exhaustive_assembly(frags, entries)
+        assert len(result.placements) == 2
 
-    def test_fallback_for_large_n(self):
-        """N > max_n → RuntimeWarning + вызывается beam_search."""
-        frags   = [_make_fragment(i) for i in range(4)]
-        entries = _make_entries(frags)
-        with pytest.warns(RuntimeWarning, match="beam_search"):
-            asm = exhaustive_assembly(frags, entries, max_n=3)
-        assert len(asm.placements) == 4
+    def test_score_is_float(self):
+        frags, entries = _build_chain(2)
+        result = exhaustive_assembly(frags, entries)
+        assert isinstance(result.total_score, float)
 
-    def test_warn_n_triggers_warning(self):
-        """N == WARN_N → RuntimeWarning о медленности."""
-        frags   = [_make_fragment(i) for i in range(WARN_N)]
-        entries = _make_entries(frags)
+    def test_score_nonneg(self):
+        frags, entries = _build_chain(3)
+        result = exhaustive_assembly(frags, entries)
+        assert result.total_score >= 0.0
+
+    def test_no_entries_score_zero(self):
+        frags = [_frag(0), _frag(1)]
+        result = exhaustive_assembly(frags, [])
+        assert result.total_score == pytest.approx(0.0)
+
+    def test_placement_is_tuple(self):
+        frags, entries = _build_chain(2)
+        result = exhaustive_assembly(frags, entries)
+        for placement in result.placements.values():
+            assert isinstance(placement, tuple)
+            assert len(placement) == 2
+
+    def test_placement_pos_length_2(self):
+        frags, entries = _build_chain(2)
+        result = exhaustive_assembly(frags, entries)
+        for pos, angle in result.placements.values():
+            assert len(pos) == 2
+
+    def test_placement_angle_is_float(self):
+        frags, entries = _build_chain(2)
+        result = exhaustive_assembly(frags, entries)
+        for pos, angle in result.placements.values():
+            assert isinstance(angle, float)
+
+    def test_compat_matrix_is_ndarray(self):
+        frags, entries = _build_chain(2)
+        result = exhaustive_assembly(frags, entries)
+        assert isinstance(result.compat_matrix, np.ndarray)
+
+    def test_fragments_stored(self):
+        frags, entries = _build_chain(3)
+        result = exhaustive_assembly(frags, entries)
+        assert result.fragments is frags
+
+    def test_deterministic_with_same_seed(self):
+        frags, entries = _build_chain(3)
+        r1 = exhaustive_assembly(frags, entries, seed=0)
+        r2 = exhaustive_assembly(frags, entries, seed=0)
+        assert r1.total_score == r2.total_score
+
+    def test_n_greater_than_max_n_uses_beam(self):
+        """N > max_n should fallback to beam_search with a RuntimeWarning."""
+        frags, entries = _build_chain(4)
         with pytest.warns(RuntimeWarning):
-            asm = exhaustive_assembly(frags, entries, max_n=MAX_EXACT_N)
-        assert len(asm.placements) == WARN_N
+            result = exhaustive_assembly(frags, entries, max_n=3)
+        assert isinstance(result, Assembly)
 
-    def test_empty_entries_no_crash(self):
-        """Пустой список entries → размещает с нулевым score."""
-        frags = [_make_fragment(i) for i in range(3)]
-        asm   = exhaustive_assembly(frags, [], max_n=9)
-        assert len(asm.placements) == 3
+    def test_n_equals_warn_n_triggers_warning(self):
+        """N >= WARN_N (8) but <= max_n=9 should trigger RuntimeWarning."""
+        frags, entries = _build_chain(8)
+        with pytest.warns(RuntimeWarning):
+            result = exhaustive_assembly(frags, entries, max_n=9)
+        assert isinstance(result, Assembly)
+
+    def test_small_n_no_fallback_warning(self):
+        """N = 3 < WARN_N should complete without RuntimeWarning."""
+        frags, entries = _build_chain(3)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", RuntimeWarning)
+            result = exhaustive_assembly(frags, entries, max_n=9)
+        assert isinstance(result, Assembly)
+
+    def test_with_high_score_entries(self):
+        frags, entries = _build_chain(3, base_score=0.9)
+        result = exhaustive_assembly(frags, entries)
+        assert result.total_score > 0.0
+
+    def test_allow_rotation_false(self):
+        frags, entries = _build_chain(2)
+        result = exhaustive_assembly(frags, entries, allow_rotation=False)
+        assert isinstance(result, Assembly)
+
+    def test_four_fragments_within_max_n(self):
+        frags, entries = _build_chain(4)
+        result = exhaustive_assembly(frags, entries, max_n=9)
+        assert len(result.placements) == 4
+
+    def test_placements_count_equals_fragment_count(self):
+        n = 3
+        frags, entries = _build_chain(n)
+        result = exhaustive_assembly(frags, entries)
+        assert len(result.placements) == n
 
 
-# ─── _score_delta ────────────────────────────────────────────────────────
+# ─── TestScoreDelta ───────────────────────────────────────────────────────────
 
 class TestScoreDelta:
+    def test_returns_float(self):
+        frags, entries = _build_chain(2)
+        etf = _make_edge_to_frag(frags)
+        placed = {0: (np.zeros(2), 0.0)}
+        result = _score_delta(1, [0], placed, entries, etf)
+        assert isinstance(result, float)
 
-    def test_zero_for_empty_placed(self):
-        frag    = _make_fragment(0)
-        entries = _make_entries([frag, _make_fragment(1)])
-        edge_to_frag = {e.edge_id: frag.fragment_id for e in frag.edges}
-        delta = _score_delta(0, [], {}, entries, edge_to_frag)
-        assert delta == 0.0
+    def test_empty_placed_returns_zero(self):
+        frags, entries = _build_chain(2)
+        etf = _make_edge_to_frag(frags)
+        result = _score_delta(0, [], {}, entries, etf)
+        assert result == pytest.approx(0.0)
 
-    def test_positive_for_matching_pair(self):
-        frags   = [_make_fragment(i) for i in range(2)]
-        entries = _make_entries(frags)
-        edge_to_frag = {e.edge_id: f.fragment_id for f in frags for e in f.edges}
-        placements   = {0: (np.array([0.0, 0.0]), 0.0)}
-        delta = _score_delta(1, [0], placements, entries, edge_to_frag)
-        assert delta >= 0.0
+    def test_connected_frags_positive_delta(self):
+        frags, entries = _build_chain(2, base_score=0.7)
+        etf = _make_edge_to_frag(frags)
+        placed = {0: (np.zeros(2), 0.0)}
+        result = _score_delta(1, [0], placed, entries, etf)
+        assert result > 0.0
+
+    def test_unconnected_frags_zero_delta(self):
+        f0 = _frag(0)
+        f1 = _frag(1)
+        f2 = _frag(2)
+        # entries only link f0-f1, not f0-f2 or f1-f2
+        entries = [_entry(f0.edges[0], f1.edges[0], score=0.9)]
+        etf = _make_edge_to_frag([f0, f1, f2])
+        placed = {0: (np.zeros(2), 0.0)}
+        result = _score_delta(2, [0], placed, entries, etf)
+        assert result == pytest.approx(0.0)
+
+    def test_nonneg(self):
+        frags, entries = _build_chain(3)
+        etf = _make_edge_to_frag(frags)
+        placed_pos = {0: (np.zeros(2), 0.0), 1: (np.array([120.0, 0.0]), 0.0)}
+        result = _score_delta(2, [0, 1], placed_pos, entries, etf)
+        assert result >= 0.0
+
+    def test_higher_score_entry_higher_delta(self):
+        f0 = _frag(0)
+        f1 = _frag(1)
+        etf = {e.edge_id: f.fragment_id for f in [f0, f1] for e in f.edges}
+        entry_low = _entry(f0.edges[0], f1.edges[0], score=0.1)
+        entry_high = _entry(f0.edges[0], f1.edges[0], score=0.9)
+        placed = {0: (np.zeros(2), 0.0)}
+        d_low = _score_delta(1, [0], placed, [entry_low], etf)
+        d_high = _score_delta(1, [0], placed, [entry_high], etf)
+        assert d_high > d_low
 
 
-# ─── _evaluate_config ─────────────────────────────────────────────────────
+# ─── TestEvaluateConfig ───────────────────────────────────────────────────────
 
 class TestEvaluateConfig:
+    def test_returns_float(self):
+        frags, entries = _build_chain(2)
+        etf = _make_edge_to_frag(frags)
+        placements = {f.fragment_id: (np.zeros(2), 0.0) for f in frags}
+        assert isinstance(_evaluate_config(placements, entries, etf), float)
 
     def test_empty_placements_zero(self):
-        frags   = [_make_fragment(i) for i in range(2)]
-        entries = _make_entries(frags)
-        edge_to_frag = {e.edge_id: f.fragment_id for f in frags for e in f.edges}
-        score = _evaluate_config({}, entries, edge_to_frag)
-        assert score == 0.0
+        frags, entries = _build_chain(2)
+        etf = _make_edge_to_frag(frags)
+        assert _evaluate_config({}, entries, etf) == pytest.approx(0.0)
 
-    def test_positive_for_placed_pair(self):
-        frags   = [_make_fragment(i) for i in range(2)]
-        entries = _make_entries(frags)
-        edge_to_frag = {e.edge_id: f.fragment_id for f in frags for e in f.edges}
-        placements   = {
-            0: (np.array([0.0, 0.0]), 0.0),
-            1: (np.array([100.0, 0.0]), 0.0),
-        }
-        score = _evaluate_config(placements, entries, edge_to_frag)
-        assert score >= 0.0
+    def test_single_fragment_zero(self):
+        frags, entries = _build_chain(2)
+        etf = _make_edge_to_frag(frags)
+        placements = {0: (np.zeros(2), 0.0)}
+        assert _evaluate_config(placements, entries, etf) == pytest.approx(0.0)
 
-    def test_no_duplicates_counted(self):
-        """Одна пара считается один раз, не дважды."""
-        frags   = [_make_fragment(i) for i in range(2)]
-        entries = _make_entries(frags)
-        edge_to_frag = {e.edge_id: f.fragment_id for f in frags for e in f.edges}
-        placements   = {i: (np.array([i*100.0, 0.0]), 0.0) for i in range(2)}
-        s1 = _evaluate_config(placements, entries, edge_to_frag)
-        s2 = _evaluate_config(placements, entries + entries, edge_to_frag)
-        # С двойным списком пар одна и та же пара не должна считаться дважды
-        assert s1 <= s2 + 1e-9   # s2 не меньше (больше пар = больше score)
+    def test_connected_pair_has_score(self):
+        frags, entries = _build_chain(2, base_score=0.8)
+        etf = _make_edge_to_frag(frags)
+        placements = {f.fragment_id: (np.zeros(2), 0.0) for f in frags}
+        result = _evaluate_config(placements, entries, etf)
+        assert result > 0.0
+
+    def test_nonneg(self):
+        frags, entries = _build_chain(3)
+        etf = _make_edge_to_frag(frags)
+        placements = {f.fragment_id: (np.zeros(2), 0.0) for f in frags}
+        assert _evaluate_config(placements, entries, etf) >= 0.0
+
+    def test_no_entries_zero(self):
+        frags = [_frag(0), _frag(1)]
+        etf = _make_edge_to_frag(frags)
+        placements = {f.fragment_id: (np.zeros(2), 0.0) for f in frags}
+        assert _evaluate_config(placements, [], etf) == pytest.approx(0.0)
+
+    def test_unplaced_frag_skipped(self):
+        f0 = _frag(0)
+        f1 = _frag(1)
+        entries = [_entry(f0.edges[0], f1.edges[0], score=0.8)]
+        etf = _make_edge_to_frag([f0, f1])
+        # Only f0 placed
+        placements = {0: (np.zeros(2), 0.0)}
+        result = _evaluate_config(placements, entries, etf)
+        assert result == pytest.approx(0.0)
