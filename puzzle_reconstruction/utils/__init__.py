@@ -492,6 +492,18 @@ from .score_aggregator import (
     top_k_pairs,
     batch_aggregate,
 )
+from .normalization_utils import (
+    l1_normalize,
+    l2_normalize,
+    minmax_normalize,
+    zscore_normalize,
+    softmax,
+    clamp,
+    symmetrize_matrix,
+    zero_diagonal,
+    normalize_rows,
+    batch_l2_normalize,
+)
 
 __all__ = [
     # Логирование
@@ -842,4 +854,15 @@ __all__ = [
     "aggregate_matrix",
     "top_k_pairs",
     "batch_aggregate",
+    # Нормализация дескрипторов и векторов оценок
+    "l1_normalize",
+    "l2_normalize",
+    "minmax_normalize",
+    "zscore_normalize",
+    "softmax",
+    "clamp",
+    "symmetrize_matrix",
+    "zero_diagonal",
+    "normalize_rows",
+    "batch_l2_normalize",
 ]
