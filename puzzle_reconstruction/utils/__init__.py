@@ -298,6 +298,14 @@
                           filter_by_area, top_k_overlaps, overlap_stats,
                           penalty_score, batch_make_overlap_entries,
                           group_by_fragment)
+    placement_score_utils — утилиты оценки размещения фрагментов
+                          (PlacementScoreConfig, PlacementScoreEntry,
+                          PlacementSummary, make_placement_entry,
+                          entries_from_history, summarise_placement,
+                          filter_positive_steps, filter_by_min_score,
+                          top_k_steps, rank_fragments,
+                          placement_score_stats, compare_placements,
+                          batch_summarise)
 """
 from .logger import (
     get_logger,
@@ -1247,6 +1255,21 @@ from .overlap_score_utils import (
     batch_make_overlap_entries,
     group_by_fragment,
 )
+from .placement_score_utils import (
+    PlacementScoreConfig,
+    PlacementScoreEntry,
+    PlacementSummary,
+    make_placement_entry,
+    entries_from_history,
+    summarise_placement,
+    filter_positive_steps,
+    filter_by_min_score as filter_placements_by_min_score,
+    top_k_steps,
+    rank_fragments,
+    placement_score_stats,
+    compare_placements,
+    batch_summarise as batch_summarise_placements,
+)
 
 __all__ = [
     # Логирование
@@ -2098,4 +2121,18 @@ __all__ = [
     "penalty_score",
     "batch_make_overlap_entries",
     "group_by_fragment",
+    # Оценки размещения фрагментов
+    "PlacementScoreConfig",
+    "PlacementScoreEntry",
+    "PlacementSummary",
+    "make_placement_entry",
+    "entries_from_history",
+    "summarise_placement",
+    "filter_positive_steps",
+    "filter_placements_by_min_score",
+    "top_k_steps",
+    "rank_fragments",
+    "placement_score_stats",
+    "compare_placements",
+    "batch_summarise_placements",
 ]
