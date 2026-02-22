@@ -84,6 +84,11 @@
                             EdgeCompareResult, dtw_distance, css_similarity,
                             fd_score, ifs_similarity, compare_edges,
                             build_compat_matrix, top_k_matches)
+    boundary_descriptor   — дескрипторы граничных сегментов (DescriptorConfig,
+                            BoundaryDescriptor, compute_curvature,
+                            curvature_histogram, direction_histogram,
+                            chord_distribution, extract_descriptor,
+                            descriptor_similarity, batch_extract_descriptors)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -344,6 +349,17 @@ from .edge_comparator import (
     build_compat_matrix,
     top_k_matches,
 )
+from .boundary_descriptor import (
+    DescriptorConfig,
+    BoundaryDescriptor,
+    compute_curvature,
+    curvature_histogram,
+    direction_histogram,
+    chord_distribution,
+    extract_descriptor,
+    descriptor_similarity,
+    batch_extract_descriptors,
+)
 
 __all__ = [
     # Синтез
@@ -585,4 +601,14 @@ __all__ = [
     "compare_edges",
     "build_compat_matrix",
     "top_k_matches",
+    # Дескрипторы граничных сегментов
+    "DescriptorConfig",
+    "BoundaryDescriptor",
+    "compute_curvature",
+    "curvature_histogram",
+    "direction_histogram",
+    "chord_distribution",
+    "extract_descriptor",
+    "descriptor_similarity",
+    "batch_extract_descriptors",
 ]
