@@ -266,7 +266,7 @@ class AssemblyViewer:
             pos, angle = self.assembly.placements[fid]
             pos = np.asarray(pos)
             # Грубая проверка: попадание в bounding box
-            if frag.contour is not None:
+            if frag.contour is not None and len(frag.contour) > 0:
                 c, s = np.cos(-angle), np.sin(-angle)
                 R = np.array([[c, -s], [s, c]])
                 local = R @ (world_pos - pos)

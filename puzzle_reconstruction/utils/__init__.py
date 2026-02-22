@@ -126,6 +126,10 @@
                        extract_patch, extract_patches, normalize_patch,
                        compare_patches, patch_ssd, patch_ncc, patch_mse,
                        batch_compare)
+    text_utils       — анализ и очистка текста (TextConfig, TextBlock,
+                       clean_ocr_text, estimate_text_density, find_text_lines,
+                       segment_words, compute_text_score, compare_text_blocks,
+                       align_text_blocks, batch_clean_text)
 """
 from .logger import (
     get_logger,
@@ -609,6 +613,18 @@ from .patch_utils import (
     patch_mse,
     batch_compare,
 )
+from .text_utils import (
+    TextConfig,
+    TextBlock,
+    clean_ocr_text,
+    estimate_text_density,
+    find_text_lines,
+    segment_words,
+    compute_text_score,
+    compare_text_blocks,
+    align_text_blocks,
+    batch_clean_text,
+)
 
 __all__ = [
     # Логирование
@@ -1028,4 +1044,15 @@ __all__ = [
     "patch_ncc",
     "patch_mse",
     "batch_compare",
+    # Утилиты анализа текста
+    "TextConfig",
+    "TextBlock",
+    "clean_ocr_text",
+    "estimate_text_density",
+    "find_text_lines",
+    "segment_words",
+    "compute_text_score",
+    "compare_text_blocks",
+    "align_text_blocks",
+    "batch_clean_text",
 ]
