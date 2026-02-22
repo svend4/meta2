@@ -107,6 +107,10 @@
                        ScoreVector, AggregationResult, weighted_sum,
                        harmonic_mean, geometric_mean, aggregate_pair,
                        aggregate_matrix, top_k_pairs, batch_aggregate)
+    tile_utils       — разбивка изображений на тайлы (TileConfig, Tile,
+                       tile_image, reassemble_tiles, tile_overlap_ratio,
+                       filter_tiles_by_content, compute_tile_grid,
+                       batch_tile_images)
 """
 from .logger import (
     get_logger,
@@ -504,6 +508,16 @@ from .normalization_utils import (
     normalize_rows,
     batch_l2_normalize,
 )
+from .tile_utils import (
+    TileConfig,
+    Tile,
+    tile_image,
+    reassemble_tiles,
+    tile_overlap_ratio,
+    filter_tiles_by_content,
+    compute_tile_grid,
+    batch_tile_images,
+)
 
 __all__ = [
     # Логирование
@@ -865,4 +879,13 @@ __all__ = [
     "zero_diagonal",
     "normalize_rows",
     "batch_l2_normalize",
+    # Разбивка изображений на тайлы
+    "TileConfig",
+    "Tile",
+    "tile_image",
+    "reassemble_tiles",
+    "tile_overlap_ratio",
+    "filter_tiles_by_content",
+    "compute_tile_grid",
+    "batch_tile_images",
 ]
