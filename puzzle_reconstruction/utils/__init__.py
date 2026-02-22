@@ -211,6 +211,13 @@
                           matrix_stats, top_k_per_row,
                           filter_by_threshold, intra_fragment_mask,
                           apply_intra_fragment_mask, batch_matrix_stats)
+    image_transform_utils — геометрические преобразования изображений
+                          (ImageTransformConfig, TransformResult,
+                           rotate_image, flip_horizontal, flip_vertical,
+                           pad_image, crop_image, resize_image,
+                           resize_to_max_side, apply_affine,
+                           rotation_matrix_2x3, batch_rotate,
+                           batch_pad, batch_resize_to_max)
     rotation_utils      — утилиты поворота (RotationConfig,
                           rotate_image_angle, rotate_points_angle,
                           normalize_angle, angle_difference,
@@ -953,6 +960,22 @@ from .score_matrix_utils import (
     apply_intra_fragment_mask,
     batch_matrix_stats,
 )
+from .image_transform_utils import (
+    ImageTransformConfig,
+    TransformResult,
+    rotate_image as img_rotate,
+    flip_horizontal,
+    flip_vertical,
+    pad_image,
+    crop_image as crop_img,
+    resize_image,
+    resize_to_max_side,
+    apply_affine as apply_affine_transform,
+    rotation_matrix_2x3,
+    batch_rotate as batch_rotate_images_v2,
+    batch_pad,
+    batch_resize_to_max,
+)
 
 __all__ = [
     # Логирование
@@ -1605,4 +1628,19 @@ __all__ = [
     "intra_fragment_mask",
     "apply_intra_fragment_mask",
     "batch_matrix_stats",
+    # Геометрические преобразования изображений
+    "ImageTransformConfig",
+    "TransformResult",
+    "img_rotate",
+    "flip_horizontal",
+    "flip_vertical",
+    "pad_image",
+    "crop_img",
+    "resize_image",
+    "resize_to_max_side",
+    "apply_affine_transform",
+    "rotation_matrix_2x3",
+    "batch_rotate_images_v2",
+    "batch_pad",
+    "batch_resize_to_max",
 ]
