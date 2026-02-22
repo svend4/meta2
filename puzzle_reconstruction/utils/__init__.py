@@ -555,6 +555,16 @@ from .contour_sampler import (
     normalize_contour as normalize_sampled_contour,
     batch_sample as batch_sample_contours,
 )
+from .frequency_utils import (
+    FrequencyConfig,
+    compute_fft_magnitude,
+    radial_power_spectrum,
+    frequency_band_energy,
+    high_frequency_ratio,
+    low_pass_filter,
+    high_pass_filter,
+    compare_frequency_spectra,
+)
 
 __all__ = [
     # Логирование
@@ -935,4 +945,13 @@ __all__ = [
     "sample_contour",
     "normalize_sampled_contour",
     "batch_sample_contours",
+    # Частотный анализ
+    "FrequencyConfig",
+    "compute_fft_magnitude",
+    "radial_power_spectrum",
+    "frequency_band_energy",
+    "high_frequency_ratio",
+    "low_pass_filter",
+    "high_pass_filter",
+    "compare_frequency_spectra",
 ]
