@@ -89,6 +89,11 @@
                             curvature_histogram, direction_histogram,
                             chord_distribution, extract_descriptor,
                             descriptor_similarity, batch_extract_descriptors)
+    contour_smoother      — сглаживание и передискретизация контуров (SmootherConfig,
+                            SmoothedContour, smooth_gaussian, resample_contour,
+                            compute_arc_length, smooth_and_resample,
+                            align_contours, contour_similarity as smooth_contour_similarity,
+                            batch_smooth)
 """
 from .synthesis import compute_fractal_signature, build_edge_signatures
 
@@ -360,6 +365,17 @@ from .boundary_descriptor import (
     descriptor_similarity,
     batch_extract_descriptors,
 )
+from .contour_smoother import (
+    SmootherConfig,
+    SmoothedContour,
+    smooth_gaussian,
+    resample_contour,
+    compute_arc_length,
+    smooth_and_resample,
+    align_contours,
+    contour_similarity as smooth_contour_similarity,
+    batch_smooth,
+)
 
 __all__ = [
     # Синтез
@@ -611,4 +627,14 @@ __all__ = [
     "extract_descriptor",
     "descriptor_similarity",
     "batch_extract_descriptors",
+    # Сглаживание и передискретизация контуров
+    "SmootherConfig",
+    "SmoothedContour",
+    "smooth_gaussian",
+    "resample_contour",
+    "compute_arc_length",
+    "smooth_and_resample",
+    "align_contours",
+    "smooth_contour_similarity",
+    "batch_smooth",
 ]
