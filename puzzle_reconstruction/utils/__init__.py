@@ -269,6 +269,13 @@
                           compute_pairwise_overlap, quality_score,
                           assess_placement, compare_metrics, best_of,
                           normalize_metrics, batch_quality_scores)
+    region_score_utils  — утилиты оценки и ранжирования регионов маски
+                          (RegionScoreConfig, RegionScore,
+                          region_compactness, region_extent, mask_perimeter,
+                          score_region, evaluate_region, filter_by_score,
+                          rank_regions, top_k_regions, region_score_stats,
+                          batch_evaluate_regions,
+                          normalize_scores as normalize_region_scores)
 """
 from .logger import (
     get_logger,
@@ -1159,6 +1166,21 @@ from .placement_metrics_utils import (
     normalize_metrics as normalize_placement_metrics,
     batch_quality_scores as batch_placement_quality_scores,
 )
+from .region_score_utils import (
+    RegionScoreConfig,
+    RegionScore,
+    region_compactness,
+    region_extent,
+    mask_perimeter,
+    score_region,
+    evaluate_region,
+    filter_by_score as filter_regions_by_score,
+    rank_regions,
+    top_k_regions,
+    region_score_stats,
+    batch_evaluate_regions,
+    normalize_scores as normalize_region_scores,
+)
 
 __all__ = [
     # Логирование
@@ -1955,4 +1977,18 @@ __all__ = [
     "best_placement_of",
     "normalize_placement_metrics",
     "batch_placement_quality_scores",
+    # Оценка регионов маски
+    "RegionScoreConfig",
+    "RegionScore",
+    "region_compactness",
+    "region_extent",
+    "mask_perimeter",
+    "score_region",
+    "evaluate_region",
+    "filter_regions_by_score",
+    "rank_regions",
+    "top_k_regions",
+    "region_score_stats",
+    "batch_evaluate_regions",
+    "normalize_region_scores",
 ]
