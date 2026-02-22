@@ -161,6 +161,10 @@
                        soft_threshold, threshold_matrix,
                        hysteresis_threshold, otsu_threshold,
                        count_above, fraction_above, batch_threshold)
+    interpolation_utils — интерполяция сигналов и оценок (InterpolationConfig,
+                          lerp, lerp_array, bilinear_interpolate, resample_1d,
+                          fill_missing, interpolate_scores,
+                          smooth_interpolate, batch_resample)
 """
 from .logger import (
     get_logger,
@@ -750,6 +754,17 @@ from .threshold_utils import (
     fraction_above,
     batch_threshold,
 )
+from .interpolation_utils import (
+    InterpolationConfig,
+    lerp,
+    lerp_array,
+    bilinear_interpolate,
+    resample_1d,
+    fill_missing,
+    interpolate_scores,
+    smooth_interpolate,
+    batch_resample,
+)
 
 __all__ = [
     # Логирование
@@ -1266,4 +1281,14 @@ __all__ = [
     "count_above",
     "fraction_above",
     "batch_threshold",
+    # Интерполяция сигналов и оценок
+    "InterpolationConfig",
+    "lerp",
+    "lerp_array",
+    "bilinear_interpolate",
+    "resample_1d",
+    "fill_missing",
+    "interpolate_scores",
+    "smooth_interpolate",
+    "batch_resample",
 ]
