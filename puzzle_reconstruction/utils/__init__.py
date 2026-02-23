@@ -358,6 +358,14 @@
                           filter_by_normalized_range, filter_by_original_range,
                           top_k_norm_entries, norm_entry_stats,
                           compare_norm_summaries, batch_summarise_norm)
+    shape_match_utils   — утилиты анализа и ранжирования сопоставления форм
+                          (ShapeMatchConfig, ShapeMatchEntry,
+                          ShapeMatchSummary, make_match_entry,
+                          entries_from_results, summarise_matches,
+                          filter_good_matches, filter_poor_matches,
+                          filter_by_hu_dist, filter_match_by_score_range,
+                          top_k_match_entries, match_entry_stats,
+                          compare_match_summaries, batch_summarise_matches)
 """
 from .logger import (
     get_logger,
@@ -1416,6 +1424,22 @@ from .score_norm_utils import (
     compare_norm_summaries,
     batch_summarise_norm,
 )
+from .shape_match_utils import (
+    ShapeMatchConfig,
+    ShapeMatchEntry,
+    ShapeMatchSummary,
+    make_match_entry,
+    entries_from_results as entries_from_match_results,
+    summarise_matches,
+    filter_good_matches,
+    filter_poor_matches,
+    filter_by_hu_dist,
+    filter_match_by_score_range,
+    top_k_match_entries,
+    match_entry_stats,
+    compare_match_summaries,
+    batch_summarise_matches,
+)
 
 __all__ = [
     # Логирование
@@ -2369,4 +2393,19 @@ __all__ = [
     "norm_entry_stats",
     "compare_norm_summaries",
     "batch_summarise_norm",
+    # Анализ и ранжирование сопоставления форм
+    "ShapeMatchConfig",
+    "ShapeMatchEntry",
+    "ShapeMatchSummary",
+    "make_match_entry",
+    "entries_from_match_results",
+    "summarise_matches",
+    "filter_good_matches",
+    "filter_poor_matches",
+    "filter_by_hu_dist",
+    "filter_match_by_score_range",
+    "top_k_match_entries",
+    "match_entry_stats",
+    "compare_match_summaries",
+    "batch_summarise_matches",
 ]
