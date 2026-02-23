@@ -394,6 +394,17 @@
                           best_patch_entry, patch_score_stats,
                           compare_patch_summaries,
                           batch_summarise_patch_scores)
+    noise_stats_utils   — утилиты агрегации статистик шумового анализа
+                          (NoiseStatsConfig, NoiseStatsEntry,
+                          NoiseStatsSummary, make_noise_entry,
+                          entries_from_analysis_results,
+                          summarise_noise_stats, filter_clean_entries,
+                          filter_noisy_entries, filter_by_sigma_range,
+                          filter_by_snr_range, filter_by_jpeg_threshold,
+                          top_k_cleanest, top_k_noisiest,
+                          best_snr_entry, noise_stats_dict,
+                          compare_noise_summaries,
+                          batch_summarise_noise_stats)
 """
 from .logger import (
     get_logger,
@@ -1518,6 +1529,25 @@ from .patch_score_utils import (
     compare_patch_summaries,
     batch_summarise_patch_scores,
 )
+from .noise_stats_utils import (
+    NoiseStatsConfig,
+    NoiseStatsEntry,
+    NoiseStatsSummary,
+    make_noise_entry,
+    entries_from_analysis_results,
+    summarise_noise_stats,
+    filter_clean_entries,
+    filter_noisy_entries,
+    filter_by_sigma_range,
+    filter_by_snr_range,
+    filter_by_jpeg_threshold,
+    top_k_cleanest,
+    top_k_noisiest,
+    best_snr_entry,
+    noise_stats_dict,
+    compare_noise_summaries,
+    batch_summarise_noise_stats,
+)
 
 __all__ = [
     # Логирование
@@ -2533,4 +2563,22 @@ __all__ = [
     "patch_score_stats",
     "compare_patch_summaries",
     "batch_summarise_patch_scores",
+    # Агрегация статистик шумового анализа
+    "NoiseStatsConfig",
+    "NoiseStatsEntry",
+    "NoiseStatsSummary",
+    "make_noise_entry",
+    "entries_from_analysis_results",
+    "summarise_noise_stats",
+    "filter_clean_entries",
+    "filter_noisy_entries",
+    "filter_by_sigma_range",
+    "filter_by_snr_range",
+    "filter_by_jpeg_threshold",
+    "top_k_cleanest",
+    "top_k_noisiest",
+    "best_snr_entry",
+    "noise_stats_dict",
+    "compare_noise_summaries",
+    "batch_summarise_noise_stats",
 ]
