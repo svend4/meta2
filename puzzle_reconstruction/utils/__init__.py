@@ -374,6 +374,16 @@
                           top_k_by_coverage, canvas_build_stats,
                           compare_canvas_summaries,
                           batch_summarise_canvas_builds)
+    assembly_score_utils — утилиты анализа и ранжирования результатов сборки
+                          (AssemblyScoreConfig, AssemblyScoreEntry,
+                          AssemblySummary, make_assembly_entry,
+                          entries_from_assemblies, summarise_assemblies,
+                          filter_good_assemblies, filter_poor_assemblies,
+                          filter_by_method, filter_by_score_range,
+                          filter_by_min_fragments, top_k_assembly_entries,
+                          best_assembly_entry, assembly_score_stats,
+                          compare_assembly_summaries,
+                          batch_summarise_assemblies)
 """
 from .logger import (
     get_logger,
@@ -1462,6 +1472,24 @@ from .canvas_build_utils import (
     compare_canvas_summaries,
     batch_summarise_canvas_builds,
 )
+from .assembly_score_utils import (
+    AssemblyScoreConfig,
+    AssemblyScoreEntry,
+    AssemblySummary,
+    make_assembly_entry,
+    entries_from_assemblies,
+    summarise_assemblies,
+    filter_good_assemblies,
+    filter_poor_assemblies,
+    filter_by_method as filter_assemblies_by_method,
+    filter_by_score_range as filter_assemblies_by_score_range,
+    filter_by_min_fragments,
+    top_k_assembly_entries,
+    best_assembly_entry,
+    assembly_score_stats,
+    compare_assembly_summaries,
+    batch_summarise_assemblies,
+)
 
 __all__ = [
     # Логирование
@@ -2443,4 +2471,21 @@ __all__ = [
     "canvas_build_stats",
     "compare_canvas_summaries",
     "batch_summarise_canvas_builds",
+    # Анализ и ранжирование результатов сборки пазла
+    "AssemblyScoreConfig",
+    "AssemblyScoreEntry",
+    "AssemblySummary",
+    "make_assembly_entry",
+    "entries_from_assemblies",
+    "summarise_assemblies",
+    "filter_good_assemblies",
+    "filter_poor_assemblies",
+    "filter_assemblies_by_method",
+    "filter_assemblies_by_score_range",
+    "filter_by_min_fragments",
+    "top_k_assembly_entries",
+    "best_assembly_entry",
+    "assembly_score_stats",
+    "compare_assembly_summaries",
+    "batch_summarise_assemblies",
 ]
