@@ -405,6 +405,17 @@
                           best_snr_entry, noise_stats_dict,
                           compare_noise_summaries,
                           batch_summarise_noise_stats)
+    color_hist_utils    — утилиты анализа цветовых гистограмм
+                          (ColorHistConfig, ColorHistEntry,
+                          ColorHistSummary, make_color_hist_entry,
+                          entries_from_comparisons,
+                          summarise_color_hist, filter_good_hist_entries,
+                          filter_poor_hist_entries,
+                          filter_by_intersection_range,
+                          filter_by_chi2_range, filter_by_space,
+                          top_k_hist_entries, best_hist_entry,
+                          color_hist_stats, compare_hist_summaries,
+                          batch_summarise_color_hist)
 """
 from .logger import (
     get_logger,
@@ -1548,6 +1559,24 @@ from .noise_stats_utils import (
     compare_noise_summaries,
     batch_summarise_noise_stats,
 )
+from .color_hist_utils import (
+    ColorHistConfig,
+    ColorHistEntry,
+    ColorHistSummary,
+    make_color_hist_entry,
+    entries_from_comparisons,
+    summarise_color_hist,
+    filter_good_hist_entries,
+    filter_poor_hist_entries,
+    filter_by_intersection_range,
+    filter_by_chi2_range,
+    filter_by_space,
+    top_k_hist_entries,
+    best_hist_entry,
+    color_hist_stats,
+    compare_hist_summaries,
+    batch_summarise_color_hist,
+)
 
 __all__ = [
     # Логирование
@@ -2581,4 +2610,21 @@ __all__ = [
     "noise_stats_dict",
     "compare_noise_summaries",
     "batch_summarise_noise_stats",
+    # Анализ цветовых гистограмм
+    "ColorHistConfig",
+    "ColorHistEntry",
+    "ColorHistSummary",
+    "make_color_hist_entry",
+    "entries_from_comparisons",
+    "summarise_color_hist",
+    "filter_good_hist_entries",
+    "filter_poor_hist_entries",
+    "filter_by_intersection_range",
+    "filter_by_chi2_range",
+    "filter_by_space",
+    "top_k_hist_entries",
+    "best_hist_entry",
+    "color_hist_stats",
+    "compare_hist_summaries",
+    "batch_summarise_color_hist",
 ]
