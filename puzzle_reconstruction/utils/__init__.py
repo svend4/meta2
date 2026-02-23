@@ -384,6 +384,16 @@
                           best_assembly_entry, assembly_score_stats,
                           compare_assembly_summaries,
                           batch_summarise_assemblies)
+    patch_score_utils   — утилиты анализа и ранжирования сопоставления патчей
+                          (PatchScoreConfig, PatchScoreEntry,
+                          PatchScoreSummary, make_patch_entry,
+                          entries_from_patch_matches, summarise_patch_scores,
+                          filter_good_patch_scores, filter_poor_patch_scores,
+                          filter_patch_by_score_range, filter_by_side_pair,
+                          filter_by_ncc_range, top_k_patch_entries,
+                          best_patch_entry, patch_score_stats,
+                          compare_patch_summaries,
+                          batch_summarise_patch_scores)
 """
 from .logger import (
     get_logger,
@@ -1490,6 +1500,24 @@ from .assembly_score_utils import (
     compare_assembly_summaries,
     batch_summarise_assemblies,
 )
+from .patch_score_utils import (
+    PatchScoreConfig,
+    PatchScoreEntry,
+    PatchScoreSummary,
+    make_patch_entry,
+    entries_from_patch_matches,
+    summarise_patch_scores,
+    filter_good_patch_scores,
+    filter_poor_patch_scores,
+    filter_patch_by_score_range,
+    filter_by_side_pair,
+    filter_by_ncc_range,
+    top_k_patch_entries,
+    best_patch_entry,
+    patch_score_stats,
+    compare_patch_summaries,
+    batch_summarise_patch_scores,
+)
 
 __all__ = [
     # Логирование
@@ -2488,4 +2516,21 @@ __all__ = [
     "assembly_score_stats",
     "compare_assembly_summaries",
     "batch_summarise_assemblies",
+    # Анализ и ранжирование сопоставления патчей
+    "PatchScoreConfig",
+    "PatchScoreEntry",
+    "PatchScoreSummary",
+    "make_patch_entry",
+    "entries_from_patch_matches",
+    "summarise_patch_scores",
+    "filter_good_patch_scores",
+    "filter_poor_patch_scores",
+    "filter_patch_by_score_range",
+    "filter_by_side_pair",
+    "filter_by_ncc_range",
+    "top_k_patch_entries",
+    "best_patch_entry",
+    "patch_score_stats",
+    "compare_patch_summaries",
+    "batch_summarise_patch_scores",
 ]
