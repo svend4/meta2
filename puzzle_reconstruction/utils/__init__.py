@@ -366,6 +366,14 @@
                           filter_by_hu_dist, filter_match_by_score_range,
                           top_k_match_entries, match_entry_stats,
                           compare_match_summaries, batch_summarise_matches)
+    canvas_build_utils  — утилиты планирования и анализа сборки холста
+                          (CanvasBuildConfig, PlacementEntry,
+                          CanvasBuildSummary, make_placement_entry,
+                          entries_from_placements, summarise_canvas_build,
+                          filter_by_area, filter_by_coverage_contribution,
+                          top_k_by_coverage, canvas_build_stats,
+                          compare_canvas_summaries,
+                          batch_summarise_canvas_builds)
 """
 from .logger import (
     get_logger,
@@ -1440,6 +1448,20 @@ from .shape_match_utils import (
     compare_match_summaries,
     batch_summarise_matches,
 )
+from .canvas_build_utils import (
+    CanvasBuildConfig,
+    PlacementEntry,
+    CanvasBuildSummary,
+    make_placement_entry,
+    entries_from_placements,
+    summarise_canvas_build,
+    filter_by_area,
+    filter_by_coverage_contribution,
+    top_k_by_coverage,
+    canvas_build_stats,
+    compare_canvas_summaries,
+    batch_summarise_canvas_builds,
+)
 
 __all__ = [
     # Логирование
@@ -2408,4 +2430,17 @@ __all__ = [
     "match_entry_stats",
     "compare_match_summaries",
     "batch_summarise_matches",
+    # Планирование и анализ сборки холста
+    "CanvasBuildConfig",
+    "PlacementEntry",
+    "CanvasBuildSummary",
+    "make_placement_entry",
+    "entries_from_placements",
+    "summarise_canvas_build",
+    "filter_by_area",
+    "filter_by_coverage_contribution",
+    "top_k_by_coverage",
+    "canvas_build_stats",
+    "compare_canvas_summaries",
+    "batch_summarise_canvas_builds",
 ]
