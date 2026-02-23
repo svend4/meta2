@@ -416,6 +416,18 @@
                           top_k_hist_entries, best_hist_entry,
                           color_hist_stats, compare_hist_summaries,
                           batch_summarise_color_hist)
+    pair_score_utils    — утилиты агрегации оценок пар фрагментов
+                          (PairScoreConfig, PairScoreEntry,
+                          PairScoreSummary, make_pair_score_entry,
+                          entries_from_pair_results,
+                          summarise_pair_scores, filter_strong_pair_matches,
+                          filter_weak_pair_matches,
+                          filter_pair_by_score_range,
+                          filter_pair_by_channel,
+                          filter_pair_by_dominant_channel,
+                          top_k_pair_entries, best_pair_entry,
+                          pair_score_stats, compare_pair_summaries,
+                          batch_summarise_pair_scores)
 """
 from .logger import (
     get_logger,
@@ -1577,6 +1589,24 @@ from .color_hist_utils import (
     compare_hist_summaries,
     batch_summarise_color_hist,
 )
+from .pair_score_utils import (
+    PairScoreConfig,
+    PairScoreEntry,
+    PairScoreSummary,
+    make_pair_score_entry,
+    entries_from_pair_results,
+    summarise_pair_scores,
+    filter_strong_pair_matches,
+    filter_weak_pair_matches,
+    filter_pair_by_score_range,
+    filter_pair_by_channel,
+    filter_pair_by_dominant_channel,
+    top_k_pair_entries,
+    best_pair_entry,
+    pair_score_stats,
+    compare_pair_summaries,
+    batch_summarise_pair_scores,
+)
 
 __all__ = [
     # Логирование
@@ -2627,4 +2657,21 @@ __all__ = [
     "color_hist_stats",
     "compare_hist_summaries",
     "batch_summarise_color_hist",
+    # Агрегация оценок пар фрагментов
+    "PairScoreConfig",
+    "PairScoreEntry",
+    "PairScoreSummary",
+    "make_pair_score_entry",
+    "entries_from_pair_results",
+    "summarise_pair_scores",
+    "filter_strong_pair_matches",
+    "filter_weak_pair_matches",
+    "filter_pair_by_score_range",
+    "filter_pair_by_channel",
+    "filter_pair_by_dominant_channel",
+    "top_k_pair_entries",
+    "best_pair_entry",
+    "pair_score_stats",
+    "compare_pair_summaries",
+    "batch_summarise_pair_scores",
 ]
