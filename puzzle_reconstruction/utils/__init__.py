@@ -428,6 +428,20 @@
                           top_k_pair_entries, best_pair_entry,
                           pair_score_stats, compare_pair_summaries,
                           batch_summarise_pair_scores)
+    rank_result_utils   — утилиты агрегации результатов ранжирования пар
+                          (RankResultConfig, RankResultEntry,
+                          RankResultSummary, make_rank_result_entry,
+                          entries_from_ranked_pairs,
+                          summarise_rank_results,
+                          filter_high_rank_entries,
+                          filter_low_rank_entries,
+                          filter_by_rank_position,
+                          filter_rank_by_score_range,
+                          filter_rank_by_dominant_channel,
+                          top_k_rank_entries, best_rank_entry,
+                          rerank_entries, rank_result_stats,
+                          compare_rank_summaries,
+                          batch_summarise_rank_results)
 """
 from .logger import (
     get_logger,
@@ -1607,6 +1621,25 @@ from .pair_score_utils import (
     compare_pair_summaries,
     batch_summarise_pair_scores,
 )
+from .rank_result_utils import (
+    RankResultConfig,
+    RankResultEntry,
+    RankResultSummary,
+    make_rank_result_entry,
+    entries_from_ranked_pairs,
+    summarise_rank_results,
+    filter_high_rank_entries,
+    filter_low_rank_entries,
+    filter_by_rank_position,
+    filter_rank_by_score_range,
+    filter_rank_by_dominant_channel,
+    top_k_rank_entries,
+    best_rank_entry,
+    rerank_entries,
+    rank_result_stats,
+    compare_rank_summaries,
+    batch_summarise_rank_results,
+)
 
 __all__ = [
     # Логирование
@@ -2674,4 +2707,22 @@ __all__ = [
     "pair_score_stats",
     "compare_pair_summaries",
     "batch_summarise_pair_scores",
+    # Агрегация результатов ранжирования пар
+    "RankResultConfig",
+    "RankResultEntry",
+    "RankResultSummary",
+    "make_rank_result_entry",
+    "entries_from_ranked_pairs",
+    "summarise_rank_results",
+    "filter_high_rank_entries",
+    "filter_low_rank_entries",
+    "filter_by_rank_position",
+    "filter_rank_by_score_range",
+    "filter_rank_by_dominant_channel",
+    "top_k_rank_entries",
+    "best_rank_entry",
+    "rerank_entries",
+    "rank_result_stats",
+    "compare_rank_summaries",
+    "batch_summarise_rank_results",
 ]
