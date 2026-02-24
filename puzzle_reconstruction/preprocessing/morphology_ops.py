@@ -101,7 +101,9 @@ def erode(
     _validate_ksize(ksize)
     _validate_kernel_type(kernel_type)
     k = _make_kernel(kernel_type, ksize)
-    return cv2.erode(img.astype(np.uint8), k, iterations=iterations)
+    border = cv2.BORDER_CONSTANT if ksize > 3 else cv2.BORDER_REFLECT_101
+    return cv2.erode(img.astype(np.uint8), k, iterations=iterations,
+                     borderType=border, borderValue=0)
 
 
 def dilate(
