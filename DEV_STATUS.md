@@ -970,3 +970,158 @@ DTW **не является метрикой** — неравенство тре
 
 **Реальный объём проекта: ~45 000 LOC уникального кода (не 91 000).**
 Коэффициент раздутия: ×2.0 (в основном за счёт utils/).
+
+---
+
+## 19. Анализ импортов utils: мёртвый код
+
+### 19.1 Критическое открытие: utils не используется production-кодом
+
+Полный AST-анализ **всех** файлов в `algorithms/`, `matching/`, `assembly/`,
+`verification/`, `preprocessing/`, `scoring/`, `tools/`, `pipeline.py`,
+`main.py`, `models.py`, `config.py`, `clustering.py`, `export.py` выявил:
+
+```
+Всего строк с импортом из utils во всём production-коде: 2
+
+matching/icp.py:32:    from ..utils.geometry import resample_curve, rotate_points, align_centroids
+pipeline.py:51:        from .utils.logger import get_logger, PipelineTimer
+```
+
+**Из 102 модулей utils (32 590 LOC) production-код использует ровно 2 модуля
+и 5 функций.**
+
+### 19.2 Классификация 102 модулей utils по использованию
+
+| Категория | Кол-во модулей | LOC | Описание |
+|-----------|:--------------:|:---:|----------|
+| **Используются production-кодом** | 2 | ~700 | `geometry`, `logger` — реально нужны |
+| **Только тестируются (не используются)** | 59 | ~19 300 | Есть тесты, но ни один production-файл их не импортирует |
+| **Полные орфаны (даже тесты не ссылаются)** | 41 | ~12 565 | Мёртвый код, ни разу нигде не упоминается |
+
+### 19.3 Орфаны — 41 файл, 12 565 LOC чистого мёртвого кода
+
+```
+alignment_utils.py (326)    annealing_score_utils.py (245)   assembly_score_utils.py (290)
+candidate_rank_utils.py (222)  canvas_build_utils.py (199)   color_edge_export_utils.py (293)
+color_hist_utils.py (256)   config_utils.py (328)            consensus_score_utils.py (221)
+contour_profile_utils.py (359)  curve_metrics.py (262)       descriptor_utils.py (292)
+edge_profile_utils.py (357)  event_affine_utils.py (323)     filter_pipeline_utils.py (204)
+fragment_filter_utils.py (323)  icp_utils.py (274)           image_cluster_utils.py (431)
+image_transform_utils.py (290)  noise_stats_utils.py (300)   orient_skew_utils.py (309)
+overlap_score_utils.py (354)  pair_score_utils.py (251)      patch_score_utils.py (304)
+path_plan_utils.py (334)    placement_metrics_utils.py (435) placement_score_utils.py (335)
+polygon_ops_utils.py (386)  quality_score_utils.py (234)     rank_result_utils.py (264)
+ranking_layout_utils.py (415)  region_score_utils.py (364)   render_utils.py (277)
+rotation_hist_utils.py (414)  rotation_score_utils.py (391)  score_matrix_utils.py (292)
+score_norm_utils.py (194)   segment_utils.py (262)           seq_gap_utils.py (311)
+shape_match_utils.py (205)  tracker_utils.py (439)
+```
+
+Средний размер орфана: **306 LOC** — аномально однородно, что подтверждает
+шаблонную генерацию.
+
+### 19.4 Влияние на тестовую базу
+
+| Метрика | Значение |
+|---------|:--------:|
+| Тестовых файлов, тестирующих utils | **90 / 504 (18%)** |
+| LOC тестов для utils | **35 008 / 167 838 (21%)** |
+
+21% всего тестового кода (~35 000 LOC) тестирует модули, которые
+**ни один production-файл не импортирует**. Тесты были сгенерированы
+вместе с utils-модулями, создавая иллюзию покрытия.
+
+### 19.5 __init__.py — 3 277 строк реэкспорта
+
+Файл `utils/__init__.py` содержит **3 277 строк** и реэкспортирует
+всё из всех 102 модулей. Это самый большой `__init__.py` в проекте,
+но его никто не импортирует — ядро использует прямые импорты
+(`from ..utils.geometry import ...`), а не `from ..utils import ...`.
+
+---
+
+## 20. Анализ preprocessing/ и scoring/ — аналогичные проблемы
+
+### 20.1 preprocessing/ (38 модулей, 11 693 LOC)
+
+**Шаблонные признаки:**
+
+| Индикатор | Значение |
+|-----------|:--------:|
+| С `@dataclass` | **32/38 (84%)** |
+| С `__post_init__` | **19/38 (50%)** |
+| С `batch_*` | **32/38 (84%)** |
+| С русской валидацией «должен быть» | **14/38 (37%)** |
+| Размеры файлов | min=89, max=457, **медиана=316** |
+
+**Использование ядром:** из 38 модулей production-код импортирует только **4**:
+
+```
+segmentation  — pipeline.py, algorithms/__init__.py
+contour       — pipeline.py, algorithms/, matching/
+color_norm    — pipeline.py
+orientation   — pipeline.py
+```
+
+**Орфаны: 31 из 38 (82%), ~9 700 LOC мёртвого кода:**
+
+```
+augment (340)  background_remover (296)  binarizer (388)  channel_splitter (234)
+color_normalizer (316)  contour_processor (456)  contrast_enhancer (321)  denoise (231)
+deskewer (271)  document_cleaner (300)  edge_detector (384)  edge_enhancer (298)
+edge_sharpener (328)  fragment_cropper (275)  frequency_analyzer (385)  frequency_filter (292)
+gradient_analyzer (315)  illumination_corrector (304)  illumination_normalizer (335)
+image_enhancer (277)  morphology_ops (389)  noise_analyzer (254)  noise_filter (291)
+noise_reducer (253)  noise_reduction (371)  patch_normalizer (287)  patch_sampler (439)
+quality_assessor (269)  skew_correction (370)  texture_analyzer (349)  warp_corrector (352)
+```
+
+Характерно: `denoise`, `noise_filter`, `noise_reducer`, `noise_reduction` —
+**4 файла** для одной и той же задачи (шумоподавление). Это типичный признак
+генерации: каждый вариант формулировки порождает отдельный файл.
+
+### 20.2 scoring/ (12 модулей, 3 920 LOC)
+
+**Шаблонные признаки:**
+
+| Индикатор | Значение |
+|-----------|:--------:|
+| С `@dataclass` | **11/12 (92%)** |
+| С `__post_init__` | **11/12 (92%)** |
+| С `batch_*` | **7/12 (58%)** |
+| С русской валидацией «должен быть» | **12/12 (100%)** |
+| Размеры файлов | min=193, max=400, **медиана=338** |
+
+**Scoring — наиболее шаблонный модуль проекта**: 100% файлов содержат
+русские валидационные строки, 92% следуют dataclass-шаблону.
+
+**Использование ядром:** только **2 из 12**:
+
+```
+consistency_checker — verification/__init__.py
+score_normalizer    — matching/__init__.py
+```
+
+**Орфаны: 9 из 12 (75%), ~3 030 LOC мёртвого кода:**
+
+```
+boundary_scorer (333)  evidence_aggregator (289)  gap_scorer (337)
+global_ranker (331)  match_evaluator (349)  match_scorer (324)
+pair_filter (338)  pair_ranker (330)  threshold_selector (399)
+```
+
+### 20.3 Совокупный мёртвый код проекта
+
+| Источник | Орфаны (LOC) | Не используется production (LOC) |
+|----------|:------------:|:-------------------------------:|
+| utils/ | 12 565 | ~31 890 (из 32 590) |
+| preprocessing/ | ~9 700 | ~9 700 |
+| scoring/ | ~3 030 | ~3 330 |
+| utils/__init__.py | 3 277 | 3 277 |
+| **Итого** | **~28 572** | **~48 197** |
+
+Из **91 180 LOC production-кода** около **48 200 LOC (53%)** не импортируется
+ни одним файлом, который реально участвует в работе пайплайна.
+
+**Реальный работающий код: ~43 000 LOC.**
