@@ -43,10 +43,9 @@ from puzzle_reconstruction.algorithms.synthesis import (
     compute_fractal_signature, build_edge_signatures
 )
 from puzzle_reconstruction.matching.compat_matrix import build_compat_matrix
-from puzzle_reconstruction.assembly.greedy import greedy_assembly
-from puzzle_reconstruction.assembly.annealing import simulated_annealing
-from puzzle_reconstruction.assembly.beam_search import beam_search
-from puzzle_reconstruction.assembly.gamma_optimizer import gamma_optimizer
+from puzzle_reconstruction.assembly.parallel import (
+    run_all_methods, run_selected, pick_best, ALL_METHODS, summary_table
+)
 from puzzle_reconstruction.verification.metrics import (
     evaluate_reconstruction, compare_methods, BenchmarkResult
 )
@@ -58,21 +57,22 @@ log = get_logger("benchmark")
 
 # ─── Методы сборки ────────────────────────────────────────────────────────
 
-ASSEMBLY_METHODS = {
-    "greedy": lambda frags, entries, cfg: greedy_assembly(frags, entries),
-    "sa":     lambda frags, entries, cfg: simulated_annealing(
-                  greedy_assembly(frags, entries), entries,
-                  T_max=cfg.assembly.sa_T_max,
-                  max_iter=cfg.assembly.sa_iter,
-                  seed=cfg.assembly.seed),
-    "beam":   lambda frags, entries, cfg: beam_search(
-                  frags, entries,
-                  beam_width=cfg.assembly.beam_width),
-    "gamma":  lambda frags, entries, cfg: gamma_optimizer(
-                  frags, entries,
-                  n_iter=cfg.assembly.gamma_iter,
-                  seed=cfg.assembly.seed),
-}
+# Все методы — через реестр parallel.py (не нужен отдельный dict)
+BENCHMARK_METHODS = ALL_METHODS  # ["greedy","sa","beam","gamma","genetic","exhaustive","ant_colony","mcts"]
+
+
+def _run_method(method: str, fragments, entries, cfg: Config):
+    """Запускает один метод через parallel.py."""
+    kwargs = dict(
+        beam_width=cfg.assembly.beam_width,
+        n_iterations=cfg.assembly.sa_iter,
+        n_simulations=cfg.assembly.mcts_sim,
+        seed=cfg.assembly.seed,
+    )
+    results = run_selected(fragments, entries, methods=[method], **kwargs)
+    if not results or not results[0].success:
+        raise RuntimeError(f"Метод '{method}' не дал результата")
+    return results[0].assembly
 
 
 # ─── Один прогон бенчмарка ────────────────────────────────────────────────
@@ -108,14 +108,14 @@ def run_trial(n_pieces: int,
 
     results = {}
     for method in methods:
-        if method not in ASSEMBLY_METHODS:
+        if method not in ALL_METHODS:
             log.warning(f"  Неизвестный метод: {method}")
             continue
 
         log.info(f"  Метод: {method}...")
         t0 = time.perf_counter()
         try:
-            assembly = ASSEMBLY_METHODS[method](fragments, entries, cfg)
+            assembly = _run_method(method, fragments, entries, cfg)
         except Exception as e:
             log.error(f"  Ошибка в методе {method}: {e}")
             continue
@@ -142,10 +142,16 @@ def run_benchmark(n_pieces_list: List[int],
                   noise: float = 0.5,
                   output_path: str = None) -> None:
 
+    # Раскрываем псевдоним "all" → все методы
+    if "all" in methods:
+        methods = ALL_METHODS[:]
+
     cfg = Config.default()
     cfg.assembly.beam_width = 8
     cfg.assembly.sa_iter    = 2000
     cfg.assembly.gamma_iter = 1500
+    cfg.assembly.mcts_sim   = 100
+    cfg.assembly.genetic_gen = 50
 
     all_results: Dict[str, Dict[int, List[BenchmarkResult]]] = {
         m: {n: [] for n in n_pieces_list} for m in methods
@@ -330,9 +336,12 @@ def main():
                          default=[4, 6, 9],
                          help="Число фрагментов для тестирования")
     parser.add_argument("--methods", "-m", nargs="+",
-                         default=["greedy", "sa", "beam"],
-                         choices=["greedy", "sa", "beam", "gamma"],
-                         help="Методы сборки для сравнения")
+                         default=["greedy", "sa", "beam", "gamma"],
+                         choices=ALL_METHODS + ["all"],
+                         help=(
+                             "Методы сборки для сравнения. "
+                             "Используйте 'all' для запуска всех 8 методов."
+                         ))
     parser.add_argument("--trials",  "-t", type=int, default=3,
                          help="Число прогонов для усреднения")
     parser.add_argument("--noise",   type=float, default=0.5,

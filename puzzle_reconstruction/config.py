@@ -19,7 +19,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Dict, List, Literal, Optional
 
 
 @dataclass
@@ -45,20 +45,39 @@ class FractalConfig:
 
 @dataclass
 class MatchingConfig:
-    threshold:  float = 0.3    # Минимальный score для включения в матрицу
-    dtw_window: int   = 20     # Ширина окна Сакое-Чибы
+    threshold:       float = 0.3    # Минимальный score для включения в матрицу
+    dtw_window:      int   = 20     # Ширина окна Сакое-Чибы
+    active_matchers: List[str] = field(
+        default_factory=lambda: ["css", "dtw", "fd", "text"]
+    )  # Список активных матчеров
+    matcher_weights: Dict[str, float] = field(
+        default_factory=lambda: {"css": 0.35, "dtw": 0.30, "fd": 0.20, "text": 0.15}
+    )  # Веса матчеров (сумма = 1.0)
+    combine_method:  Literal["weighted", "rank", "min", "max"] = "weighted"
 
 
 @dataclass
 class AssemblyConfig:
-    method:      Literal["greedy", "sa", "beam", "gamma"] = "beam"
-    beam_width:  int   = 10
-    sa_iter:     int   = 5000
-    sa_T_max:    float = 1000.0
-    sa_T_min:    float = 0.1
-    sa_cooling:  float = 0.995
-    gamma_iter:  int   = 3000     # Итераций для гамма-оптимизатора
-    seed:        int   = 42
+    method:      Literal[
+        "greedy", "sa", "beam", "gamma",
+        "genetic", "exhaustive", "ant_colony", "mcts",
+        "auto", "all"
+    ] = "beam"
+    beam_width:      int   = 10
+    sa_iter:         int   = 5000
+    sa_T_max:        float = 1000.0
+    sa_T_min:        float = 0.1
+    sa_cooling:      float = 0.995
+    gamma_iter:      int   = 3000     # Итераций для гамма-оптимизатора
+    seed:            int   = 42
+    # Параметры алгоритмов, ранее не подключённых к CLI:
+    genetic_pop:     int   = 50       # Размер популяции (genetic)
+    genetic_gen:     int   = 100      # Число поколений (genetic)
+    aco_ants:        int   = 20       # Число агентов-муравьёв (ant_colony)
+    aco_iter:        int   = 100      # Итерации ACO (ant_colony)
+    mcts_sim:        int   = 200      # Симуляции MCTS (mcts)
+    exhaustive_max_n: int  = 9        # Макс. N для exact search (exhaustive)
+    auto_timeout:    float = 60.0     # Таймаут на метод в auto/all режиме
 
 
 @dataclass
@@ -131,14 +150,20 @@ class Config:
             cfg.apply_overrides(alpha=0.7, method="sa", sa_iter=3000)
         """
         mapping = {
-            "alpha":       ("synthesis",    "alpha"),
-            "n_sides":     ("synthesis",    "n_sides"),
-            "seg_method":  ("segmentation", "method"),
-            "threshold":   ("matching",     "threshold"),
-            "method":      ("assembly",     "method"),
-            "beam_width":  ("assembly",     "beam_width"),
-            "sa_iter":     ("assembly",     "sa_iter"),
-            "seed":        ("assembly",     "seed"),
+            "alpha":           ("synthesis",    "alpha"),
+            "n_sides":         ("synthesis",    "n_sides"),
+            "seg_method":      ("segmentation", "method"),
+            "threshold":       ("matching",     "threshold"),
+            "method":          ("assembly",     "method"),
+            "beam_width":      ("assembly",     "beam_width"),
+            "sa_iter":         ("assembly",     "sa_iter"),
+            "seed":            ("assembly",     "seed"),
+            "genetic_pop":     ("assembly",     "genetic_pop"),
+            "genetic_gen":     ("assembly",     "genetic_gen"),
+            "aco_ants":        ("assembly",     "aco_ants"),
+            "aco_iter":        ("assembly",     "aco_iter"),
+            "mcts_sim":        ("assembly",     "mcts_sim"),
+            "auto_timeout":    ("assembly",     "auto_timeout"),
         }
         for key, value in kwargs.items():
             if value is None:
