@@ -20,60 +20,22 @@ from puzzle_reconstruction.models import CompatEntry, Edge, Fragment
 # ─── helpers ──────────────────────────────────────────────────────────────────
 
 def _make_fragment(fid: int) -> Fragment:
-    from puzzle_reconstruction.models import EdgeSide, EdgeSignature, FractalSignature, TangramSignature, ShapeClass
-    import numpy as _np
-    fs = FractalSignature(
-        fd_box=1.0, fd_divider=1.0,
-        ifs_coeffs=_np.zeros(4),
-        css_image=[],
-        chain_code="0",
-        curve=_np.zeros((2, 2)),
-    )
-    ts = TangramSignature(
-        polygon=_np.zeros((3, 2)),
-        shape_class=ShapeClass.TRIANGLE,
-        centroid=_np.zeros(2),
-        angle=0.0,
-        scale=1.0,
-        area=0.5,
-    )
     edge = Edge(
         edge_id=fid * 10,
-        side=EdgeSide.TOP,
-        fractal=fs,
-        tangram=ts,
-        signature=EdgeSignature(edge_id=fid * 10, side=EdgeSide.TOP, fractal=fs, tangram=ts),
+        contour=np.zeros((5, 2), dtype=np.float64),
+        text_hint="",
     )
     return Fragment(
         fragment_id=fid,
-        image=_np.zeros((16, 16, 3), dtype=_np.uint8),
-        mask=_np.zeros((16, 16), dtype=_np.uint8),
+        image=np.zeros((16, 16, 3), dtype=np.uint8),
+        mask=np.zeros((16, 16), dtype=np.uint8),
         edges=[edge],
     )
 
 
 def _make_compat(fid_i: int, fid_j: int, score: float) -> CompatEntry:
-    from puzzle_reconstruction.models import EdgeSide, EdgeSignature, FractalSignature, TangramSignature, ShapeClass
-    import numpy as _np
-
     def _edge(fid):
-        fs = FractalSignature(
-            fd_box=1.0, fd_divider=1.0,
-            ifs_coeffs=_np.zeros(4),
-            css_image=[],
-            chain_code="0",
-            curve=_np.zeros((2, 2)),
-        )
-        ts = TangramSignature(
-            polygon=_np.zeros((3, 2)),
-            shape_class=ShapeClass.TRIANGLE,
-            centroid=_np.zeros(2),
-            angle=0.0,
-            scale=1.0,
-            area=0.5,
-        )
-        sig = EdgeSignature(edge_id=fid * 10, side=EdgeSide.TOP, fractal=fs, tangram=ts)
-        return Edge(edge_id=fid * 10, side=EdgeSide.TOP, fractal=fs, tangram=ts, signature=sig)
+        return Edge(edge_id=fid * 10, contour=np.zeros((5, 2), dtype=np.float64))
 
     return CompatEntry(edge_i=_edge(fid_i), edge_j=_edge(fid_j), score=score)
 
