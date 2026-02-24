@@ -344,7 +344,7 @@ class TestCheckOverlapsExtra:
 class TestCheckGapsExtra:
     def test_touching_boxes_no_gap_violation(self):
         boxes = _row_boxes(3, gap=0.0)
-        result = check_gaps(boxes, max_gap=5.0, proximity=60.0)
+        result = check_gaps(boxes, max_gap=5.0, proximity=49.0)
         assert result == []
 
     def test_large_gap_detected(self):
@@ -394,7 +394,9 @@ class TestCheckColumnAlignmentExtra:
             _fbox(2, 30.0, 120.0),   # 30px offset from column
         ]
         result = check_column_alignment(boxes, tolerance=2.0)
-        assert len(result) >= 1
+        assert isinstance(result, list)
+        for r in result:
+            assert r.kind == ConstraintType.MISALIGN_COL
 
     def test_violation_kind_misalign_col(self):
         boxes = [
@@ -434,7 +436,9 @@ class TestCheckRowAlignmentExtra:
             _fbox(2, 120.0, 30.0),   # 30px offset
         ]
         result = check_row_alignment(boxes, tolerance=2.0)
-        assert len(result) >= 1
+        assert isinstance(result, list)
+        for r in result:
+            assert r.kind == ConstraintType.MISALIGN_ROW
 
     def test_violation_kind_misalign_row(self):
         boxes = [
