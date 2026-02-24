@@ -1077,9 +1077,24 @@ noise_reducer (253)  noise_reduction (371)  patch_normalizer (287)  patch_sample
 quality_assessor (269)  skew_correction (370)  texture_analyzer (349)  warp_corrector (352)
 ```
 
-Характерно: `denoise`, `noise_filter`, `noise_reducer`, `noise_reduction` —
-**4 файла** для одной и той же задачи (шумоподавление). Это типичный признак
-генерации: каждый вариант формулировки порождает отдельный файл.
+Характерно: **массовое дублирование по «синонимам»** — генератор создавал
+отдельный файл для каждого варианта формулировки одной и той же задачи:
+
+| Задача | Файлы-дубликаты | Дублированные функции |
+|--------|:-:|:-:|
+| Шумоподавление | `denoise`, `noise_filter`, `noise_reducer`, `noise_reduction` **(4)** | `gaussian_denoise` ≈ `gaussian_filter`, `bilateral_denoise` ≈ `bilateral_filter`, `nlmeans_denoise` ≈ `nlm_filter` |
+| Нормализация цвета | `color_norm`, `color_normalizer` **(2)** | `white_balance()`, `gamma_correction()`, `normalize_brightness()` |
+| Контраст | `contrast`, `contrast_enhancer` **(2)** | CLAHE, histeq, gamma, stretch |
+| Детекция краёв | `edge_detector`, `edge_enhancer`, `edge_sharpener` **(3)** | Варианты Canny/Sobel/Laplacian |
+| Коррекция освещения | `illumination_corrector`, `illumination_normalizer` **(2)** | Retinex, background subtraction |
+
+Итого **~13 файлов** (≈4 000 LOC) сводятся к **~5 задачам** — коэффициент
+дублирования ×2.6.
+
+**Наиболее качественные (не-шаблонные) модули:**
+- `contour.py` (158 LOC) — RDP, corner detection, edge splitting. Минимум boilerplate.
+- `orientation.py` (88 LOC) — Hough + PCA fallback. Самый компактный.
+- `segmentation.py` (98 LOC) — Otsu + adaptive + GrabCut. Чистая структура.
 
 ### 20.2 scoring/ (12 модулей, 3 920 LOC)
 
@@ -1110,6 +1125,24 @@ boundary_scorer (333)  evidence_aggregator (289)  gap_scorer (337)
 global_ranker (331)  match_evaluator (349)  match_scorer (324)
 pair_filter (338)  pair_ranker (330)  threshold_selector (399)
 ```
+
+**100% файлов следуют шаблону:** Config → Result → core_function → batch_function.
+
+```python
+# Шаблон повторяется дословно во всех 12 файлах:
+@dataclass
+class ScorerConfig:
+    weights: Dict[str, float] = field(default_factory=lambda: {...})
+    min_score: float = 0.0
+    max_score: float = 1.0
+    def __post_init__(self):
+        for name, w in self.weights.items():
+            if w < 0.0:
+                raise ValueError(f"Вес канала '{name}' должен быть >= 0, получено {w}")
+```
+
+**Наиболее качественный модуль:** `rank_fusion.py` (192 LOC) — RRF, Borda count,
+score fusion. Чистый алгоритмический код без dataclass-шаблона.
 
 ### 20.3 Совокупный мёртвый код проекта
 
