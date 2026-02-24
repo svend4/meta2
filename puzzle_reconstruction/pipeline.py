@@ -43,12 +43,16 @@ from .preprocessing.color_norm import normalize_color
 from .algorithms.tangram.inscriber import fit_tangram
 from .algorithms.synthesis import compute_fractal_signature, build_edge_signatures
 from .matching.compat_matrix import build_compat_matrix
-from .assembly.greedy import greedy_assembly
-from .assembly.annealing import simulated_annealing
-from .assembly.beam_search import beam_search
-from .assembly.gamma_optimizer import gamma_optimizer
+from .assembly.parallel import (
+    run_all_methods,
+    run_selected,
+    pick_best,
+    summary_table,
+    ALL_METHODS,
+)
 from .verification.ocr import verify_full_assembly
 from .utils.logger import get_logger, PipelineTimer
+from .utils.event_bus import EventBus, make_event_bus
 
 
 class PipelineResult:
@@ -106,6 +110,11 @@ class Pipeline:
         self.on_progress = on_progress
         self.log         = get_logger("pipeline", level=log_level, log_file=log_file)
         self._timer      = PipelineTimer()
+        self._bus: Optional[EventBus] = None
+        try:
+            self._bus = make_event_bus()
+        except Exception:
+            pass  # event_bus опционален
 
     # ── Полный прогон ────────────────────────────────────────────────────
 
@@ -264,47 +273,72 @@ class Pipeline:
 
     def assemble(self, fragments: List[Fragment], entries: list) -> Assembly:
         """
-        Собирает фрагменты выбранным в конфиге методом.
+        Собирает фрагменты выбранным в конфиге методом через реестр parallel.py.
+        Поддерживает все 8 алгоритмов + auto/all режимы.
         """
         method = self.cfg.assembly.method
         self.log.info(f"  Сборка: метод={method}")
+        self._emit("assembly_start", {"method": method, "n_fragments": len(fragments)})
 
-        if method == "greedy":
-            asm = greedy_assembly(fragments, entries)
+        cfg = self.cfg.assembly
+        kwargs = dict(
+            beam_width=cfg.beam_width,
+            n_iterations=cfg.sa_iter,
+            n_simulations=cfg.mcts_sim,
+            seed=cfg.seed,
+        )
 
-        elif method == "sa":
-            init = greedy_assembly(fragments, entries)
-            asm  = simulated_annealing(
-                init, entries,
-                T_max=self.cfg.assembly.sa_T_max,
-                T_min=self.cfg.assembly.sa_T_min,
-                cooling=self.cfg.assembly.sa_cooling,
-                max_iter=self.cfg.assembly.sa_iter,
-                seed=self.cfg.assembly.seed,
-            )
-
-        elif method == "beam":
-            asm = beam_search(fragments, entries,
-                               beam_width=self.cfg.assembly.beam_width)
-
-        elif method == "gamma":
-            init = greedy_assembly(fragments, entries)
-            asm  = gamma_optimizer(
+        if method == "all":
+            results = run_all_methods(
                 fragments, entries,
-                n_iter=self.cfg.assembly.gamma_iter,
-                init_assembly=init,
-                seed=self.cfg.assembly.seed,
+                methods=ALL_METHODS,
+                timeout=cfg.auto_timeout,
+                n_workers=min(4, len(ALL_METHODS)),
+                **kwargs,
             )
+            self.log.info("\n" + summary_table(results))
+            asm = pick_best(results)
+            if asm is None:
+                raise RuntimeError("Все методы завершились с ошибкой")
 
-        elif method == "exhaustive":
-            from .assembly.exhaustive import exhaustive_assembly
-            asm = exhaustive_assembly(fragments, entries,
-                                      seed=self.cfg.assembly.seed)
+        elif method == "auto":
+            methods = self._auto_methods(len(fragments))
+            self.log.info(f"  Авто-выбор ({len(fragments)} фрагментов): {methods}")
+            results = run_all_methods(
+                fragments, entries,
+                methods=methods,
+                timeout=cfg.auto_timeout,
+                **kwargs,
+            )
+            self.log.info("\n" + summary_table(results))
+            asm = pick_best(results)
+            if asm is None:
+                raise RuntimeError("Все авто-выбранные методы завершились с ошибкой")
+
         else:
-            raise ValueError(f"Неизвестный метод сборки: '{method}'")
+            results = run_selected(fragments, entries, methods=[method], **kwargs)
+            if not results or not results[0].success:
+                err = results[0].error if results else "нет результата"
+                raise RuntimeError(f"Метод '{method}' завершился с ошибкой: {err}")
+            asm = results[0].assembly
 
         self.log.info(f"  Score: {asm.total_score:.4f}")
+        self._emit("assembly_done", {"score": asm.total_score, "method": method})
         return asm
+
+    @staticmethod
+    def _auto_methods(n_fragments: int) -> list:
+        """Выбирает методы по числу фрагментов."""
+        if n_fragments <= 4:
+            return ["exhaustive"]
+        elif n_fragments <= 8:
+            return ["exhaustive", "beam"]
+        elif n_fragments <= 15:
+            return ["beam", "mcts", "sa"]
+        elif n_fragments <= 30:
+            return ["genetic", "gamma", "ant_colony"]
+        else:
+            return ["gamma", "sa"]
 
     # ── Этап 4: Верификация ──────────────────────────────────────────────
 
@@ -329,5 +363,15 @@ class Pipeline:
         if self.on_progress is not None:
             try:
                 self.on_progress(stage, done, total)
+            except Exception:
+                pass
+        self._emit("progress", {"stage": stage, "done": done, "total": total})
+
+    def _emit(self, event: str, data: dict) -> None:
+        """Публикует событие в event_bus (если доступен)."""
+        if self._bus is not None:
+            try:
+                from .utils.event_bus import log_event
+                log_event(self._bus, event, data)
             except Exception:
                 pass

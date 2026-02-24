@@ -46,10 +46,13 @@ from puzzle_reconstruction.algorithms.synthesis import (
     compute_fractal_signature, build_edge_signatures
 )
 from puzzle_reconstruction.matching.compat_matrix import build_compat_matrix
-from puzzle_reconstruction.assembly.greedy import greedy_assembly
-from puzzle_reconstruction.assembly.annealing import simulated_annealing
-from puzzle_reconstruction.assembly.beam_search import beam_search
-from puzzle_reconstruction.assembly.gamma_optimizer import gamma_optimizer
+from puzzle_reconstruction.assembly.parallel import (
+    run_all_methods,
+    run_selected,
+    pick_best,
+    summary_table,
+    ALL_METHODS,
+)
 from puzzle_reconstruction.verification.ocr import (
     verify_full_assembly, render_assembly_image
 )
@@ -72,9 +75,16 @@ def build_parser() -> argparse.ArgumentParser:
                         help="JSON/YAML файл конфигурации")
 
     # Метод сборки
+    _all_choices = ALL_METHODS + ["auto", "all"]
     parser.add_argument("--method", "-M", default="beam",
-                        choices=["greedy", "sa", "beam", "gamma"],
-                        help="Алгоритм сборки")
+                        choices=_all_choices,
+                        help=(
+                            "Алгоритм сборки: "
+                            "greedy/sa/beam/gamma/genetic/exhaustive/ant_colony/mcts — "
+                            "одиночный метод; "
+                            "auto — автовыбор по числу фрагментов; "
+                            "all — все 8 методов с выбором лучшего"
+                        ))
 
     # Параметры (перекрывают конфиг)
     parser.add_argument("--alpha",      type=float, default=None,
@@ -88,8 +98,20 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Минимальная оценка совместимости")
     parser.add_argument("--beam-width", type=int,   default=None,
                         help="Ширина луча (только для --method beam)")
-    parser.add_argument("--sa-iter",    type=int,   default=None,
+    parser.add_argument("--sa-iter",      type=int,   default=None,
                         help="Итераций отжига (только для --method sa)")
+    parser.add_argument("--mcts-sim",     type=int,   default=None,
+                        help="Симуляции MCTS (только для --method mcts)")
+    parser.add_argument("--genetic-pop",  type=int,   default=None,
+                        help="Размер популяции (только для --method genetic)")
+    parser.add_argument("--genetic-gen",  type=int,   default=None,
+                        help="Число поколений (только для --method genetic)")
+    parser.add_argument("--aco-ants",     type=int,   default=None,
+                        help="Число муравьёв (только для --method ant_colony)")
+    parser.add_argument("--aco-iter",     type=int,   default=None,
+                        help="Итерации ACO (только для --method ant_colony)")
+    parser.add_argument("--auto-timeout", type=float, default=None,
+                        help="Таймаут на метод в секундах (для --method auto/all)")
 
     # Режимы
     parser.add_argument("--visualize", "-v", action="store_true",
@@ -156,38 +178,70 @@ def process_fragment(frag: Fragment, cfg: Config, log) -> Fragment:
     return frag
 
 
+def _auto_methods(n_fragments: int) -> list:
+    """Выбирает методы сборки по числу фрагментов."""
+    if n_fragments <= 4:
+        return ["exhaustive"]
+    elif n_fragments <= 8:
+        return ["exhaustive", "beam"]
+    elif n_fragments <= 15:
+        return ["beam", "mcts", "sa"]
+    elif n_fragments <= 30:
+        return ["genetic", "gamma", "ant_colony"]
+    else:
+        return ["gamma", "sa"]
+
+
 def assemble(fragments, entries, cfg: Config, log):
-    """Запускает выбранный метод сборки."""
+    """Запускает выбранный метод(ы) сборки через единый реестр parallel.py."""
     method = cfg.assembly.method
     log.info(f"  Метод: {method}")
 
-    if method == "greedy":
-        return greedy_assembly(fragments, entries)
+    kwargs = dict(
+        beam_width=cfg.assembly.beam_width,
+        n_iterations=cfg.assembly.sa_iter,
+        n_simulations=cfg.assembly.mcts_sim,
+        seed=cfg.assembly.seed,
+    )
 
-    elif method == "sa":
-        init = greedy_assembly(fragments, entries)
-        return simulated_annealing(
-            init, entries,
-            T_max=cfg.assembly.sa_T_max,
-            T_min=cfg.assembly.sa_T_min,
-            cooling=cfg.assembly.sa_cooling,
-            max_iter=cfg.assembly.sa_iter,
-            seed=cfg.assembly.seed,
+    if method == "all":
+        results = run_all_methods(
+            fragments, entries,
+            methods=ALL_METHODS,
+            timeout=cfg.assembly.auto_timeout,
+            n_workers=min(4, len(ALL_METHODS)),
+            **kwargs,
         )
+        log.info("\n" + summary_table(results))
+        best = pick_best(results)
+        if best is None:
+            log.error("Все методы завершились с ошибкой")
+            sys.exit(1)
+        return best
 
-    elif method == "beam":
-        return beam_search(fragments, entries,
-                            beam_width=cfg.assembly.beam_width)
+    if method == "auto":
+        methods = _auto_methods(len(fragments))
+        log.info(f"  Авто-выбор ({len(fragments)} фрагментов): {methods}")
+        results = run_all_methods(
+            fragments, entries,
+            methods=methods,
+            timeout=cfg.assembly.auto_timeout,
+            **kwargs,
+        )
+        log.info("\n" + summary_table(results))
+        best = pick_best(results)
+        if best is None:
+            log.error("Все автовыбранные методы завершились с ошибкой")
+            sys.exit(1)
+        return best
 
-    elif method == "gamma":
-        init = greedy_assembly(fragments, entries)
-        return gamma_optimizer(fragments, entries,
-                                n_iter=cfg.assembly.gamma_iter,
-                                init_assembly=init,
-                                seed=cfg.assembly.seed)
-    else:
-        log.error(f"Неизвестный метод: {method}")
+    # Одиночный метод
+    results = run_selected(fragments, entries, methods=[method], **kwargs)
+    if not results or not results[0].success:
+        err = results[0].error if results else "нет результата"
+        log.error(f"Метод {method!r} завершился с ошибкой: {err}")
         sys.exit(1)
+    return results[0].assembly
 
 
 def run(args: argparse.Namespace) -> None:
@@ -213,6 +267,12 @@ def run(args: argparse.Namespace) -> None:
         method=args.method,
         beam_width=args.beam_width,
         sa_iter=args.sa_iter,
+        mcts_sim=args.mcts_sim,
+        genetic_pop=args.genetic_pop,
+        genetic_gen=args.genetic_gen,
+        aco_ants=args.aco_ants,
+        aco_iter=args.aco_iter,
+        auto_timeout=args.auto_timeout,
     )
 
     input_dir   = Path(args.input)
