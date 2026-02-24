@@ -194,11 +194,19 @@ def _make_cfg(method="greedy"):
     return cfg
 
 
+_RUN_SELECTED = "main.run_selected"
+
+
+def _mock_run_selected(mock_asm):
+    """Returns a mock result list as run_selected() would return for a single method."""
+    return [MagicMock(success=True, assembly=mock_asm, error=None)]
+
+
 class TestAssemble:
     def test_greedy_calls_greedy_assembly(self):
         cfg = _make_cfg("greedy")
         mock_asm = MagicMock()
-        with patch("main.greedy_assembly", return_value=mock_asm) as mock:
+        with patch(_RUN_SELECTED, return_value=_mock_run_selected(mock_asm)) as mock:
             result = assemble([], [], cfg, MagicMock())
         mock.assert_called_once()
         assert result is mock_asm
@@ -206,7 +214,7 @@ class TestAssemble:
     def test_beam_calls_beam_search(self):
         cfg = _make_cfg("beam")
         mock_asm = MagicMock()
-        with patch("main.beam_search", return_value=mock_asm) as mock:
+        with patch(_RUN_SELECTED, return_value=_mock_run_selected(mock_asm)) as mock:
             result = assemble([], [], cfg, MagicMock())
         mock.assert_called_once()
         assert result is mock_asm
@@ -214,50 +222,36 @@ class TestAssemble:
     def test_sa_calls_simulated_annealing(self):
         cfg = _make_cfg("sa")
         mock_asm = MagicMock()
-        mock_greedy = MagicMock()
-        with (
-            patch("main.greedy_assembly", return_value=mock_greedy),
-            patch("main.simulated_annealing", return_value=mock_asm) as mock_sa,
-        ):
+        with patch(_RUN_SELECTED, return_value=_mock_run_selected(mock_asm)) as mock:
             result = assemble([], [], cfg, MagicMock())
-        mock_sa.assert_called_once()
+        mock.assert_called_once()
         assert result is mock_asm
 
     def test_gamma_calls_gamma_optimizer(self):
         cfg = _make_cfg("gamma")
         mock_asm = MagicMock()
-        mock_greedy = MagicMock()
-        with (
-            patch("main.greedy_assembly", return_value=mock_greedy),
-            patch("main.gamma_optimizer", return_value=mock_asm) as mock_gamma,
-        ):
+        with patch(_RUN_SELECTED, return_value=_mock_run_selected(mock_asm)) as mock:
             result = assemble([], [], cfg, MagicMock())
-        mock_gamma.assert_called_once()
+        mock.assert_called_once()
         assert result is mock_asm
 
     def test_sa_uses_greedy_as_init(self):
-        """SA calls greedy_assembly first to get initial assembly."""
+        """SA delegates to run_selected with method='sa'."""
         cfg = _make_cfg("sa")
-        mock_init = MagicMock()
-        mock_final = MagicMock()
-        with (
-            patch("main.greedy_assembly", return_value=mock_init) as mock_greedy,
-            patch("main.simulated_annealing", return_value=mock_final),
-        ):
+        mock_asm = MagicMock()
+        with patch(_RUN_SELECTED, return_value=_mock_run_selected(mock_asm)) as mock:
             assemble([], [], cfg, MagicMock())
-        mock_greedy.assert_called_once()
+        _, kwargs = mock.call_args
+        assert kwargs.get("methods") == ["sa"]
 
     def test_gamma_uses_greedy_as_init(self):
-        """gamma_optimizer calls greedy_assembly first for init."""
+        """gamma delegates to run_selected with method='gamma'."""
         cfg = _make_cfg("gamma")
-        mock_init = MagicMock()
-        mock_final = MagicMock()
-        with (
-            patch("main.greedy_assembly", return_value=mock_init) as mock_greedy,
-            patch("main.gamma_optimizer", return_value=mock_final),
-        ):
+        mock_asm = MagicMock()
+        with patch(_RUN_SELECTED, return_value=_mock_run_selected(mock_asm)) as mock:
             assemble([], [], cfg, MagicMock())
-        mock_greedy.assert_called_once()
+        _, kwargs = mock.call_args
+        assert kwargs.get("methods") == ["gamma"]
 
     def test_unknown_method_sys_exit(self):
         cfg = _make_cfg("unknown")
@@ -268,14 +262,16 @@ class TestAssemble:
         cfg = _make_cfg("greedy")
         frags = [MagicMock()]
         entries = [MagicMock()]
-        with patch("main.greedy_assembly", return_value=MagicMock()) as mock:
+        with patch(_RUN_SELECTED, return_value=_mock_run_selected(MagicMock())) as mock:
             assemble(frags, entries, cfg, MagicMock())
-        mock.assert_called_once_with(frags, entries)
+        pos_args = mock.call_args[0]
+        assert pos_args[0] is frags
+        assert pos_args[1] is entries
 
     def test_beam_uses_beam_width_from_config(self):
         cfg = _make_cfg("beam")
         cfg.assembly.beam_width = 7
-        with patch("main.beam_search", return_value=MagicMock()) as mock:
+        with patch(_RUN_SELECTED, return_value=_mock_run_selected(MagicMock())) as mock:
             assemble([], [], cfg, MagicMock())
         _, kwargs = mock.call_args
-        assert kwargs.get("beam_width") == 7 or mock.call_args[0][2] == 7
+        assert kwargs.get("beam_width") == 7

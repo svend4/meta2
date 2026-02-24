@@ -236,7 +236,11 @@ def assemble(fragments, entries, cfg: Config, log):
         return best
 
     # Одиночный метод
-    results = run_selected(fragments, entries, methods=[method], **kwargs)
+    try:
+        results = run_selected(fragments, entries, methods=[method], **kwargs)
+    except ValueError as e:
+        log.error(str(e))
+        sys.exit(1)
     if not results or not results[0].success:
         err = results[0].error if results else "нет результата"
         log.error(f"Метод {method!r} завершился с ошибкой: {err}")

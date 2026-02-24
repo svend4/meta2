@@ -14,7 +14,7 @@ from typing import List
 from ..models import (Fragment, EdgeSignature, EdgeSide,
                       TangramSignature, FractalSignature)
 from .tangram.inscriber import extract_tangram_edge
-from .fractal.css import css_to_feature_vector
+from .fractal.css import curvature_scale_space, css_to_feature_vector
 from ..preprocessing.contour import resample_curve, split_contour_to_edges
 
 
@@ -25,7 +25,7 @@ def compute_fractal_signature(contour: np.ndarray) -> FractalSignature:
     from .fractal.box_counting import box_counting_fd
     from .fractal.divider import divider_fd
     from .fractal.ifs import fit_ifs_coefficients
-    from .fractal.css import curvature_scale_space, css_to_feature_vector, freeman_chain_code
+    from .fractal.css import freeman_chain_code
 
     curve = resample_curve(contour, n_points=256)
 
@@ -93,8 +93,6 @@ def _build_one_edge(edge_pts: np.ndarray,
                     alpha: float,
                     n_points: int) -> EdgeSignature:
     """Строит EdgeSignature для одного края."""
-    from .fractal.css import curvature_scale_space, css_to_feature_vector
-
     # Фрактальная кривая края (из реального контура)
     frac_curve = resample_curve(edge_pts, n_points=n_points)
 

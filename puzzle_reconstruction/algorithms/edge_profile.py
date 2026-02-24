@@ -114,7 +114,7 @@ def _resample_1d(signal: np.ndarray, n: int) -> np.ndarray:
 # ─── extract_intensity_profile ───────────────────────────────────────────────
 
 def extract_intensity_profile(img: np.ndarray,
-                               side: int,
+                               side: int = 0,
                                border_frac: float = 0.08,
                                n_samples: int = 64) -> EdgeProfile:
     """
@@ -153,7 +153,7 @@ def extract_intensity_profile(img: np.ndarray,
 # ─── extract_gradient_profile ─────────────────────────────────────────────────
 
 def extract_gradient_profile(img: np.ndarray,
-                              side: int,
+                              side: int = 0,
                               border_frac: float = 0.08,
                               n_samples: int = 64) -> EdgeProfile:
     """
@@ -197,7 +197,7 @@ def extract_gradient_profile(img: np.ndarray,
 # ─── extract_texture_profile ──────────────────────────────────────────────────
 
 def extract_texture_profile(img: np.ndarray,
-                              side: int,
+                              side: int = 0,
                               border_frac: float = 0.08,
                               n_samples: int = 64,
                               window: int = 8) -> EdgeProfile:

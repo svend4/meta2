@@ -75,7 +75,7 @@ class PipelineResult:
             f"=== Результат пайплайна ({self.timestamp}) ===",
             f"  Фрагментов на входе: {self.n_input}",
             f"  Размещено:           {self.n_placed}",
-            f"  Уверенность сборки: {self.assembly.total_score:.1%}",
+            f"  Score (уверенность сборки): {self.assembly.total_score:.1%}",
             f"  OCR-связность:       {self.assembly.ocr_score:.1%}",
             f"  Метод:               {self.cfg.assembly.method}",
             "",
