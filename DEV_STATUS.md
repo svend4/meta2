@@ -835,6 +835,79 @@ UI:                ███░░░░░░░  30%  — OpenCV viewer с dra
 | Разброс размеров файлов | 194–471 строк, медиана 326 — аномально однородно |
 | Файлов с идентичными `# ─── Section ───` разделителями | **81%** |
 
+#### 18.4.1 Конкретные примеры дублирования
+
+**`cosine_distance`** — две разные реализации:
+
+```python
+# descriptor_utils.py:67 — возвращает [0, 1]
+def cosine_distance(a, b, eps=1e-8):
+    cos = float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
+    return (1.0 - cos) / 2.0
+
+# distance_utils.py:77 — возвращает [0, 2]
+def cosine_distance(a, b):
+    return float(np.clip(1.0 - cosine_similarity(a, b), 0.0, 2.0))
+```
+
+**`normalize_contour`** — две разные реализации:
+
+```python
+# geometry.py:311 — нормализация по диагонали bbox
+def normalize_contour(pts, target_scale=1.0): ...
+
+# contour_sampler.py:401 — нормализация в [-1, 1] по max abs
+def normalize_contour(contour): ...
+```
+
+**`normalize_profile`** — дублирование в `contour_profile_utils.py:141` и `edge_profiler.py:208`.
+
+#### 18.4.2 Конкретные примеры batch-инфляции
+
+```python
+# blend_utils.py:354 — 13 строк (docstring) ради 1 строки логики:
+def batch_blend(pairs, alpha=0.5):
+    return [alpha_blend(src, dst, alpha) for src, dst in pairs]
+
+# descriptor_utils.py:270 — 6 строк ради 1 строки:
+def batch_nn_match(query_sets, train_set, metric="l2"):
+    return [nn_match(q, train_set, metric) for q in query_sets]
+```
+
+#### 18.4.3 Конкретные примеры thin-обёрток
+
+```python
+# descriptor_utils.py:62 — 1 строка логики
+def l2_distance(a, b):
+    return float(np.linalg.norm(a - b))
+
+# color_utils.py:61 — 2 строки логики
+def to_hsv(img):
+    bgr = img if img.ndim == 3 else cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    return cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
+
+# descriptor_utils.py:84 — 1 строка логики
+def l1_distance(a, b):
+    return float(np.sum(np.abs(a - b)))
+```
+
+#### 18.4.4 Идентичный шаблон валидации в 15+ файлах
+
+```python
+# annealing_schedule.py:66
+raise ValueError(f"n_steps должен быть >= 1, получено {self.n_steps}")
+# batch_processor.py
+raise ValueError(f"max_retries должен быть >= 0, получено {self.max_retries}")
+# graph_utils.py:36
+raise ValueError(f"src должен быть >= 0, получено {self.src}")
+# contour_sampler.py
+raise ValueError(f"corner_threshold должен быть >= 0, получено {corner_threshold}")
+# edge_scorer.py
+raise ValueError(f"length_tol должен быть >= 0, получено {self.length_tol}")
+```
+
+Все — одна и та же f-string-формула: `"{name} должен быть >= {N}, получено {value}"`.
+
 ### 18.5 Реальный объём уникальной логики (переоценка)
 
 | Слой | Номинально | Реально уникального кода | Коэффициент |
@@ -856,3 +929,44 @@ UI:                ███░░░░░░░  30%  — OpenCV viewer с dra
 | `evaluate.py` | 312 | **REAL** | Pipeline + HTML/JSON/Markdown отчёты |
 | `mix_documents.py` | 272 | **REAL** | Кластеризация + Purity/Rand/ARI оценка |
 | `profile.py` | 388 | **REAL** | cProfile, 7-этапное профилирование |
+
+### 18.7 Проблемы тестирования
+
+#### Ошибки импорта (4 файла не загружаются)
+
+```
+ImportError: cannot import name 'Edge' from 'puzzle_reconstruction.models'
+ImportError: cannot import name 'Placement' from 'puzzle_reconstruction.models'
+```
+
+Тесты ссылаются на классы `Edge` и `Placement`, которых нет в `models.py`.
+Это означает рассинхрон между тестами и кодом — тесты генерировались
+отдельно или классы планировались, но не были реализованы.
+
+#### Некорректный тест DTW
+
+```
+FAILED test_dtw.py::test_triangle_inequality
+```
+
+DTW **не является метрикой** — неравенство треугольника для DTW не выполняется
+(это хорошо известный факт). Тест проверяет математическое свойство,
+которым DTW не обладает. Это указывает на автоматическую генерацию тестов
+без проверки математической корректности утверждений.
+
+### 18.8 Итоговый диагноз
+
+Проект содержит **два слоя разного качества**:
+
+1. **Ядро** (algorithms/, matching/, assembly/, verification/, pipeline, tools/) —
+   настоящий код, написанный с пониманием предметной области. Реализации DTW,
+   IFS, CSS, box-counting, SA, beam search, genetic, ACO, MCTS — полноценные
+   алгоритмы, верифицированные запуском. Плотность логики 27-34%.
+
+2. **Утилиты** (utils/, 103 модуля) — сгенерированный по шаблону код.
+   Признаки: идентичная структура файлов, одинаковые f-string валидации,
+   механические batch-обёртки, дублирование между файлами, аномально
+   однородные размеры. Плотность логики 9-15%.
+
+**Реальный объём проекта: ~45 000 LOC уникального кода (не 91 000).**
+Коэффициент раздутия: ×2.0 (в основном за счёт utils/).
