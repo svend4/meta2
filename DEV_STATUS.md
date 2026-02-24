@@ -756,10 +756,613 @@ UI:                ███░░░░░░░  30%  — OpenCV viewer с dra
 ```
 
 **Общая стадия**: Проект находится в стадии **поздней Alpha** — алгоритмическое ядро
-полностью реализовано (296 модулей, ~91 000 строк, 578 классов, 2 629 функций),
-покрыто тестами (99.5% pass rate), снабжено документацией и инструментарием.
+полностью реализовано и верифицировано запуском, но вспомогательный код (utils/)
+значительно раздут за счёт шаблонной генерации (см. §18).
 Для перехода в **Beta** необходимо:
 1. Исправить 4 ошибки импорта в тестах
 2. Стабилизировать 129 падающих тестов
 3. Сделать lint и integration тесты блокирующими в CI
 4. Добавить Docker и создать первый git tag v0.3.0
+5. Консолидировать utils/ (103 → ~15-20 модулей)
+
+---
+
+## 18. Глубокий анализ реализации (верификация запуском)
+
+### 18.1 Результаты runtime-проверки
+
+Каждый ключевой модуль был импортирован и выполнен с реальными данными:
+
+| Проверка | Результат | Детали |
+|----------|:---------:|--------|
+| `Config()` → `to_dict()` | **PASS** | Все 6 секций конфигурации создаются корректно |
+| `Pipeline(Config())` | **PASS** | Импорт и создание экземпляра без ошибок |
+| `Fragment(image, mask, contour)` | **PASS** | Модели данных работают |
+| `segment_fragment(image)` | **PASS** | Возвращает маску (200,200) uint8, значения {0, 255} |
+| `box_counting_fd(curve)` | **PASS** | Возвращает FD = 1.0 (для синусоиды) |
+| `dtw_distance(a, b)` | **PASS** | Возвращает 0.683 (для случайных кривых 50×2 и 60×2) |
+| `import greedy_assembly` | **PASS** | Все 8 алгоритмов сборки импортируются |
+| `import simulated_annealing` | **PASS** | |
+| `import beam_search` | **PASS** | |
+| pytest (5 файлов, 208 тестов) | **207 pass, 1 fail** | Единственный провал: DTW triangle inequality (DTW не метрика) |
+
+### 18.2 Классификация реализации ядра (18 ключевых модулей)
+
+Каждый файл прочитан полностью и классифицирован:
+
+| Модуль | LOC | Вердикт | Обоснование |
+|--------|----:|:-------:|-------------|
+| `tangram/hull.py` | 62 | **THIN+REAL** | `convex_hull` и `rdp_simplify` — обёртки cv2 (3-4 строки); `normalize_polygon` — настоящий PCA через SVD (20 строк) |
+| `fractal/box_counting.py` | 87 | **REAL** | Учебная реализация: нормализация [0,1], подсчёт ячеек через set(zip), polyfit log-log, clip [1.0, 2.0] |
+| `fractal/ifs.py` | 149 | **REAL** | Настоящий IFS Барнсли: проекция на перпендикуляр хорды, сегментация, регрессия, |d_k| < 1 |
+| `fractal/css.py` | 179 | **REAL** | Полный CSS (MPEG-7): Gaussian smoothing × σ, вычисление кривизны, zero-crossing detection |
+| `fractal/divider.py` | 99 | **REAL** | Richardson compass walk с интерполяцией |
+| `synthesis.py` | 140 | **REAL** | Синтез: ресемплинг обеих кривых, нормализация, α-взвешивание, CSS per edge |
+| `matching/dtw.py` | 59 | **REAL** | Ручной DTW с Sakoe-Chiba band, O(n·w), не обёртка библиотеки |
+| `matching/pairwise.py` | 78 | **REAL** | 4 сигнала с явными весами (CSS 0.35, DTW 0.30, FD 0.20, text 0.15) + length penalty |
+| `assembly/greedy.py` | 147 | **REAL** | Жадная сборка с геометрическим размещением |
+| `assembly/annealing.py` | 143 | **REAL** | SA: swap/rotate/shift, Metropolis exp(dE/T), геом. охлаждение |
+| `assembly/beam_search.py` | 193 | **REAL** | Hypothesis dataclass, expand по лучшим CompatEntry, 2D rotation/translation |
+| `assembly/genetic.py` | 297 | **REAL** | Order Crossover (OX), tournament selection, 3 вида мутаций, elitism |
+| `assembly/ant_colony.py` | 271 | **REAL** | τ^α·η^β, evaporation ρ, elite reinforcement, вероятностный переход |
+| `assembly/mcts.py` | 293 | **REAL** | UCB1, 4 фазы (Selection, Expansion, Simulation, Backpropagation) |
+| `verification/ocr.py` | 164 | **REAL** | Strip extraction + pytesseract + quality scoring; graceful degradation |
+| `pipeline.py` | 334 | **REAL** | ThreadPoolExecutor, 7 шагов предобработки, 5 методов сборки, PipelineResult |
+| `clustering.py` | 317 | **REAL** | 28D features, BIC+silhouette для K, GMM/KMeans/Spectral |
+| `main.py` | 321 | **REAL** | Полный argparse CLI, 6-этапный pipeline, config file + override |
+
+**Итог ядра: 17 из 18 модулей = REAL (настоящие алгоритмы, написанные вручную)**
+
+### 18.3 Классификация вспомогательного кода (utils/, 103 модуля)
+
+Анализ 27 модулей (20 случайных + 7 целевых):
+
+| Категория | Доля | Примеры |
+|-----------|-----:|---------|
+| **SUBSTANTIAL** (настоящие алгоритмы, 10+ строк логики) | 15% | `geometry.py` (Sutherland-Hodgman, winding number), `icp_utils.py` (SVD, nearest-neighbor), `topology_utils.py` (Graham scan, flood-fill BFS), `spatial_index.py` (grid-based kNN), `graph_utils.py` (Dijkstra, Prim MST), `cache.py` (LRU+SHA-256), `feature_selector.py` (PCA via SVD) |
+| **MODERATE** (реальные, но простые, 5-15 строк) | 60% | `event_bus.py` (pub/sub), `profiler.py` (step timing), `visualizer.py` (compositing), `rotation_utils.py` (SVD Procrustes), `threshold_utils.py` (Otsu), `contour_utils.py` (arc-length resampling) |
+| **THIN** (обёртки 1-4 строки) | 25% | `mask_utils.py` (cv2.erode/dilate), `normalization_utils.py` (np.linalg.norm), `sampling_utils.py` (rng.choice), `config_manager.py` (dict ops), `sparse_utils.py` (np.where) |
+
+### 18.4 Признаки шаблонной генерации в utils/
+
+| Индикатор | Значение |
+|-----------|----------|
+| Файлов с идентичным dataclass-шаблоном (`Config` + `__post_init__` + функции + `batch_`) | **49/102 (48%)** |
+| Функций с ≤ 3 statements (без docstring) | **59.6%** (852/1429) |
+| Однострочных return-функций | **31.1%** (445/1429) |
+| `batch_*` функций (тривиальные `[f(x) for x in items]`) | **78 шт. в 66 файлах** |
+| Дублирование между файлами | `symmetrize_matrix`, `threshold_matrix`, `diagonal_zeros` — реализованы в 2-3 файлах |
+| Разброс размеров файлов | 194–471 строк, медиана 326 — аномально однородно |
+| Файлов с идентичными `# ─── Section ───` разделителями | **81%** |
+
+#### 18.4.1 Конкретные примеры дублирования
+
+**`cosine_distance`** — две разные реализации:
+
+```python
+# descriptor_utils.py:67 — возвращает [0, 1]
+def cosine_distance(a, b, eps=1e-8):
+    cos = float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
+    return (1.0 - cos) / 2.0
+
+# distance_utils.py:77 — возвращает [0, 2]
+def cosine_distance(a, b):
+    return float(np.clip(1.0 - cosine_similarity(a, b), 0.0, 2.0))
+```
+
+**`normalize_contour`** — две разные реализации:
+
+```python
+# geometry.py:311 — нормализация по диагонали bbox
+def normalize_contour(pts, target_scale=1.0): ...
+
+# contour_sampler.py:401 — нормализация в [-1, 1] по max abs
+def normalize_contour(contour): ...
+```
+
+**`normalize_profile`** — дублирование в `contour_profile_utils.py:141` и `edge_profiler.py:208`.
+
+#### 18.4.2 Конкретные примеры batch-инфляции
+
+```python
+# blend_utils.py:354 — 13 строк (docstring) ради 1 строки логики:
+def batch_blend(pairs, alpha=0.5):
+    return [alpha_blend(src, dst, alpha) for src, dst in pairs]
+
+# descriptor_utils.py:270 — 6 строк ради 1 строки:
+def batch_nn_match(query_sets, train_set, metric="l2"):
+    return [nn_match(q, train_set, metric) for q in query_sets]
+```
+
+#### 18.4.3 Конкретные примеры thin-обёрток
+
+```python
+# descriptor_utils.py:62 — 1 строка логики
+def l2_distance(a, b):
+    return float(np.linalg.norm(a - b))
+
+# color_utils.py:61 — 2 строки логики
+def to_hsv(img):
+    bgr = img if img.ndim == 3 else cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    return cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
+
+# descriptor_utils.py:84 — 1 строка логики
+def l1_distance(a, b):
+    return float(np.sum(np.abs(a - b)))
+```
+
+#### 18.4.4 Идентичный шаблон валидации в 15+ файлах
+
+```python
+# annealing_schedule.py:66
+raise ValueError(f"n_steps должен быть >= 1, получено {self.n_steps}")
+# batch_processor.py
+raise ValueError(f"max_retries должен быть >= 0, получено {self.max_retries}")
+# graph_utils.py:36
+raise ValueError(f"src должен быть >= 0, получено {self.src}")
+# contour_sampler.py
+raise ValueError(f"corner_threshold должен быть >= 0, получено {corner_threshold}")
+# edge_scorer.py
+raise ValueError(f"length_tol должен быть >= 0, получено {self.length_tol}")
+```
+
+Все — одна и та же f-string-формула: `"{name} должен быть >= {N}, получено {value}"`.
+
+### 18.5 Реальный объём уникальной логики (переоценка)
+
+| Слой | Номинально | Реально уникального кода | Коэффициент |
+|------|:----------:|:------------------------:|:-----------:|
+| **Ядро** (algorithms, matching, assembly, verification, pipeline) | ~38 800 LOC | ~25 000–30 000 LOC | 0.70 |
+| **Предобработка** (preprocessing) | ~11 000 LOC | ~6 000–8 000 LOC | 0.65 |
+| **Утилиты** (utils) | ~32 590 LOC | ~5 000–8 000 LOC | 0.20 |
+| **Scoring** | ~4 210 LOC | ~2 000–3 000 LOC | 0.60 |
+| **IO + UI + корневые** | ~4 850 LOC | ~3 000–4 000 LOC | 0.70 |
+| **ИТОГО production** | **~91 180 LOC** | **~41 000–53 000 LOC** | **0.50** |
+
+### 18.6 Инструменты (tools/) — все REAL
+
+| Файл | LOC | Вердикт | Обоснование |
+|------|----:|:-------:|-------------|
+| `server.py` | 309 | **REAL** | Flask, 6 endpoints, thread-safe jobs, multipart upload |
+| `benchmark.py` | 355 | **REAL** | Ground-truth tracking, NA/DC/RMSE метрики |
+| `tear_generator.py` | 303 | **REAL** | fBm noise (fractional Brownian motion), multi-octave |
+| `evaluate.py` | 312 | **REAL** | Pipeline + HTML/JSON/Markdown отчёты |
+| `mix_documents.py` | 272 | **REAL** | Кластеризация + Purity/Rand/ARI оценка |
+| `profile.py` | 388 | **REAL** | cProfile, 7-этапное профилирование |
+
+### 18.7 Проблемы тестирования
+
+#### Ошибки импорта (4 файла не загружаются)
+
+```
+ImportError: cannot import name 'Edge' from 'puzzle_reconstruction.models'
+ImportError: cannot import name 'Placement' from 'puzzle_reconstruction.models'
+```
+
+Тесты ссылаются на классы `Edge` и `Placement`, которых нет в `models.py`.
+Это означает рассинхрон между тестами и кодом — тесты генерировались
+отдельно или классы планировались, но не были реализованы.
+
+#### Некорректный тест DTW
+
+```
+FAILED test_dtw.py::test_triangle_inequality
+```
+
+DTW **не является метрикой** — неравенство треугольника для DTW не выполняется
+(это хорошо известный факт). Тест проверяет математическое свойство,
+которым DTW не обладает. Это указывает на автоматическую генерацию тестов
+без проверки математической корректности утверждений.
+
+### 18.8 Итоговый диагноз
+
+Проект содержит **два слоя разного качества**:
+
+1. **Ядро** (algorithms/, matching/, assembly/, verification/, pipeline, tools/) —
+   настоящий код, написанный с пониманием предметной области. Реализации DTW,
+   IFS, CSS, box-counting, SA, beam search, genetic, ACO, MCTS — полноценные
+   алгоритмы, верифицированные запуском. Плотность логики 27-34%.
+
+2. **Утилиты** (utils/, 103 модуля) — сгенерированный по шаблону код.
+   Признаки: идентичная структура файлов, одинаковые f-string валидации,
+   механические batch-обёртки, дублирование между файлами, аномально
+   однородные размеры. Плотность логики 9-15%.
+
+**Реальный объём проекта: ~45 000 LOC уникального кода (не 91 000).**
+Коэффициент раздутия: ×2.0 (в основном за счёт utils/).
+
+---
+
+## 19. Анализ импортов utils: мёртвый код
+
+### 19.1 Критическое открытие: utils не используется production-кодом
+
+Полный AST-анализ **всех** файлов в `algorithms/`, `matching/`, `assembly/`,
+`verification/`, `preprocessing/`, `scoring/`, `tools/`, `pipeline.py`,
+`main.py`, `models.py`, `config.py`, `clustering.py`, `export.py` выявил:
+
+```
+Всего строк с импортом из utils во всём production-коде: 2
+
+matching/icp.py:32:    from ..utils.geometry import resample_curve, rotate_points, align_centroids
+pipeline.py:51:        from .utils.logger import get_logger, PipelineTimer
+```
+
+**Из 102 модулей utils (32 590 LOC) production-код использует ровно 2 модуля
+и 5 функций.**
+
+### 19.2 Классификация 102 модулей utils по использованию
+
+| Категория | Кол-во модулей | LOC | Описание |
+|-----------|:--------------:|:---:|----------|
+| **Используются production-кодом** | 2 | ~700 | `geometry`, `logger` — реально нужны |
+| **Только тестируются (не используются)** | 59 | ~19 300 | Есть тесты, но ни один production-файл их не импортирует |
+| **Полные орфаны (даже тесты не ссылаются)** | 41 | ~12 565 | Мёртвый код, ни разу нигде не упоминается |
+
+### 19.3 Орфаны — 41 файл, 12 565 LOC чистого мёртвого кода
+
+```
+alignment_utils.py (326)    annealing_score_utils.py (245)   assembly_score_utils.py (290)
+candidate_rank_utils.py (222)  canvas_build_utils.py (199)   color_edge_export_utils.py (293)
+color_hist_utils.py (256)   config_utils.py (328)            consensus_score_utils.py (221)
+contour_profile_utils.py (359)  curve_metrics.py (262)       descriptor_utils.py (292)
+edge_profile_utils.py (357)  event_affine_utils.py (323)     filter_pipeline_utils.py (204)
+fragment_filter_utils.py (323)  icp_utils.py (274)           image_cluster_utils.py (431)
+image_transform_utils.py (290)  noise_stats_utils.py (300)   orient_skew_utils.py (309)
+overlap_score_utils.py (354)  pair_score_utils.py (251)      patch_score_utils.py (304)
+path_plan_utils.py (334)    placement_metrics_utils.py (435) placement_score_utils.py (335)
+polygon_ops_utils.py (386)  quality_score_utils.py (234)     rank_result_utils.py (264)
+ranking_layout_utils.py (415)  region_score_utils.py (364)   render_utils.py (277)
+rotation_hist_utils.py (414)  rotation_score_utils.py (391)  score_matrix_utils.py (292)
+score_norm_utils.py (194)   segment_utils.py (262)           seq_gap_utils.py (311)
+shape_match_utils.py (205)  tracker_utils.py (439)
+```
+
+Средний размер орфана: **306 LOC** — аномально однородно, что подтверждает
+шаблонную генерацию.
+
+### 19.4 Влияние на тестовую базу
+
+| Метрика | Значение |
+|---------|:--------:|
+| Тестовых файлов, тестирующих utils | **90 / 504 (18%)** |
+| LOC тестов для utils | **35 008 / 167 838 (21%)** |
+
+21% всего тестового кода (~35 000 LOC) тестирует модули, которые
+**ни один production-файл не импортирует**. Тесты были сгенерированы
+вместе с utils-модулями, создавая иллюзию покрытия.
+
+### 19.5 __init__.py — 3 277 строк реэкспорта
+
+Файл `utils/__init__.py` содержит **3 277 строк** и реэкспортирует
+всё из всех 102 модулей. Это самый большой `__init__.py` в проекте,
+но его никто не импортирует — ядро использует прямые импорты
+(`from ..utils.geometry import ...`), а не `from ..utils import ...`.
+
+---
+
+## 20. Анализ preprocessing/ и scoring/ — аналогичные проблемы
+
+### 20.1 preprocessing/ (38 модулей, 11 693 LOC)
+
+**Шаблонные признаки:**
+
+| Индикатор | Значение |
+|-----------|:--------:|
+| С `@dataclass` | **32/38 (84%)** |
+| С `__post_init__` | **19/38 (50%)** |
+| С `batch_*` | **32/38 (84%)** |
+| С русской валидацией «должен быть» | **14/38 (37%)** |
+| Размеры файлов | min=89, max=457, **медиана=316** |
+
+**Использование ядром:** из 38 модулей production-код импортирует только **4**:
+
+```
+segmentation  — pipeline.py, algorithms/__init__.py
+contour       — pipeline.py, algorithms/, matching/
+color_norm    — pipeline.py
+orientation   — pipeline.py
+```
+
+**Орфаны: 31 из 38 (82%), ~9 700 LOC мёртвого кода:**
+
+```
+augment (340)  background_remover (296)  binarizer (388)  channel_splitter (234)
+color_normalizer (316)  contour_processor (456)  contrast_enhancer (321)  denoise (231)
+deskewer (271)  document_cleaner (300)  edge_detector (384)  edge_enhancer (298)
+edge_sharpener (328)  fragment_cropper (275)  frequency_analyzer (385)  frequency_filter (292)
+gradient_analyzer (315)  illumination_corrector (304)  illumination_normalizer (335)
+image_enhancer (277)  morphology_ops (389)  noise_analyzer (254)  noise_filter (291)
+noise_reducer (253)  noise_reduction (371)  patch_normalizer (287)  patch_sampler (439)
+quality_assessor (269)  skew_correction (370)  texture_analyzer (349)  warp_corrector (352)
+```
+
+Характерно: **массовое дублирование по «синонимам»** — генератор создавал
+отдельный файл для каждого варианта формулировки одной и той же задачи:
+
+| Задача | Файлы-дубликаты | Дублированные функции |
+|--------|:-:|:-:|
+| Шумоподавление | `denoise`, `noise_filter`, `noise_reducer`, `noise_reduction` **(4)** | `gaussian_denoise` ≈ `gaussian_filter`, `bilateral_denoise` ≈ `bilateral_filter`, `nlmeans_denoise` ≈ `nlm_filter` |
+| Нормализация цвета | `color_norm`, `color_normalizer` **(2)** | `white_balance()`, `gamma_correction()`, `normalize_brightness()` |
+| Контраст | `contrast`, `contrast_enhancer` **(2)** | CLAHE, histeq, gamma, stretch |
+| Детекция краёв | `edge_detector`, `edge_enhancer`, `edge_sharpener` **(3)** | Варианты Canny/Sobel/Laplacian |
+| Коррекция освещения | `illumination_corrector`, `illumination_normalizer` **(2)** | Retinex, background subtraction |
+
+Итого **~13 файлов** (≈4 000 LOC) сводятся к **~5 задачам** — коэффициент
+дублирования ×2.6.
+
+**Наиболее качественные (не-шаблонные) модули:**
+- `contour.py` (158 LOC) — RDP, corner detection, edge splitting. Минимум boilerplate.
+- `orientation.py` (88 LOC) — Hough + PCA fallback. Самый компактный.
+- `segmentation.py` (98 LOC) — Otsu + adaptive + GrabCut. Чистая структура.
+
+### 20.2 scoring/ (12 модулей, 3 920 LOC)
+
+**Шаблонные признаки:**
+
+| Индикатор | Значение |
+|-----------|:--------:|
+| С `@dataclass` | **11/12 (92%)** |
+| С `__post_init__` | **11/12 (92%)** |
+| С `batch_*` | **7/12 (58%)** |
+| С русской валидацией «должен быть» | **12/12 (100%)** |
+| Размеры файлов | min=193, max=400, **медиана=338** |
+
+**Scoring — наиболее шаблонный модуль проекта**: 100% файлов содержат
+русские валидационные строки, 92% следуют dataclass-шаблону.
+
+**Использование ядром:** только **2 из 12**:
+
+```
+consistency_checker — verification/__init__.py
+score_normalizer    — matching/__init__.py
+```
+
+**Орфаны: 9 из 12 (75%), ~3 030 LOC мёртвого кода:**
+
+```
+boundary_scorer (333)  evidence_aggregator (289)  gap_scorer (337)
+global_ranker (331)  match_evaluator (349)  match_scorer (324)
+pair_filter (338)  pair_ranker (330)  threshold_selector (399)
+```
+
+**100% файлов следуют шаблону:** Config → Result → core_function → batch_function.
+
+```python
+# Шаблон повторяется дословно во всех 12 файлах:
+@dataclass
+class ScorerConfig:
+    weights: Dict[str, float] = field(default_factory=lambda: {...})
+    min_score: float = 0.0
+    max_score: float = 1.0
+    def __post_init__(self):
+        for name, w in self.weights.items():
+            if w < 0.0:
+                raise ValueError(f"Вес канала '{name}' должен быть >= 0, получено {w}")
+```
+
+**Наиболее качественный модуль:** `rank_fusion.py` (192 LOC) — RRF, Borda count,
+score fusion. Чистый алгоритмический код без dataclass-шаблона.
+
+### 20.3 Совокупный мёртвый код проекта
+
+| Источник | Орфаны (LOC) | Не используется production (LOC) |
+|----------|:------------:|:-------------------------------:|
+| utils/ | 12 565 | ~31 890 (из 32 590) |
+| preprocessing/ | ~9 700 | ~9 700 |
+| scoring/ | ~3 030 | ~3 330 |
+| utils/__init__.py | 3 277 | 3 277 |
+| **Итого** | **~28 572** | **~48 197** |
+
+Из **91 180 LOC production-кода** около **48 200 LOC (53%)** не импортируется
+ни одним файлом, который реально участвует в работе пайплайна.
+
+**Реальный работающий код: ~43 000 LOC.**
+
+---
+
+## 21. Детальная категоризация 129 провальных тестов + 4 ошибки сбора
+
+### 21.1 Ошибки сбора (4 теста)
+
+```
+ImportError: cannot import name 'Edge' from 'puzzle_reconstruction.models'
+ImportError: cannot import name 'Placement' from 'puzzle_reconstruction.models'
+```
+
+**Файлы:** `test_confidence_scorer.py`, `test_graph_match.py`,
+`test_layout_verifier.py`, `test_parallel.py`
+
+**Диагноз:** Тесты генерировались под API, включающий классы `Edge` и
+`Placement`, которые не были реализованы в `models.py`. Рассинхрон
+генератора тестов и генератора кода.
+
+### 21.2 Классификация 129 FAILED тестов (уточнённая)
+
+| Категория | Кол-во | % | Описание |
+|-----------|:------:|:-:|----------|
+| **E. Неверное утверждение** | 55 | 42.6% | Тест ожидает неверный результат |
+| **B. API-рассинхрон** (TypeError) | 28 | 21.7% | Неверная сигнатура вызова |
+| **D. Реальные баги в коде** | 18 | 14.0% | Крэши и ошибки в production-коде |
+| **C. Несуществующий атрибут** | 13 | 10.1% | Мок несуществующей функции |
+| **F. Допуск/tolerance** | 11 | 8.5% | Неверные ожидания под видом approx |
+| **G. Невалидный test setup** | 4 | 3.1% | Тест подаёт данные, отклоняемые валидацией |
+
+### 21.3 Категория B: API-рассинхрон (28 тестов)
+
+```python
+# test_algorithms_edge_profile.py (16 тестов):
+extract_intensity_profile(image)  # тест
+extract_intensity_profile(image, side)  # реальная сигнатура — нет 'side'
+
+# test_match_scorer.py (7 тестов):
+# передают int-ключи, где ожидаются строки → "keywords must be strings"
+
+# test_match_scorer.py (3 теста):
+actual >= pytest.approx(x)  # TypeError: '>=' и ApproxScalar несовместимы
+
+# test_fragment_validator.py, test_illumination_corrector.py (2 теста):
+# несуществующие keyword-аргументы (value=, ksize=)
+```
+
+### 21.4 Категория C: Несуществующие атрибуты (13 тестов)
+
+Все 13 — `test_synthesis.py::TestBuildEdgeSignatures`. Тесты пытаются
+замокать `synthesis.curvature_scale_space` — функцию, которой нет в модуле.
+
+### 21.5 Категория D: **Реальные баги в production-коде** (18 тестов)
+
+| Баг | Тестов | Файл | Проблема |
+|-----|:------:|------|----------|
+| **Laplacian ddepth** | 10 | `edge_detector.py:244` | float32 → Laplacian с неверным `ddepth`, крэш OpenCV |
+| **uint8 overflow** | 2 | `visualizer.py:336` | Присвоение 382 и -127 в uint8 без `np.clip()` |
+| **Gamma NaN** | 2 | `gamma.py` | scipy solver получает inf/NaN, крэш |
+| **Empty array** | 2 | `edge_validator.py`, `score_normalizer.py` | `max()` на пустом массиве |
+| **Texture unpack** | 1 | `texture_match.py:101` | Неверное число значений при unpacking |
+| **Strip shape** | 1 | `boundary_scorer.py:157` | `(64, 4)` вместо `(64, 4, 3)` — grayscale/BGR путаница |
+
+**Это единственные 18 тестов, выявившие настоящие ошибки в коде.**
+
+### 21.6 Категория E: Неверные утверждения (55 тестов)
+
+Крупнейшая категория. Тесты работают без крэша, но assert ложный:
+
+| Подтип | Примеры |
+|--------|---------|
+| Неверное ожидаемое значение (18) | `assert 64 == 256` (color_utils), `assert 4 == 200` (contour), `assert [0,3] == [0,1,2,3]` (graph_utils) |
+| Нереалистичный порог (13) | `assert 0.33 >= 0.8` (edge_scorer), `assert 1.0 < 0.5` (boundary_scorer) |
+| Неверная логика (10) | `assert False is True`, `assert 'noisy' == 'clean'` |
+| Математически неверно (6) | DTW triangle inequality, `chamfer <= hausdorff` |
+| i18n-рассинхрон (1) | `assert 'Score' in '=== Результат пайплайна ...'` — English vs Russian |
+| Перепутанное направление (2) | `test_gamma_gt_one_darker` — гамма-коррекция наоборот |
+| Слишком строгое (3) | ICP RMSE, fractal similarity ≈0.997 vs ==1.0 |
+
+### 21.7 Категория F: Tolerance (11 тестов)
+
+Только 2-3 — настоящие проблемы с точностью (`0.996 ≈ 1.0 ± 1e-4`).
+Остальные 8 — **полностью неверные значения** под видом `pytest.approx()`:
+- `5.0 == 4.0 ± 4e-6` (path_planner)
+- `80.0 == 0.0 ± 1e-12` (consistency_checker)
+- `1681.0 == 1600.0 ± 80` (overlap_checker: 41×41 vs 40×40)
+
+### 21.8 Категория G: Невалидный setup (4 теста)
+
+Тесты подают данные, которые код правильно отклоняет:
+- `n_pairs=0`, а код требует `>= 1`
+- `color_weight=2.0`, а код требует `[0, 1]`
+- `min_score=1.1`, а код требует `[0, 1]`
+
+### 21.9 Выводы о тестах
+
+**Из 129 провалов:**
+
+- **111 (86%)** — ошибки в самих тестах (категории B, C, E, F, G).
+  Классические признаки AI-генерации: придуманные значения (`64 == 256`),
+  несуществующие функции, English-ассерты для Russian-вывода,
+  неверные математические свойства.
+
+- **18 (14%)** — **реальные баги в production-коде**. Стоит исправить:
+  1. `edge_detector.py:244` — исправить `ddepth` для float32 (10 тестов)
+  2. `visualizer.py:336` — добавить `np.clip(0, 255)` (2 теста)
+  3. `gamma.py` — обработка inf/NaN (2 теста)
+  4. `edge_validator.py`, `score_normalizer.py` — проверка на пустой массив (2 теста)
+  5. `texture_match.py:101` — исправить unpacking (1 тест)
+  6. `boundary_scorer.py:157` — исправить shape mismatch (1 тест)
+
+Также 4 файла (≈246 тестов) не загружаются из-за ImportError (`Edge`, `Placement`).
+
+---
+
+## 22. Рекомендации и дорожная карта
+
+### 22.1 Приоритет 1 (критический): Удаление мёртвого кода
+
+**Проблема:** 53% production-кода не используется ни одним рабочим модулем.
+
+**Действия:**
+
+1. **Удалить 41 орфанный utils-модуль** (12 565 LOC) — не ссылается
+   ни код, ни тесты
+2. **Удалить 31 орфанный preprocessing-модуль** (~9 700 LOC)
+3. **Удалить 9 орфанных scoring-модулей** (~3 030 LOC)
+4. **Удалить или пересоздать `utils/__init__.py`** (3 277 LOC) —
+   оставить только реэкспорт `geometry` и `logger`
+5. **Удалить тесты орфанных модулей** (~35 000 LOC тестов)
+
+**Эффект:** Проект сокращается с 91 180 до ~43 000 LOC production
+и с 167 838 до ~130 000 LOC тестов.
+
+### 22.2 Приоритет 2 (высокий): Консолидация utils
+
+**Проблема:** 59 utils-модулей тестируются, но не используются production-кодом.
+
+**Действия:**
+
+1. Для каждого из 59 модулей — определить, нужна ли функциональность ядру
+2. Если нужна — подключить через импорт в соответствующем ядерном модуле
+3. Если не нужна — удалить вместе с тестами
+4. Объединить оставшиеся (вероятно ~10-15) в укрупнённые модули
+5. Устранить дублирование (`cosine_distance`, `normalize_contour`,
+   `normalize_profile` — оставить по одной канонической реализации)
+
+### 22.3 Приоритет 3 (высокий): Исправление тестов
+
+**Проблема:** 129 провальных тестов (111 — ошибки тестов, 18 — реальные баги).
+
+**Действия:**
+
+1. **Исправить 18 реальных багов в production-коде:**
+   - `edge_detector.py:244` — добавить корректный `ddepth` для float32 (10 тестов)
+   - `visualizer.py:336` — добавить `np.clip(0, 255)` перед uint8 (2 теста)
+   - `gamma.py` — обработка inf/NaN перед вызовом scipy solver (2 теста)
+   - `edge_validator.py`, `score_normalizer.py` — проверка на пустой массив (2 теста)
+   - `texture_match.py:101` — исправить распаковку возвращаемого значения (1 тест)
+   - `boundary_scorer.py:157` — исправить shape mismatch grayscale/BGR (1 тест)
+2. **Исправить 111 ошибок в тестах:**
+   - 28 API-рассинхронов — обновить сигнатуры вызовов
+   - 13 AttributeError — убрать моки несуществующих функций
+   - 55 AssertionError — исправить ожидаемые значения
+   - 11 Tolerance — исправить или ослабить допуски
+   - 4 Setup — привести входные данные к валидным
+3. **Добавить `Edge` и `Placement` в `models.py`** или удалить 4 тестовых файла
+   (≈246 тестов)
+
+### 22.4 Приоритет 4 (средний): Архитектурные улучшения
+
+1. **Подключить preprocessing к pipeline** — сейчас 4 модуля подключены,
+   но ещё ~3-5 полезных (denoise, deskew, contrast) стоит интегрировать
+2. **Подключить scoring к pipeline** — только 2 модуля используются,
+   но `edge_scorer`, `match_scorer` могут быть полезны
+3. **Стандартизовать язык** — выбрать один язык (русский или английский)
+   для docstrings и сообщений об ошибках
+4. **Убрать batch-инфляцию** — заменить 78 функций `batch_*` на
+   inline list comprehensions в местах вызова
+
+### 22.5 Приоритет 5 (низкий): CI/CD и качество
+
+1. Настроить GitHub Actions для запуска тестов
+2. Добавить pre-commit hooks (ruff, mypy)
+3. Настроить coverage отчёты
+4. Добавить интеграционные тесты с реальными изображениями
+
+### 22.6 Ожидаемый результат
+
+| Метрика | Сейчас | После очистки |
+|---------|:------:|:-------------:|
+| Production LOC | 91 180 | ~43 000 |
+| Тестов LOC | 167 838 | ~130 000 |
+| Utils-модулей | 102 | ~10-15 |
+| Preprocessing-модулей | 38 | ~7-10 |
+| Scoring-модулей | 12 | ~3-5 |
+| Провальных тестов | 129 + 4 ошибки сбора | 0 |
+| Production-баги (выявленные тестами) | 18 | 0 |
+| Тестовое покрытие (реальное) | ~99.5% | ~99.5% |
+
+Проект после очистки будет составлять **~43 000 LOC production-кода** —
+это реальный объём, адекватный для системы реконструкции документов
+с 14+ алгоритмами ядра.
+
+---
+
+*Документ сгенерирован автоматическим аудитом 2026-02-24.*
+*Методы: AST-анализ импортов, pytest --tb=short, wc -l, поиск шаблонных паттернов.*
