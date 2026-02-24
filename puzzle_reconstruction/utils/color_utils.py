@@ -252,7 +252,7 @@ def color_distance(color1: np.ndarray,
 def strip_histogram(img:       np.ndarray,
                      side:      int  = 0,
                      border_px: int  = 10,
-                     bins:      int  = 64,
+                     bins:      int  = 256,
                      channel:   int  = 0) -> np.ndarray:
     """
     Вычисляет нормализованную гистограмму полосы вдоль указанного края.

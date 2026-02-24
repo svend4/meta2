@@ -282,12 +282,12 @@ class TestComputeMatchScore:
     def test_clip_to_min_score(self):
         cfg = ScorerConfig(weights={"a": 1.0}, min_score=0.5, max_score=1.0)
         ms = compute_match_score(0, 1, {"a": 0.0}, cfg)
-        assert ms.score >= pytest.approx(0.5)
+        assert ms.score >= 0.5
 
     def test_clip_to_max_score(self):
         cfg = ScorerConfig(weights={"a": 1.0}, min_score=0.0, max_score=0.6)
         ms = compute_match_score(0, 1, {"a": 1.0}, cfg)
-        assert ms.score <= pytest.approx(0.6)
+        assert ms.score <= 0.6
 
     def test_unknown_channel_weight_zero(self):
         cfg = ScorerConfig(weights={"geo": 1.0})
@@ -409,37 +409,37 @@ class TestBuildScoreTable:
 # ─── TestFilterConfidentPairs ─────────────────────────────────────────────────
 
 class TestFilterConfidentPairs:
-    def _table(self, **pairs) -> dict:
+    def _table(self, pairs: dict) -> dict:
         return {k: _ms(k[0], k[1], v) for k, v in pairs.items()}
 
     def test_returns_list(self):
-        table = self._table(**{(0, 1): 0.8})
+        table = self._table({(0, 1): 0.8})
         result = filter_confident_pairs(table)
         assert isinstance(result, list)
 
     def test_all_above_threshold(self):
-        table = self._table(**{(0, 1): 0.8, (0, 2): 0.9, (1, 2): 0.6})
+        table = self._table({(0, 1): 0.8, (0, 2): 0.9, (1, 2): 0.6})
         result = filter_confident_pairs(table, threshold=0.7)
         assert len(result) == 2
 
     def test_none_above_threshold(self):
-        table = self._table(**{(0, 1): 0.4, (0, 2): 0.5})
+        table = self._table({(0, 1): 0.4, (0, 2): 0.5})
         result = filter_confident_pairs(table, threshold=0.9)
         assert result == []
 
     def test_all_pass_zero_threshold(self):
-        table = self._table(**{(0, 1): 0.1, (0, 2): 0.9})
+        table = self._table({(0, 1): 0.1, (0, 2): 0.9})
         result = filter_confident_pairs(table, threshold=0.0)
         assert len(result) == 2
 
     def test_sorted_descending(self):
-        table = self._table(**{(0, 1): 0.6, (0, 2): 0.9, (1, 2): 0.75})
+        table = self._table({(0, 1): 0.6, (0, 2): 0.9, (1, 2): 0.75})
         result = filter_confident_pairs(table, threshold=0.0)
         scores = [table[k].score for k in result]
         assert scores == sorted(scores, reverse=True)
 
     def test_threshold_boundary_included(self):
-        table = self._table(**{(0, 1): 0.7})
+        table = self._table({(0, 1): 0.7})
         result = filter_confident_pairs(table, threshold=0.7)
         assert len(result) == 1
 
@@ -455,7 +455,7 @@ class TestFilterConfidentPairs:
         assert filter_confident_pairs({}) == []
 
     def test_keys_are_pairs(self):
-        table = self._table(**{(0, 1): 0.8, (0, 2): 0.9})
+        table = self._table({(0, 1): 0.8, (0, 2): 0.9})
         result = filter_confident_pairs(table, threshold=0.0)
         for k in result:
             assert isinstance(k, tuple)

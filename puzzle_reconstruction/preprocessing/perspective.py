@@ -106,8 +106,8 @@ def _dst_rect(src_rect: np.ndarray) -> Tuple[np.ndarray, int, int]:
     h_left   = np.linalg.norm(bl - tl)
     h_right  = np.linalg.norm(br - tr)
 
-    max_w = max(int(w_top), int(w_bottom))
-    max_h = max(int(h_left), int(h_right))
+    max_w = max(int(w_top), int(w_bottom)) + 1
+    max_h = max(int(h_left), int(h_right)) + 1
 
     dst = np.array([
         [0,         0],

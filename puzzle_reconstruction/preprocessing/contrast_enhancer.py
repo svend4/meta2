@@ -140,7 +140,7 @@ def equalize_histogram(
 
     # CDF нормализованный
     if total - cdf_min < 1e-12:
-        equalized = np.full_like(flat, (lo + hi) / 2.0)
+        equalized = np.full_like(flat, flat[0] if len(flat) > 0 else (lo + hi) / 2.0)
     else:
         bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2.0
         cdf_norm = (cdf - cdf_min) / (total - cdf_min)

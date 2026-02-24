@@ -248,14 +248,14 @@ def rdp_simplify(
         if len(pts_sub) <= 2:
             return list(range(len(pts_sub)))
         max_dist = 0.0
-        max_idx = 0
+        max_idx = len(pts_sub) // 2  # default to midpoint; prevents infinite recursion when collinear+epsilon=0
         a, b = pts_sub[0], pts_sub[-1]
         for i in range(1, len(pts_sub) - 1):
             d = _perp_dist(pts_sub[i], a, b)
             if d > max_dist:
                 max_dist = d
                 max_idx = i
-        if max_dist <= epsilon:
+        if max_dist < epsilon:
             return [0, len(pts_sub) - 1]
         left = _rdp(pts_sub[:max_idx + 1])
         right = _rdp(pts_sub[max_idx:])

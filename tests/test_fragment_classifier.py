@@ -104,7 +104,7 @@ class TestFragmentType:
 class TestFragmentFeatures:
     def test_as_vector_length(self, features_default):
         v = features_default.as_vector()
-        assert len(v) == 12
+        assert len(v) == 14
 
     def test_as_vector_dtype(self, features_default):
         v = features_default.as_vector()
@@ -422,7 +422,7 @@ class TestClassifyFragment:
 
     def test_features_vector_length(self, gray_blank):
         res = classify_fragment(gray_blank)
-        assert len(res.features.as_vector()) == 12
+        assert len(res.features.as_vector()) == 14
 
     def test_straight_sides_subset_of_0_3(self, gray_blank):
         res = classify_fragment(gray_blank)

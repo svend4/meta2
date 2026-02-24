@@ -252,7 +252,7 @@ class TestValidateContentCoverage:
         assert 0.0 <= r.metrics["coverage"] <= 1.0
 
     def test_bgr_accepted(self):
-        r = validate_content_coverage(_bgr(value=200), threshold=10)
+        r = validate_content_coverage(_bgr(), threshold=10)
         assert r.metrics["coverage"] > 0.0
 
     def test_content_pixels_metric(self):

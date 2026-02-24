@@ -245,18 +245,15 @@ def filter_top_k_per_fragment(
     if k < 1:
         raise ValueError(f"k должен быть >= 1, получено {k}")
 
-    groups: Dict[int, List[CandidatePair]] = defaultdict(list)
-    for p in pairs:
-        groups[p.id_a].append(p)
-        groups[p.id_b].append(p)
-
-    allowed_ids: Set[int] = set()
-    for grp in groups.values():
-        top = sorted(grp, key=lambda x: x.score, reverse=True)[:k]
-        for p in top:
-            allowed_ids.add(id(p))
-
-    return [p for p in pairs if id(p) in allowed_ids]
+    sorted_pairs = sorted(pairs, key=lambda x: x.score, reverse=True)
+    counts: Dict[int, int] = defaultdict(int)
+    result: List[CandidatePair] = []
+    for p in sorted_pairs:
+        if counts[p.id_a] < k and counts[p.id_b] < k:
+            result.append(p)
+            counts[p.id_a] += 1
+            counts[p.id_b] += 1
+    return result
 
 
 # ─── filter_pairs ─────────────────────────────────────────────────────────────

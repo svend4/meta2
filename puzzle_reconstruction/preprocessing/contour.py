@@ -32,13 +32,18 @@ def rdp_simplify(contour: np.ndarray, epsilon_ratio: float = 0.005) -> np.ndarra
     Args:
         epsilon_ratio: Порог как доля от периметра контура.
     """
+    if epsilon_ratio <= 0.0:
+        return contour.reshape(-1, 2).astype(np.float32)
     perimeter = cv2.arcLength(contour.reshape(-1, 1, 2).astype(np.float32), True)
     epsilon = epsilon_ratio * perimeter
     simplified = cv2.approxPolyDP(
         contour.reshape(-1, 1, 2).astype(np.float32),
         epsilon, True
     )
-    return simplified.reshape(-1, 2).astype(np.float32)
+    result = simplified.reshape(-1, 2).astype(np.float32)
+    if len(result) < 2:
+        result = contour.reshape(-1, 2).astype(np.float32)[:2]
+    return result
 
 
 def split_contour_to_edges(contour: np.ndarray,

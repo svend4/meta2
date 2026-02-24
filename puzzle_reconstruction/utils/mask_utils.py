@@ -105,7 +105,8 @@ def erode_mask(mask:       np.ndarray,
     kernel = cv2.getStructuringElement(
         cv2.MORPH_RECT, (ksize, ksize)
     )
-    return cv2.erode(mask, kernel, iterations=iterations)
+    return cv2.erode(mask, kernel, iterations=iterations,
+                     borderType=cv2.BORDER_CONSTANT, borderValue=0)
 
 
 # ─── dilate_mask ──────────────────────────────────────────────────────────────

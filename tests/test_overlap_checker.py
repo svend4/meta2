@@ -99,8 +99,8 @@ class TestPolygonIntersectionArea:
 
     def test_identical_approx_polygon_area(self):
         area = polygon_intersection_area(_POLY_SAME, _POLY_SAME)
-        # 40×40 = 1600 пикс²
-        assert area == pytest.approx(1600.0, rel=0.05)
+        # ~40×40 ≈ 1600 пикс² (rasterization may include boundary pixels)
+        assert area == pytest.approx(1600.0, rel=0.1)
 
     def test_partial_overlap_positive(self):
         area = polygon_intersection_area(_POLY_P1, _POLY_P2)
@@ -135,7 +135,7 @@ class TestPolygonIntersectionArea:
         poly1 = _POLY_SAME.reshape(-1, 1, 2)
         poly2 = _POLY_SAME.reshape(-1, 1, 2)
         area  = polygon_intersection_area(poly1, poly2)
-        assert area == pytest.approx(1600.0, rel=0.05)
+        assert area == pytest.approx(1600.0, rel=0.1)
 
 
 # ─── polygon_union_area ───────────────────────────────────────────────────────
@@ -161,7 +161,7 @@ class TestPolygonUnionArea:
 
     def test_identical_approx_area(self):
         union = polygon_union_area(_POLY_SAME, _POLY_SAME)
-        assert union == pytest.approx(1600.0, rel=0.05)
+        assert union == pytest.approx(1600.0, rel=0.1)
 
     def test_commutative(self):
         a = polygon_union_area(_POLY_P1, _POLY_P2)

@@ -188,6 +188,8 @@ def estimate_char_height(img: np.ndarray,
         Средняя высота символов (пикселей). 0 если нет подходящих компонент.
     """
     gray = _to_gray(img)
+    if gray.max() == gray.min():
+        return 0.0
     _, binary = cv2.threshold(gray, 0, 255,
                                cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 

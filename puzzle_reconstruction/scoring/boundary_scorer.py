@@ -226,7 +226,8 @@ def color_compatibility(
     h1 = _hist_lab(strip1)
     h2 = _hist_lab(strip2)
     intersection = float(np.minimum(h1, h2).sum())
-    return float(np.clip(intersection, 0.0, 1.0))
+    total = float(h1.sum())
+    return float(np.clip(intersection / max(total, 1e-12), 0.0, 1.0))
 
 
 # ─── score_boundary ───────────────────────────────────────────────────────────
@@ -263,6 +264,12 @@ def score_boundary(
     min_cols = min(strip1.shape[1], strip2.shape[1])
     s1 = strip1[:min_rows, :min_cols]
     s2 = strip2[:min_rows, :min_cols]
+
+    # Normalize channel dimensionality (grayscale vs color)
+    if s1.ndim == 2 and s2.ndim == 3:
+        s1 = cv2.cvtColor(s1, cv2.COLOR_GRAY2BGR)
+    elif s1.ndim == 3 and s2.ndim == 2:
+        s2 = cv2.cvtColor(s2, cv2.COLOR_GRAY2BGR)
 
     i_score = intensity_compatibility(s1, s2)
     g_score = gradient_compatibility(s1, s2)

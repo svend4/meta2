@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from typing import List, Literal, Optional, Sequence
 
 import numpy as np
+from scipy.signal import savgol_filter as _scipy_savgol_filter
 
 
 # ─── SmoothingParams ─────────────────────────────────────────────────────────
@@ -236,17 +237,7 @@ def savgol_smooth(
     if len(signal) == 0:
         return signal.copy()
 
-    half = window_size // 2
-    padded = np.pad(signal, half, mode="edge")
-    out = np.empty(len(signal), dtype=np.float64)
-    x_fit = np.arange(window_size, dtype=np.float64) - half
-
-    for i in range(len(signal)):
-        window = padded[i : i + window_size]
-        coeffs = np.polyfit(x_fit, window, polyorder)
-        out[i] = np.polyval(coeffs, 0.0)
-
-    return out
+    return _scipy_savgol_filter(signal, window_size, polyorder).astype(np.float64)
 
 
 # ─── smooth_contour ──────────────────────────────────────────────────────────

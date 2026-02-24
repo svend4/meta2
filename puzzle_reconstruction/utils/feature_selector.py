@@ -160,7 +160,7 @@ def correlation_selection(
         for j in range(i + 1, D):
             if not keep[j]:
                 continue
-            if abs(corr_matrix[i, j]) > max_corr:
+            if abs(float(np.clip(corr_matrix[i, j], -1.0, 1.0))) > max_corr:
                 keep[j] = False
 
     indices = np.where(keep)[0].astype(np.int64)

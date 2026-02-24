@@ -162,6 +162,12 @@ def normalize_rank(
             original_min=mn, original_max=mx,
         )
 
+    if np.std(a) < 1e-9:
+        result = np.full(n, 0.5, dtype=np.float64)
+        return ScoreNormResult(
+            scores=result, method="rank",
+            original_min=mn, original_max=mx,
+        )
     order  = np.argsort(a)
     result = np.empty(n, dtype=np.float64)
     result[order] = np.arange(n, dtype=np.float64) / float(n - 1)
@@ -195,13 +201,15 @@ def calibrate_scores(
     """
     s   = np.asarray(scores,    dtype=np.float64).ravel()
     ref = np.asarray(reference, dtype=np.float64).ravel()
-    mn, mx = float(s.min()), float(s.max())
 
     if s.size == 0 or ref.size == 0:
+        mn = float(s.min()) if s.size > 0 else 0.0
+        mx = float(s.max()) if s.size > 0 else 0.0
         return ScoreNormResult(
             scores=s.copy(), method="calibrated",
             original_min=mn, original_max=mx,
         )
+    mn, mx = float(s.min()), float(s.max())
 
     # Квантильное совмещение через CDF
     s_sorted   = np.sort(s)

@@ -294,7 +294,7 @@ def compute_gradient_stats(
     mean_mag = float(mag.mean())
     std_mag = float(mag.std())
     mean_orient = float(orient.mean())
-    edge_density = float((mag > threshold).mean())
+    edge_density = float((mag >= threshold).mean())
 
     # Доминирующий угол по взвешенной гистограмме ориентаций
     weights = mag.ravel()

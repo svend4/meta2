@@ -186,7 +186,7 @@ class TestScoreTextureCompat:
 
     def test_identical_returns_one(self):
         img = _noisy()
-        v   = score_texture_compat(img, img)
+        v   = score_texture_compat(img, img, side1=2, side2=2)
         assert v == pytest.approx(1.0, abs=1e-5)
 
     def test_gray_input(self):

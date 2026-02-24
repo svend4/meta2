@@ -241,7 +241,7 @@ def laplacian_edges(image:     np.ndarray,
     blurred = cv2.GaussianBlur(gray.astype(np.float32), (k, k), sigma)
 
     # Laplacian
-    lap = cv2.Laplacian(blurred, cv2.CV_64F)
+    lap = cv2.Laplacian(blurred, cv2.CV_32F)
     lap_abs = np.abs(lap)
     _, binary = cv2.threshold(
         np.clip(lap_abs, 0, 255).astype(np.uint8),

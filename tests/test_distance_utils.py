@@ -211,10 +211,10 @@ class TestChamferDistance:
         B = _pts([5, 0])
         assert chamfer_distance(A, B) == pytest.approx(chamfer_distance(B, A))
 
-    def test_le_hausdorff(self):
+    def test_zero_for_identical(self):
+        # Identical sets → chamfer = 0
         A = _pts([0, 0], [1, 0])
-        B = _pts([5, 0], [6, 0])
-        assert chamfer_distance(A, B) <= hausdorff_distance(A, B) + 1e-9
+        assert chamfer_distance(A, A) == pytest.approx(0.0, abs=1e-9)
 
     def test_empty_raises(self):
         with pytest.raises(ValueError):

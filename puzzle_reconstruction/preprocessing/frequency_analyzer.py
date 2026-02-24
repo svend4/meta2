@@ -256,7 +256,7 @@ def compute_spectral_entropy(spectrum: FreqSpectrum) -> float:
     total = power.sum() + 1e-12
     p = power / total
     p = p[p > 0]
-    return float(-np.sum(p * np.log2(p + 1e-12)))
+    return float(max(0.0, -np.sum(p * np.log2(p + 1e-12))))
 
 
 # ─── extract_top_frequencies ──────────────────────────────────────────────────

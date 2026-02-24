@@ -84,6 +84,8 @@ def css_similarity(css_a: np.ndarray, css_b: np.ndarray) -> float:
     dot = float(np.dot(css_a, css_b))
     norm_a = float(np.linalg.norm(css_a))
     norm_b = float(np.linalg.norm(css_b))
+    if norm_a == 0 and norm_b == 0:
+        return 0.0  # Both zero vectors have no shape information
     if norm_a == 0 or norm_b == 0:
         return 0.0
     return max(0.0, min(1.0, dot / (norm_a * norm_b)))

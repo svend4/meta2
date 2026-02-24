@@ -322,6 +322,12 @@ def contour_similarity(contour_a: np.ndarray,
     Returns:
         Сходство ∈ [0, 1] (1 = идентичные контуры).
     """
+    # Guard: degenerate contours with fewer than 2 unique points
+    raw_a = np.unique(np.asarray(contour_a, dtype=np.float64).reshape(-1, 2), axis=0)
+    raw_b = np.unique(np.asarray(contour_b, dtype=np.float64).reshape(-1, 2), axis=0)
+    if len(raw_a) < 2 or len(raw_b) < 2:
+        return 0.0
+
     pts_a = _preprocess_contour(contour_a, n_sample)
     pts_b = _preprocess_contour(contour_b, n_sample)
 

@@ -315,5 +315,6 @@ def phase_shift(
         raise ValueError("Signals must not be empty")
     cc = compute_cross_correlation(s1, s2, normalize=True)
     n = len(s1)
-    best_lag = int(np.argmax(cc)) - (n - 1)
-    return best_lag, float(cc[int(np.argmax(cc))])
+    best_idx = int(np.argmax(cc))
+    best_lag = (n - 1) - best_idx
+    return best_lag, float(cc[best_idx])

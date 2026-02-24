@@ -124,14 +124,14 @@ class TestGammaCorrectionExtra:
         assert np.allclose(out.astype(float), img.astype(float), atol=1)
 
     def test_gamma_gt_1_brighter(self):
-        # Implementation uses (x/255)^(1/gamma)*255; gamma>1 → exponent<1 → brighter
+        # Standard gamma: (x/255)^gamma*255; gamma>1 → exponent>1 → darker
         img = np.full((10, 10), 200, dtype=np.uint8)
-        assert gamma_correction(img, gamma=2.0).mean() > img.mean()
+        assert gamma_correction(img, gamma=2.0).mean() < img.mean()
 
     def test_gamma_lt_1_darker(self):
-        # Implementation uses (x/255)^(1/gamma)*255; gamma<1 → exponent>1 → darker
+        # Standard gamma: (x/255)^gamma*255; gamma<1 → exponent<1 → brighter
         img = np.full((10, 10), 100, dtype=np.uint8)
-        assert gamma_correction(img, gamma=0.5).mean() < img.mean()
+        assert gamma_correction(img, gamma=0.5).mean() > img.mean()
 
     def test_gamma_zero_raises(self):
         with pytest.raises(ValueError):
