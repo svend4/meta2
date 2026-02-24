@@ -330,9 +330,10 @@ def draw_confidence_bar(img:        np.ndarray,
     bar  = np.full((bar_height, w, 3), cfg.bg_color, dtype=np.uint8)
 
     fill_w = max(0, min(w, int(w * float(np.clip(confidence, 0, 1)))))
-    # Интерполяция цвета: красный→жёлтый→зелёный
-    r = int(255 * (1.0 - confidence))
-    g = int(255 * confidence)
+    # Интерполяция цвета: красный→жёлтый→зелёный (clamped to valid uint8 range)
+    c = float(np.clip(confidence, 0.0, 1.0))
+    r = int(255 * (1.0 - c))
+    g = int(255 * c)
     bar[:, :fill_w] = (0, g, r)
 
     label = f"conf={confidence:.2f}"

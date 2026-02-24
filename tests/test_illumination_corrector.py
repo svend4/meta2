@@ -135,7 +135,7 @@ class TestSubtractBackground:
         assert result.shape[2] == 3
 
     def test_precomputed_background_used(self):
-        img = _gradient_gray(ksize=64)
+        img = _gradient_gray()
         bg = estimate_background(img, ksize=11)
         r1 = subtract_background(img, background=bg)
         r2 = subtract_background(img, ksize=11)

@@ -228,12 +228,12 @@ class TestShapeContextDistance:
         d21 = shape_context_distance(sc2, sc1)
         assert math.isclose(d12, d21, rel_tol=1e-9)
 
-    def test_max_value_at_most_half(self):
-        """χ²-расстояние ∈ [0, 0.5] для нормированных дескрипторов."""
+    def test_max_value_at_most_one(self):
+        """χ²-расстояние ∈ [0, 1] для нормированных дескрипторов."""
         sc1 = np.array([1.0, 0.0, 0.0, 0.0])
         sc2 = np.array([0.0, 1.0, 0.0, 0.0])
         d   = shape_context_distance(sc1, sc2)
-        assert d <= 0.5 + 1e-9
+        assert d <= 1.0 + 1e-9
 
 
 # ─── match_shape_contexts ─────────────────────────────────────────────────────

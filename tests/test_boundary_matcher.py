@@ -314,7 +314,7 @@ class TestMatchBoundaryPair:
 
     def test_identical_contours_high_score(self):
         cnt = _circle_contour(50, 50, 30, 64)
-        bm  = match_boundary_pair(cnt, cnt, side1=2, side2=0, n_points=20)
+        bm  = match_boundary_pair(cnt, cnt, side1=2, side2=2, n_points=20)
         assert bm.total_score > 0.8
 
     def test_total_score_in_zero_one(self):

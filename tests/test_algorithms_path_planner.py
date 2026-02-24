@@ -131,12 +131,11 @@ class TestDijkstra:
             dijkstra(np.ones(4), 0, 1)
 
     def test_shortest_among_alternatives(self):
-        # Two paths: direct (cost=5) and indirect (cost=2+2=4)
+        # Two paths: direct (cost=5) and indirect via node 1 (cost=2+2=4)
         mat = np.zeros((4, 4))
-        mat[0, 3] = 5.0; mat[3, 0] = 5.0
+        mat[0, 3] = 5.0; mat[3, 0] = 5.0   # direct
         mat[0, 1] = 2.0; mat[1, 0] = 2.0
-        mat[1, 2] = 2.0; mat[2, 1] = 2.0
-        mat[2, 3] = 2.0; mat[3, 2] = 2.0
+        mat[1, 3] = 2.0; mat[3, 1] = 2.0   # indirect: 0→1→3 costs 4
         r = dijkstra(mat, 0, 3)
         assert r.cost == pytest.approx(4.0)
 

@@ -119,7 +119,7 @@ def evaluate_reconstruction(predicted: Dict[int, Tuple[np.ndarray, float]],
         if dist < position_tolerance * 4:  # Мягкий критерий смежности
             n_correct += 1
 
-    na = n_correct / max(1, n_total)
+    na = 1.0 if n_total == 0 else n_correct / n_total
 
     # ── 3. Edge Match Rate ────────────────────────────────────────────────
     emr = _compute_edge_match_rate(pred_norm, gt_norm, frag_ids, position_tolerance)

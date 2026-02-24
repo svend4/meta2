@@ -207,29 +207,51 @@ def detect_gaps(
             if _iou_1d(yi, yi + hi, yj, yj + hj) > 0.5:
                 gap = max(xi, xj) - min(xi + wi, xj + wj)
                 if gap > 0 and abs(gap - expected_gap) > gap_tol:
-                    sev = float(np.clip(
-                        abs(gap - expected_gap) / max(gap_tol * 5, 1.0), 0, 1))
-                    violations.append(LayoutViolation(
-                        type=LayoutViolationType.GAP,
-                        severity=sev,
-                        fragment_ids=[fi, fj],
-                        description=f"Horizontal gap {gap:.1f}px between {fi} and {fj}",
-                        values={"gap": gap, "expected": expected_gap},
-                    ))
+                    # Skip if another fragment fills this gap
+                    gap_left = min(xi + wi, xj + wj)
+                    gap_right = max(xi, xj)
+                    gap_filled = any(
+                        _iou_1d(yi, yi + hi, positions[ids[k]][1],
+                                positions[ids[k]][1] + positions[ids[k]][3]) > 0.5
+                        and positions[ids[k]][0] < gap_right
+                        and positions[ids[k]][0] + positions[ids[k]][2] > gap_left
+                        for k in range(len(ids)) if k != i and k != j
+                    )
+                    if not gap_filled:
+                        sev = float(np.clip(
+                            abs(gap - expected_gap) / max(gap_tol * 5, 1.0), 0, 1))
+                        violations.append(LayoutViolation(
+                            type=LayoutViolationType.GAP,
+                            severity=sev,
+                            fragment_ids=[fi, fj],
+                            description=f"Horizontal gap {gap:.1f}px between {fi} and {fj}",
+                            values={"gap": gap, "expected": expected_gap},
+                        ))
 
             # Вертикальные соседи (перекрытие по X > 50 %)
             if _iou_1d(xi, xi + wi, xj, xj + wj) > 0.5:
                 gap = max(yi, yj) - min(yi + hi, yj + hj)
                 if gap > 0 and abs(gap - expected_gap) > gap_tol:
-                    sev = float(np.clip(
-                        abs(gap - expected_gap) / max(gap_tol * 5, 1.0), 0, 1))
-                    violations.append(LayoutViolation(
-                        type=LayoutViolationType.GAP,
-                        severity=sev,
-                        fragment_ids=[fi, fj],
-                        description=f"Vertical gap {gap:.1f}px between {fi} and {fj}",
-                        values={"gap": gap, "expected": expected_gap},
-                    ))
+                    # Skip if another fragment fills this gap
+                    gap_top = min(yi + hi, yj + hj)
+                    gap_bot = max(yi, yj)
+                    gap_filled = any(
+                        _iou_1d(xi, xi + wi, positions[ids[k]][0],
+                                positions[ids[k]][0] + positions[ids[k]][2]) > 0.5
+                        and positions[ids[k]][1] < gap_bot
+                        and positions[ids[k]][1] + positions[ids[k]][3] > gap_top
+                        for k in range(len(ids)) if k != i and k != j
+                    )
+                    if not gap_filled:
+                        sev = float(np.clip(
+                            abs(gap - expected_gap) / max(gap_tol * 5, 1.0), 0, 1))
+                        violations.append(LayoutViolation(
+                            type=LayoutViolationType.GAP,
+                            severity=sev,
+                            fragment_ids=[fi, fj],
+                            description=f"Vertical gap {gap:.1f}px between {fi} and {fj}",
+                            values={"gap": gap, "expected": expected_gap},
+                        ))
 
     return violations
 

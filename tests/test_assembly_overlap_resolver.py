@@ -392,7 +392,7 @@ class TestResolveOverlaps:
         assert r.resolved is True
 
     def test_grid_already_ok(self):
-        r = resolve_overlaps(_grid_4())
+        r = resolve_overlaps(_grid_4(), cfg=ResolveConfig(gap=0.0))
         assert r.resolved is True
 
 

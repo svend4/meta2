@@ -37,7 +37,7 @@ class PatchValidConfig:
             ("texture_weight", self.texture_weight),
             ("gradient_weight", self.gradient_weight),
         ):
-            if not (0.0 <= val <= 1.0):
+            if val < 0.0 or val > 1.0:
                 raise ValueError(
                     f"{name} должен быть в [0, 1], получено {val}"
                 )
@@ -231,7 +231,7 @@ def compute_patch_score(
 
     wc, wt, wg = cfg.normalized_weights()
     total = float(np.clip(wc * c_score + wt * t_score + wg * g_score, 0.0, 1.0))
-    valid = total >= cfg.threshold
+    valid = total > cfg.threshold
 
     return PatchScore(
         color_score=c_score,
@@ -271,7 +271,7 @@ def aggregate_patch_scores(
 
     wc, wt, wg = cfg.normalized_weights()
     total = float(np.clip(wc * c + wt * t + wg * g, 0.0, 1.0))
-    valid = total >= cfg.threshold
+    valid = total > cfg.threshold
 
     return PatchScore(color_score=c, texture_score=t, gradient_score=g,
                       total_score=total, valid=valid)

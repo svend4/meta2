@@ -120,7 +120,8 @@ def detect_boundary(
     _, binary = cv2.threshold(gray, threshold, 255, cv2.THRESH_BINARY)
 
     kernel = np.ones((3, 3), dtype=np.uint8)
-    eroded = cv2.erode(binary, kernel, iterations=1)
+    eroded = cv2.erode(binary, kernel, iterations=1,
+                       borderType=cv2.BORDER_CONSTANT, borderValue=0)
     boundary = cv2.subtract(binary, eroded)
     return boundary
 

@@ -121,8 +121,8 @@ def crop_center(
     if ch > h or cw > w:
         raise ValueError(
             f"crop size ({ch}, {cw}) exceeds array size ({h}, {w}).")
-    y0 = (h - ch) // 2
-    x0 = (w - cw) // 2
+    y0 = h // 2 - ch // 2
+    x0 = w // 2 - cw // 2
     return arr[y0: y0 + ch, x0: x0 + cw]
 
 

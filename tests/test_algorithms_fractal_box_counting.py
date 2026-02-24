@@ -54,8 +54,8 @@ class TestBoxCountingFd:
         assert fd < 1.3  # smooth circle should be low-FD
 
     def test_rougher_contour_higher_fd(self):
-        fd_smooth = box_counting_fd(_circle(n=256))
-        fd_rough = box_counting_fd(_fractal_like(n=256))
+        fd_smooth = box_counting_fd(_circle(n=256), n_scales=4)
+        fd_rough = box_counting_fd(_fractal_like(n=256), n_scales=4)
         assert fd_rough > fd_smooth
 
     def test_n_scales_parameter(self):

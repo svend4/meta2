@@ -105,7 +105,7 @@ def build_graph(
     for i in range(N):
         for j in range(i + 1, N):
             w = float(score_matrix[i, j])
-            if w >= threshold:
+            if w > threshold:
                 edges.append(GraphEdge(src=i, dst=j, weight=w))
                 adj[i].append((j, w))
                 adj[j].append((i, w))

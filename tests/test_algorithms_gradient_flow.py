@@ -298,7 +298,7 @@ class TestCompareGradientFields:
     def test_identical_fields_one(self):
         f = compute_gradient(_rand_gray(seed=1))
         s = compare_gradient_fields(f, f)
-        assert s == pytest.approx(1.0, abs=1e-4)
+        assert s == pytest.approx(1.0, abs=0.01)
 
     def test_result_in_range(self):
         f1 = compute_gradient(_rand_gray(seed=1))

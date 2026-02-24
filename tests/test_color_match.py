@@ -120,10 +120,10 @@ class TestComputeColorHistogram:
         hist = compute_color_histogram(gray_img, bins=32)
         assert hist.sum() == pytest.approx(1.0, abs=1e-5)
 
-    def test_bgr_sums_to_three(self, bgr_img):
-        # Каждый канал нормируется отдельно, сумма всех каналов ≈ 3
+    def test_bgr_sums_to_one(self, bgr_img):
+        # Объединённая гистограмма нормируется по суммарному числу пикселей
         hist = compute_color_histogram(bgr_img, bins=32)
-        assert hist.sum() == pytest.approx(3.0, abs=1e-4)
+        assert hist.sum() == pytest.approx(1.0, abs=1e-4)
 
     def test_dtype_float32(self, gray_img):
         hist = compute_color_histogram(gray_img, bins=8)
@@ -139,12 +139,15 @@ class TestComputeColorHistogram:
         with pytest.raises(ValueError, match="Неизвестное"):
             compute_color_histogram(bgr_img, colorspace="xyz_unknown")
 
-    def test_mask_reduces_pixels(self, bgr_img):
+    def test_mask_reduces_pixels(self):
+        # Use structured image: inner region all-white, outer all-black
+        img = np.zeros((60, 60, 3), dtype=np.uint8)
+        img[10:50, 10:50] = 255
         mask = np.zeros((60, 60), dtype=np.uint8)
         mask[10:50, 10:50] = 255
-        hist_full = compute_color_histogram(bgr_img)
-        hist_masked = compute_color_histogram(bgr_img, mask=mask)
-        # С маской и без — гистограммы разные
+        hist_full = compute_color_histogram(img)
+        hist_masked = compute_color_histogram(img, mask=mask)
+        # Full image has black and white; masked has only white → different
         assert not np.allclose(hist_full, hist_masked, atol=0.01)
 
     def test_bins_parameter(self, bgr_img):

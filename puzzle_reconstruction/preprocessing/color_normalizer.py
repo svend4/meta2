@@ -128,7 +128,7 @@ def gamma_correction(img: np.ndarray, gamma: float = 1.0) -> np.ndarray:
     if gamma <= 0.0:
         raise ValueError(f"gamma должна быть > 0, получено {gamma}")
     lut = np.array(
-        [((i / 255.0) ** (1.0 / gamma)) * 255 for i in range(256)],
+        [((i / 255.0) ** gamma) * 255 for i in range(256)],
         dtype=np.uint8,
     )
     return cv2.LUT(img, lut)

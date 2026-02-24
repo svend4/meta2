@@ -232,8 +232,12 @@ def select_otsu_threshold(
     )
 
     sigma_b2 = w1 * w2 * (mu1 - mu2) ** 2
-    best_idx = int(np.argmax(sigma_b2))
-    threshold = float(bin_centers[best_idx])
+    # For bimodal data with an empty valley, sigma_b2 is flat at its maximum.
+    # Use the midpoint of the maximum plateau rather than the first occurrence.
+    max_val = sigma_b2.max()
+    plateau = np.where(sigma_b2 >= max_val * (1 - 1e-10))[0]
+    best_idx = int(plateau[len(plateau) // 2])
+    threshold = float(edges[best_idx + 1])
     return _make_result(scores, threshold, "otsu")
 
 

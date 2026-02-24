@@ -97,7 +97,11 @@ def compute_lbp_histogram(gray: np.ndarray,
     Returns:
         float32 массив длиной ``bins``, нормирован (сумма = 1 или нулевой).
     """
-    src = gray.astype(np.float32)
+    img = np.asarray(gray)
+    if img.ndim == 3:
+        import cv2 as _cv2
+        img = _cv2.cvtColor(img, _cv2.COLOR_BGR2GRAY)
+    src = img.astype(np.float32)
     h, w = src.shape
     lbp = np.zeros((h, w), dtype=np.uint8)
 

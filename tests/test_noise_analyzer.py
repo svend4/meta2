@@ -300,8 +300,8 @@ class TestAnalyzeNoise:
         assert math.isfinite(r.snr_db) or math.isinf(r.snr_db)
 
     @pytest.mark.parametrize("quality,n1,n2", [
-        ("clean",      0.0, 100.0),
-        ("very_noisy", 100.0, 200.0),
+        ("clean",      100.0, 200.0),
+        ("very_noisy", 0.0,   0.0),
     ])
     def test_quality_by_threshold(self, quality, n1, n2):
         img = _gray()
@@ -326,8 +326,8 @@ class TestBatchAnalyzeNoise:
         assert batch_analyze_noise([]) == []
 
     def test_kwargs_forwarded(self):
-        results = batch_analyze_noise([_gray()], noise_thresh1=0.0,
-                                       noise_thresh2=100.0)
+        results = batch_analyze_noise([_gray()], noise_thresh1=100.0,
+                                       noise_thresh2=200.0)
         assert results[0].quality == "clean"
 
     def test_quality_all_valid(self):

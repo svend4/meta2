@@ -172,7 +172,11 @@ def gradient_continuity(
     g2   = np.diff(profile2[:L])
     s1, s2 = g1.std(), g2.std()
     if s1 < 1e-6 and s2 < 1e-6:
-        return 1.0
+        # Both constant: check if same direction
+        m1, m2 = float(g1.mean()), float(g2.mean())
+        if abs(m1) < 1e-6 and abs(m2) < 1e-6:
+            return 1.0  # Both near-zero → continuous
+        return 1.0 if m1 * m2 >= 0 else 0.0  # Same direction → good, opposite → bad
     if s1 < 1e-6 or s2 < 1e-6:
         return 0.5
     corr = float(np.corrcoef(g1, g2)[0, 1])

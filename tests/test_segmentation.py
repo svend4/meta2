@@ -101,8 +101,9 @@ class TestSegmentFragment:
         assert mask.min() == 0
 
     def test_fragment_region_detected(self):
-        """Центр белого прямоугольника должен быть внутри маски."""
-        img = _white_on_black(64, 64, margin=12)
+        """Центр тёмного прямоугольника (фрагмента) должен быть внутри маски."""
+        # segment_fragment uses THRESH_BINARY_INV: dark regions → 255 in mask
+        img = _black_on_white(64, 64, margin=12)
         mask = segment_fragment(img, method="otsu")
         # Центральная область должна быть большей частью покрыта
         center_region = mask[20:44, 20:44]

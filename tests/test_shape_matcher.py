@@ -289,4 +289,4 @@ class TestBatchMatchShapes:
     def test_1x1_same_contour_near_one(self):
         c = _square(size=20, offset=(2, 2))
         result = batch_match_shapes([c], [c.copy()], canvas_size=(50, 50))
-        assert result[0, 0] >= pytest.approx(0.9)
+        assert float(result[0, 0]) >= 0.9

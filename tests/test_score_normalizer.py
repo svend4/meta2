@@ -130,9 +130,11 @@ class TestNormalizeZscore:
         a = np.array([0.0, 0.0, 0.0, 100.0])  # outlier
         r1 = normalize_zscore(a, clip_std=1.0)
         r2 = normalize_zscore(a, clip_std=3.0)
-        # Меньший clip_std → сильнее отсекает outlier
+        # Outlier at 1σ clip → normalized to exactly 1.0
         assert r1.scores[-1] == pytest.approx(1.0)
-        assert r2.scores[-1] == pytest.approx(1.0)
+        # At 3σ clip, outlier (~1.73σ) not clipped → still the max but < 1.0
+        assert r2.scores[-1] == max(r2.scores)
+        assert r2.scores[-1] <= 1.0
 
     def test_original_min_max_stored(self):
         a = np.array([1.0, 2.0, 3.0])

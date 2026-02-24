@@ -278,10 +278,11 @@ class TestValidateAllPairs:
         result = validate_all_pairs(pairs, positions, sizes, max_gap=5.0)
         assert result.is_valid is False
 
-    def test_empty_pairs_raises(self):
-        # boundary_quality_score requires n_pairs >= 1, so empty pairs raises
-        with pytest.raises(ValueError):
-            validate_all_pairs([], [], [])
+    def test_empty_pairs_returns_valid_report(self):
+        # Empty pairs → no violations → valid report (n_pairs=0 allowed)
+        result = validate_all_pairs([], [], [])
+        assert isinstance(result, BoundaryReport)
+        assert result.is_valid is True
 
     def test_angles_none_defaults_to_zero(self):
         pairs = [(0, 1)]

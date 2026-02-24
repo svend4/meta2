@@ -146,7 +146,8 @@ def shortest_path(
     """
     mat = np.asarray(score_matrix, dtype=np.float64)
     _validate_square(mat)
-    cost_mat = np.where(mat > 0, 1.0 - mat, 0.0)
+    # Use a small epsilon to avoid zero-cost edges (dijkstra treats 0 as no-edge)
+    cost_mat = np.where(mat > 0, np.maximum(1.0 - mat, 1e-10), 0.0)
     return dijkstra(cost_mat, start, end)
 
 

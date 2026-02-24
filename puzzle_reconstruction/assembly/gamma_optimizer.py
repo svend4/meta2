@@ -50,6 +50,10 @@ class GammaEdgeModel:
         deviations = deviations[deviations > 1e-10]  # Убираем нули
         if len(deviations) < 5:
             return self  # Недостаточно данных — оставляем дефолты
+        if np.std(deviations) < 1e-10:  # Constant values → scipy.fit fails
+            self.k     = 1.0
+            self.theta = float(deviations[0])
+            return self
 
         # scipy.stats.gamma.fit возвращает (a=k, loc, scale=θ)
         k_fit, _, theta_fit = gamma_dist.fit(deviations, floc=0)

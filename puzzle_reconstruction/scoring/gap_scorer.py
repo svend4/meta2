@@ -272,7 +272,7 @@ def filter_gap_measures(
     Исключения:
         ValueError: если min_score вне [0, 1].
     """
-    if not (0.0 <= min_score <= 1.0):
+    if min_score < 0.0 or min_score > 1.0:
         raise ValueError(
             f"min_score должен быть в [0, 1], получено {min_score}"
         )

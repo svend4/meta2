@@ -229,6 +229,19 @@ def validate_all_pairs(
     Returns:
         :class:`BoundaryReport` со всеми обнаруженными нарушениями.
     """
+    if not pairs:
+        return BoundaryReport(
+            violations=[],
+            n_pairs_checked=0,
+            is_valid=True,
+            overall_score=1.0,
+            params={
+                "max_gap": max_gap,
+                "max_overlap": max_overlap,
+                "max_tilt_deg": max_tilt_deg,
+            },
+        )
+
     if angles is None:
         angles = [0.0] * len(pairs)
 

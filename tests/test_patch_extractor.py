@@ -333,7 +333,8 @@ class TestFilterPatches:
 
     def test_mid_brightness_passes(self):
         p = self._make_patch(val=128)
-        result = filter_patches([p], min_brightness=10.0, max_brightness=245.0)
+        result = filter_patches([p], min_brightness=10.0, max_brightness=245.0,
+                                min_entropy=0.0)
         assert p in result
 
     def test_very_dark_removed(self):

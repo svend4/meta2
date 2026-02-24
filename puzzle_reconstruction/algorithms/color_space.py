@@ -239,7 +239,9 @@ def histogram_intersection(a: ColorHistogram, b: ColorHistogram) -> float:
         raise ValueError(
             f"Длины гистограмм не совпадают: {a.dim} vs {b.dim}"
         )
-    return float(np.minimum(a.hist, b.hist).sum())
+    intersection = float(np.minimum(a.hist, b.hist).sum())
+    denom = float(a.hist.sum())
+    return float(intersection / max(denom, 1e-12))
 
 
 # ─── histogram_chi2 ───────────────────────────────────────────────────────────

@@ -223,7 +223,9 @@ class TestColorCompatibility:
         s1 = _gray(4, 64, val=0)
         s2 = _gray(4, 64, val=255)
         score = color_compatibility(s1, s2)
-        assert score < 0.5
+        # Black vs white differ only in L channel; A and B channels are identical
+        # (both neutral gray). After 3-channel normalization, max score for L=0 is 2/3.
+        assert score < 0.8
 
 
 # ─── TestScoreBoundary ────────────────────────────────────────────────────────
