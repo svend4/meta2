@@ -756,10 +756,103 @@ UI:                ███░░░░░░░  30%  — OpenCV viewer с dra
 ```
 
 **Общая стадия**: Проект находится в стадии **поздней Alpha** — алгоритмическое ядро
-полностью реализовано (296 модулей, ~91 000 строк, 578 классов, 2 629 функций),
-покрыто тестами (99.5% pass rate), снабжено документацией и инструментарием.
+полностью реализовано и верифицировано запуском, но вспомогательный код (utils/)
+значительно раздут за счёт шаблонной генерации (см. §18).
 Для перехода в **Beta** необходимо:
 1. Исправить 4 ошибки импорта в тестах
 2. Стабилизировать 129 падающих тестов
 3. Сделать lint и integration тесты блокирующими в CI
 4. Добавить Docker и создать первый git tag v0.3.0
+5. Консолидировать utils/ (103 → ~15-20 модулей)
+
+---
+
+## 18. Глубокий анализ реализации (верификация запуском)
+
+### 18.1 Результаты runtime-проверки
+
+Каждый ключевой модуль был импортирован и выполнен с реальными данными:
+
+| Проверка | Результат | Детали |
+|----------|:---------:|--------|
+| `Config()` → `to_dict()` | **PASS** | Все 6 секций конфигурации создаются корректно |
+| `Pipeline(Config())` | **PASS** | Импорт и создание экземпляра без ошибок |
+| `Fragment(image, mask, contour)` | **PASS** | Модели данных работают |
+| `segment_fragment(image)` | **PASS** | Возвращает маску (200,200) uint8, значения {0, 255} |
+| `box_counting_fd(curve)` | **PASS** | Возвращает FD = 1.0 (для синусоиды) |
+| `dtw_distance(a, b)` | **PASS** | Возвращает 0.683 (для случайных кривых 50×2 и 60×2) |
+| `import greedy_assembly` | **PASS** | Все 8 алгоритмов сборки импортируются |
+| `import simulated_annealing` | **PASS** | |
+| `import beam_search` | **PASS** | |
+| pytest (5 файлов, 208 тестов) | **207 pass, 1 fail** | Единственный провал: DTW triangle inequality (DTW не метрика) |
+
+### 18.2 Классификация реализации ядра (18 ключевых модулей)
+
+Каждый файл прочитан полностью и классифицирован:
+
+| Модуль | LOC | Вердикт | Обоснование |
+|--------|----:|:-------:|-------------|
+| `tangram/hull.py` | 62 | **THIN+REAL** | `convex_hull` и `rdp_simplify` — обёртки cv2 (3-4 строки); `normalize_polygon` — настоящий PCA через SVD (20 строк) |
+| `fractal/box_counting.py` | 87 | **REAL** | Учебная реализация: нормализация [0,1], подсчёт ячеек через set(zip), polyfit log-log, clip [1.0, 2.0] |
+| `fractal/ifs.py` | 149 | **REAL** | Настоящий IFS Барнсли: проекция на перпендикуляр хорды, сегментация, регрессия, |d_k| < 1 |
+| `fractal/css.py` | 179 | **REAL** | Полный CSS (MPEG-7): Gaussian smoothing × σ, вычисление кривизны, zero-crossing detection |
+| `fractal/divider.py` | 99 | **REAL** | Richardson compass walk с интерполяцией |
+| `synthesis.py` | 140 | **REAL** | Синтез: ресемплинг обеих кривых, нормализация, α-взвешивание, CSS per edge |
+| `matching/dtw.py` | 59 | **REAL** | Ручной DTW с Sakoe-Chiba band, O(n·w), не обёртка библиотеки |
+| `matching/pairwise.py` | 78 | **REAL** | 4 сигнала с явными весами (CSS 0.35, DTW 0.30, FD 0.20, text 0.15) + length penalty |
+| `assembly/greedy.py` | 147 | **REAL** | Жадная сборка с геометрическим размещением |
+| `assembly/annealing.py` | 143 | **REAL** | SA: swap/rotate/shift, Metropolis exp(dE/T), геом. охлаждение |
+| `assembly/beam_search.py` | 193 | **REAL** | Hypothesis dataclass, expand по лучшим CompatEntry, 2D rotation/translation |
+| `assembly/genetic.py` | 297 | **REAL** | Order Crossover (OX), tournament selection, 3 вида мутаций, elitism |
+| `assembly/ant_colony.py` | 271 | **REAL** | τ^α·η^β, evaporation ρ, elite reinforcement, вероятностный переход |
+| `assembly/mcts.py` | 293 | **REAL** | UCB1, 4 фазы (Selection, Expansion, Simulation, Backpropagation) |
+| `verification/ocr.py` | 164 | **REAL** | Strip extraction + pytesseract + quality scoring; graceful degradation |
+| `pipeline.py` | 334 | **REAL** | ThreadPoolExecutor, 7 шагов предобработки, 5 методов сборки, PipelineResult |
+| `clustering.py` | 317 | **REAL** | 28D features, BIC+silhouette для K, GMM/KMeans/Spectral |
+| `main.py` | 321 | **REAL** | Полный argparse CLI, 6-этапный pipeline, config file + override |
+
+**Итог ядра: 17 из 18 модулей = REAL (настоящие алгоритмы, написанные вручную)**
+
+### 18.3 Классификация вспомогательного кода (utils/, 103 модуля)
+
+Анализ 27 модулей (20 случайных + 7 целевых):
+
+| Категория | Доля | Примеры |
+|-----------|-----:|---------|
+| **SUBSTANTIAL** (настоящие алгоритмы, 10+ строк логики) | 15% | `geometry.py` (Sutherland-Hodgman, winding number), `icp_utils.py` (SVD, nearest-neighbor), `topology_utils.py` (Graham scan, flood-fill BFS), `spatial_index.py` (grid-based kNN), `graph_utils.py` (Dijkstra, Prim MST), `cache.py` (LRU+SHA-256), `feature_selector.py` (PCA via SVD) |
+| **MODERATE** (реальные, но простые, 5-15 строк) | 60% | `event_bus.py` (pub/sub), `profiler.py` (step timing), `visualizer.py` (compositing), `rotation_utils.py` (SVD Procrustes), `threshold_utils.py` (Otsu), `contour_utils.py` (arc-length resampling) |
+| **THIN** (обёртки 1-4 строки) | 25% | `mask_utils.py` (cv2.erode/dilate), `normalization_utils.py` (np.linalg.norm), `sampling_utils.py` (rng.choice), `config_manager.py` (dict ops), `sparse_utils.py` (np.where) |
+
+### 18.4 Признаки шаблонной генерации в utils/
+
+| Индикатор | Значение |
+|-----------|----------|
+| Файлов с идентичным dataclass-шаблоном (`Config` + `__post_init__` + функции + `batch_`) | **49/102 (48%)** |
+| Функций с ≤ 3 statements (без docstring) | **59.6%** (852/1429) |
+| Однострочных return-функций | **31.1%** (445/1429) |
+| `batch_*` функций (тривиальные `[f(x) for x in items]`) | **78 шт. в 66 файлах** |
+| Дублирование между файлами | `symmetrize_matrix`, `threshold_matrix`, `diagonal_zeros` — реализованы в 2-3 файлах |
+| Разброс размеров файлов | 194–471 строк, медиана 326 — аномально однородно |
+| Файлов с идентичными `# ─── Section ───` разделителями | **81%** |
+
+### 18.5 Реальный объём уникальной логики (переоценка)
+
+| Слой | Номинально | Реально уникального кода | Коэффициент |
+|------|:----------:|:------------------------:|:-----------:|
+| **Ядро** (algorithms, matching, assembly, verification, pipeline) | ~38 800 LOC | ~25 000–30 000 LOC | 0.70 |
+| **Предобработка** (preprocessing) | ~11 000 LOC | ~6 000–8 000 LOC | 0.65 |
+| **Утилиты** (utils) | ~32 590 LOC | ~5 000–8 000 LOC | 0.20 |
+| **Scoring** | ~4 210 LOC | ~2 000–3 000 LOC | 0.60 |
+| **IO + UI + корневые** | ~4 850 LOC | ~3 000–4 000 LOC | 0.70 |
+| **ИТОГО production** | **~91 180 LOC** | **~41 000–53 000 LOC** | **0.50** |
+
+### 18.6 Инструменты (tools/) — все REAL
+
+| Файл | LOC | Вердикт | Обоснование |
+|------|----:|:-------:|-------------|
+| `server.py` | 309 | **REAL** | Flask, 6 endpoints, thread-safe jobs, multipart upload |
+| `benchmark.py` | 355 | **REAL** | Ground-truth tracking, NA/DC/RMSE метрики |
+| `tear_generator.py` | 303 | **REAL** | fBm noise (fractional Brownian motion), multi-octave |
+| `evaluate.py` | 312 | **REAL** | Pipeline + HTML/JSON/Markdown отчёты |
+| `mix_documents.py` | 272 | **REAL** | Кластеризация + Purity/Rand/ARI оценка |
+| `profile.py` | 388 | **REAL** | cProfile, 7-этапное профилирование |
