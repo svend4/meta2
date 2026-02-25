@@ -3,7 +3,7 @@
 Программа для автоматической сборки разорванных газет, книг и документов
 из отсканированных фрагментов.
 
-> **Статус**: 305 модулей, 42 208 тестов, 100% покрытие модулей.
+> **Статус**: **v1.0.0 Production/Stable** — 305 модулей, 42 384 теста, 100% покрытие модулей.
 > Последнее обновление: февраль 2026 г.
 
 ## Алгоритм
@@ -59,6 +59,15 @@ python main.py --input-list dirs.txt --output results/
 
 # Интерактивный просмотр с визуализацией
 python main.py --input scans/ --visualize --interactive
+
+# Верификация: показать список валидаторов
+python main.py --list-validators
+
+# Верификация: запустить все 21 валидатор и экспортировать отчёт
+python main.py --input scans/ --validators all --export-report report.html
+
+# Верификация: выбранные валидаторы + JSON-отчёт
+python main.py --input scans/ --validators boundary,metrics,completeness --export-report report.json
 ```
 
 ---
@@ -119,6 +128,16 @@ Research mode:
 
 Кэш:
   --cache-dir DIR        Директория для кэша дескрипторов
+
+Верификация (VerificationSuite — 21 валидатор):
+  --list-validators      Показать список всех 21 валидаторов и выйти
+  --validators LIST      Запустить валидаторы (через запятую) или 'all' для всех 21
+                           Примеры: --validators all
+                                    --validators boundary,metrics,placement
+  --export-report PATH   Экспортировать отчёт верификации:
+                           report.json  — структурированный JSON
+                           report.md    — Markdown-таблица
+                           report.html  — HTML-страница с CSS
 ```
 
 ---

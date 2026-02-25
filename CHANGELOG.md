@@ -23,6 +23,8 @@
   не требует `--input` (обработка до argparse)
 - **`tests/test_verification_report_methods.py`** — 43 теста для новых методов сериализации и
   Pipeline.verify_suite() / PipelineResult.verification_report
+- **`tests/test_main_list_validators.py`** — 20 тестов для `--list-validators` CLI и
+  `all_validator_names()` (стабильность, 21 имя, оригинальные 9 + новые 12)
 
 ### Улучшено
 
@@ -34,9 +36,9 @@
 
 ### Тестирование
 
-- Добавлено 43 новых теста в `test_verification_report_methods.py`
+- Добавлено 63 новых теста: 43 в `test_verification_report_methods.py` + 20 в `test_main_list_validators.py`
 - Все ранее проходящие тесты продолжают проходить (0 регрессий)
-- Итого: 42 333+ тестов, все проходят
+- Итого: **42 384 тестов**, все проходят (0 провалено)
 
 ---
 
