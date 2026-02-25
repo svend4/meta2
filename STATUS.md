@@ -111,8 +111,8 @@
 | `assembly/` | 27 | 8 145 | 302 |
 | `matching/` | 27 | 8 188 | 303 |
 | `verification/` | 21 | 7 442 | 354 |
-| `scoring/` | 12 | 3 916 | 326 |
-| `io/` | 3 | 1 060 | 353 |
+| `scoring/` ⚠️ спит | 12 | 4 219 | 352 |
+| `io/` ⚠️ спит | 3 | 1 141 | 380 |
 | `ui/` | 1 | 364 | 364 |
 | *корневые (pipeline, config, models, export, clustering)* | 5 | ~1 471 | ~294 |
 | **ИТОГО `puzzle_reconstruction/`** | **306** | **93 785** | **306** |
@@ -644,27 +644,50 @@ preprocessing:
 | **Событийная система** | `event_bus`, `event_log` |
 | **Трекинг** | `tracker_utils`, `progress_tracker`, `scoring_pipeline_utils` |
 
-### `scoring/` — 12 модулей, 3 916 строк
+### `scoring/` — 12 модулей, 4 219 строк — СПЯЩИЙ СУБПАКЕТ
 
-Реализован полностью, используется косвенно через matching:
+> ⚠️ **СПЯЩИЙ:** Не импортируется ни в `main.py`, ни в `pipeline.py`, ни в каком-либо
+> производственном модуле. Используется **только в тестах** (`tests/test_scoring_*.py`,
+> `tests/test_*_extra.py`). Готов к подключению — вся инфраструктура реализована.
 
-| Модуль | Функция |
-|---|---|
-| `score_normalizer.py` | z-score, min-max, rank нормализация оценок |
-| `score_combiner.py` | Взвешенное / ранговое объединение |
-| `threshold_selector.py` | Otsu, адаптивные пороги |
-| `boundary_scorer.py` | Оценка качества границ |
-| `consistency_checker.py` | Проверка согласованности |
-| `gap_scorer.py` | Анализ зазоров между фрагментами |
-| `match_evaluator.py` | Оценка качества матчинга |
+Все 12 модулей полностью реализованы и покрыты тестами (>99% прохождения):
 
-### `io/` — 3 модуля, 1 060 строк
+| Модуль | Строк | Функция |
+|---|---|---|
+| `score_normalizer.py` | 341 | z-score, min-max, rank нормализация, clip нормализация |
+| `threshold_selector.py` | 403 | Otsu, адаптивные пороги, Kapur, Triangle |
+| `match_evaluator.py` | 349 | Оценка качества матчинга, precision/recall пар |
+| `boundary_scorer.py` | 340 | Оценка качества граничных совпадений |
+| `consistency_checker.py` | 345 | Проверка глобальной согласованности оценок |
+| `match_scorer.py` | 324 | Итоговый скор пары фрагментов |
+| `gap_scorer.py` | 337 | Анализ и оценка зазоров между фрагментами |
+| `pair_filter.py` | 335 | Фильтрация пар по порогу совместимости |
+| `pair_ranker.py` | 330 | Ранжирование пар фрагментов |
+| `global_ranker.py` | 331 | Глобальное ранжирование всех кандидатов |
+| `evidence_aggregator.py` | 289 | Агрегация доказательств от нескольких матчеров |
+| `rank_fusion.py` | 192 | Ранговое слияние (RRF, Borda count) |
+| `__init__.py` | 303 | Публичный API субпакета |
 
-| Модуль | Функция |
-|---|---|
-| `metadata_writer.py` | Сохранение метаданных реконструкции (JSON) |
-| `result_exporter.py` | Экспорт: PNG, PDF, JSON, HTML |
-| *(загрузка)* | Пакетная загрузка изображений |
+**Потенциал при подключении:** замена жёстких весов в `pairwise.py` на
+полноценный конфигурируемый scoring pipeline с нормализацией, фильтрацией и ранжированием.
+
+### `io/` — 3 модуля, 1 141 строка — СПЯЩИЙ СУБПАКЕТ
+
+> ⚠️ **СПЯЩИЙ:** Не импортируется в производственном коде
+> (`main.py`, `pipeline.py`, весь `puzzle_reconstruction/`).
+> **Важно:** `from .io import ...` в `utils/__init__.py` ссылается на
+> `puzzle_reconstruction/utils/io.py` — это **другой** модуль внутри `utils/`, не этот субпакет.
+> `puzzle_reconstruction.io` используется **только в тестах** (9 тестовых файлов, ~450 тестов).
+
+| Модуль | Строк | Функция |
+|---|---|---|
+| `image_loader.py` | 325 | Пакетная загрузка PNG/JPEG/TIFF: `load_image()`, `load_image_dir()`, `filter_by_extension()`, `parse_fragment_id()`, `ImageRecord` |
+| `metadata_writer.py` | 338 | Сохранение метаданных реконструкции: `write_json()`, `write_yaml()`, `AssemblyMetadata` |
+| `result_exporter.py` | 397 | Экспорт результатов: PNG, PDF, JSON, HTML отчёт, `ExportConfig` |
+| `__init__.py` | 81 | Публичный API субпакета |
+
+**Потенциал при подключении:** `image_loader.py` может заменить ручной `cv2.imread` в `main.py`,
+`result_exporter.py` — расширить форматы экспорта за рамки одного PNG.
 
 ### `ui/` — 1 модуль, 364 строки
 
@@ -826,6 +849,9 @@ FAILED tests/test_scoring_gap_scorer.py::TestFilterGapMeasures::test_filter_all_
 | Подключить `PreprocessingChain` (35 модулей) | 🟡 Средний | ~60 строк |
 | Подключить `VerificationSuite` (20 модулей) | 🟡 Средний | ~80 строк |
 | Подключить инфраструктурные утилиты (`event_bus`, `result_cache`, etc.) | 🟢 Низкий | ~30 строк |
+| Подключить `scoring/` в пайплайн (заменить жёсткие веса) | 🟡 Средний | ~40 строк |
+| Подключить `io/image_loader.py` вместо ручного `cv2.imread` в `main.py` | 🟡 Средний | ~20 строк |
+| Подключить `io/result_exporter.py` для расширения форматов вывода | 🟡 Средний | ~15 строк |
 | Добавить YAML-конфигурацию | 🟢 Низкий | ~20 строк |
 | Устранить расхождение между `requirements.txt` и `pyproject.toml` (shapely, networkx, matplotlib) | 🟢 Низкий | 3 строки |
 
@@ -842,7 +868,8 @@ FAILED tests/test_scoring_gap_scorer.py::TestFilterGapMeasures::test_filter_all_
 | Матчеры (15 зарегистрировано) | 100% | 4 по умолч. | ✅ | **Beta** |
 | Предобработка (38 модулей) | 100% | 5 активных | ✅ | **Beta** |
 | Верификация (21 модуль) | 100% | 1 активный | ✅ | **Beta** |
-| Scoring (12 модулей) | 100% | косвенно | ✅ | **Beta** |
+| Scoring (12 модулей) ⚠️ | 100% | ❌ **не подключён** | ✅ | **Alpha** |
+| IO-субпакет (3 модуля) ⚠️ | 100% | ❌ **не подключён** | ✅ | **Alpha** |
 | Utils (130 модулей) | 100% | ~3 активных | ✅ | **Alpha** |
 | Tools (6 скриптов) | 100% | 6/6 CLI | ✅ | **Beta** |
 | REST API сервер | 100% | `puzzle-server` | — | **Alpha** |
