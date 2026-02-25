@@ -1,9 +1,9 @@
 # STATUS.md — Текущий статус реализации `puzzle_reconstruction`
 
-> Дата: 2026-02-25 (обновлено — v1.0.0 Stable: снятие xfail-маркеров с Laplacian-тестов)
+> Дата: 2026-02-25 (обновлено — v1.0.0 Stable: xfail→passed + sklearn clustering активирован)
 > Ветка: `claude/puzzle-text-docs-3tcRj`
 > Версия проекта: **1.0.0** (Production/Stable)
-> Последний коммит: `(pending)` — fix: remove xfail markers from laplacian_edges tests (9 now passing)
+> Последний коммит: `(pending)` — fix: install scikit-learn, enable 63 clustering tests
 
 ---
 
@@ -39,8 +39,8 @@
 | **Строк исходного кода** | 93 279 |
 | **Тестовых файлов** | 827 (↑2 в Phase 6) |
 | **Строк тестового кода** | 268 600+ |
-| **Всего тестов (pytest)** | **42 404+** |
-| **Тестов пройдено** | 42 404 (100%) |
+| **Всего тестов (pytest)** | **42 476** |
+| **Тестов пройдено** | 42 476 (100%) |
 | **Тестов провалено** | 0 (0%) |
 | **Коммитов** | 270+ |
 | **Активных алгоритмов сборки** | **8 из 8** |
