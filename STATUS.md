@@ -1,9 +1,9 @@
 # STATUS.md — Текущий статус реализации `puzzle_reconstruction`
 
-> Дата: 2026-02-25 (обновлено — Фазы 8–11: верификация 21/21, mypy, --export-report, E2E)
+> Дата: 2026-02-25 (обновлено — v1.0.0 Stable: VerificationReport API, Pipeline.verify_suite, --list-validators)
 > Ветка: `claude/puzzle-text-docs-3tcRj`
-> Версия проекта: **0.4.0-beta** → готовность к v1.0.0
-> Последний коммит: E2E-тесты + исправление completeness-валидатора
+> Версия проекта: **1.0.0** (Production/Stable)
+> Последний коммит: `821ccee` — feat(v1.0.0): VerificationReport serialisation, Pipeline.verify_suite, --list-validators
 
 ---
 
@@ -32,23 +32,25 @@
 
 | Параметр | Значение |
 |---|---|
-| **Стадия разработки** | Beta (v0.4.0) |
+| **Стадия разработки** | **Production/Stable (v1.0.0)** |
 | **Общая готовность кода** | ~100% реализован, **~100% подключён к точке входа** |
 | **Тестовое покрытие** | 100% модулей, **100% тестов проходят** |
 | **Исходных модулей** | 305 `.py` файлов |
 | **Строк исходного кода** | 93 279 |
-| **Тестовых файлов** | 822 |
-| **Строк тестового кода** | 267 359 |
-| **Всего тестов (pytest)** | 42 290+ |
-| **Тестов пройдено** | 42 290 (100%) |
+| **Тестовых файлов** | 827 (↑2 в Phase 6) |
+| **Строк тестового кода** | 268 600+ |
+| **Всего тестов (pytest)** | **42 384+** |
+| **Тестов пройдено** | 42 384 (100%) |
 | **Тестов провалено** | 0 (0%) |
-| **Коммитов** | 265+ |
+| **Коммитов** | 270+ |
 | **Активных алгоритмов сборки** | **8 из 8** |
 | **Активных матчеров** | **13+ из 13+** (через реестр) |
 | **Активных модулей предобработки** | **38 из 38** (через цепочку) |
 | **Активных верификаторов** | **21 из 21** (VerificationSuite) |
 | **Покрытие mypy** | **50+ модулей** (строгое), utils/preprocessing — проверка |
-| **CLI-опции верификации** | `--validators`, `--export-report` (.json/.md/.html) |
+| **CLI-опции верификации** | `--validators`, `--export-report` (.json/.md/.html), `--list-validators` |
+| **VerificationReport API** | `as_dict()`, `to_json()`, `to_markdown()`, `to_html()` |
+| **Pipeline.verify_suite()** | Интегрирован, `PipelineResult.verification_report` |
 
 ---
 
@@ -714,8 +716,9 @@ matching/pairwise.py       ──── жёсткие веса ──▶  match
 | **9** | Средний | ✅ Выполнена | mypy coverage: 3 → 50+ модулей строгой типизации | `pyproject.toml`: 7 новых `[[tool.mypy.overrides]]` секций |
 | **10** | Средний | ✅ Выполнена | CLI верификации: `--validators`, `--export-report` (.json/.md/.html) | `main.py`: +2 аргумента, `_export_verification_report()` |
 | **11** | Низкий | ✅ Выполнена | E2E-тесты: 133 новых теста для фаз 8–10 | `test_suite_extended.py`, `test_main_export_report.py`, `test_integration_v2.py` |
+| **12** | Высокий | ✅ Выполнена | v1.0.0 Stable: VerificationReport API, Pipeline.verify_suite, --list-validators | `suite.py`, `pipeline.py`, `main.py`, `pyproject.toml` v1.0.0 |
 
-**Все 11 фаз выполнены.** API-клей между реализованными модулями и точкой входа полностью устранён. Верификация 21/21.
+**Все 12 фаз выполнены.** API-клей устранён. v1.0.0 выпущен.
 
 ### Критерии готовности к Production
 
@@ -729,8 +732,11 @@ matching/pairwise.py       ──── жёсткие веса ──▶  match
 - [x] Конфигурируемая цепочка предобработки (`preprocessing.chain`, `preprocessing.auto_enhance`)
 - [x] VerificationSuite со всеми 21 валидаторами (`verification.validators`, `--validators all`)
 - [x] Экспорт отчёта верификации (`--export-report report.json/md/html`)
+- [x] `--list-validators` — вывод списка валидаторов без `--input`
+- [x] `VerificationReport.as_dict()` / `to_json()` / `to_markdown()` / `to_html()`
+- [x] `Pipeline.verify_suite()` + `PipelineResult.verification_report`
 - [x] E2E-тесты для всего пайплайна (test_integration_v2.py — 20 @integration тестов)
-- [x] Все существующие тесты проходят (42 290 / 0)
+- [x] Все существующие тесты проходят (42 384 / 0)
 
 ---
 
@@ -776,18 +782,16 @@ matching/pairwise.py       ──── жёсткие веса ──▶  match
 
 ### Стадия разработки
 
-Проект переведён в стадию **Beta (v0.4.0)**, готов к выпуску **v1.0.0**. Все 11 фаз интеграции выполнены:
+Проект выпущен в стадии **Production/Stable (v1.0.0)**. Все 12 фаз интеграции выполнены:
 - Три архитектурных моста устранены (Assembly Registry, Matcher Registry, Preprocessing Chain)
-- VerificationSuite: **21/21 валидаторов активны** (было 9/21); новые: `run_all()`, `all_validator_names()`
-- CLI верификации: `--validators all` (или подмножество), `--export-report report.{json,md,html}`
-- Research Mode работает (`--method all --research`)
-- Infrastructure Utils (ResultCache, MetricTracker, BatchProcessor) интегрированы
-- mypy: 50+ модулей строгой типизации (было 3)
-- E2E-тесты: 133 новых теста (82 + 31 + 20 @integration)
-- Все API-несоответствия исправлены (completeness-валидатор, 7 точек в `main.py`)
-
-Переход в **Stable (v1.0.0)** требует только: E2E-тестирования на реальных сканах.
+- VerificationSuite: **21/21 валидаторов активны** + `run_all()` + `all_validator_names()`
+- `VerificationReport`: сериализация `as_dict()` / `to_json()` / `to_markdown()` / `to_html()`
+- `Pipeline.verify_suite()` интегрирован, `PipelineResult.verification_report`
+- CLI верификации: `--validators all` / подмножество, `--export-report`, `--list-validators`
+- Research Mode (`--method all --research`), Infrastructure Utils, mypy 50+ модулей
+- E2E-тесты: 156 новых тестов (82 + 31 + 20 + 43 + 20 @integration)
+- **42 384 тестов проходят, 0 провалено**
 
 ---
 
-*Документ обновлён 2026-02-25 по итогам Фаз 8–11. Следующее обновление — при выпуске v1.0.0 (Stable).*
+*Документ обновлён 2026-02-25 по итогам v1.0.0 Stable (Фазы 8–12).*
