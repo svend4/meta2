@@ -7,12 +7,20 @@
     python main.py --input scans/ --output result.png --method beam --beam-width 10
     python main.py --input scans/ --output result.png --config config.json
     python main.py --input scans/ --output result.png --visualize
+    python main.py --input scans/ --method all --research          # исследовательский режим
+    python main.py --input-list dirs.txt --output results/         # пакетная обработка
 
 Методы сборки (--method):
-    greedy  — жадный алгоритм (быстрый, < 1 сек)
-    sa      — имитация отжига (лучше, ~10–30 сек)
-    beam    — beam search (точнее, ~5–20 сек) [по умолчанию]
-    gamma   — гамма-оптимизатор, статья 2026 (экспериментальный)
+    greedy     — жадный алгоритм (быстрый, < 1 сек)
+    sa         — имитация отжига (лучше, ~10–30 сек)
+    beam       — beam search (точнее, ~5–20 сек) [по умолчанию]
+    gamma      — гамма-оптимизатор, статья 2026 (экспериментальный)
+    genetic    — генетический алгоритм (15–40 фрагментов)
+    exhaustive — полный перебор (≤8 фрагментов, точный)
+    ant_colony — муравьиная колония (20–60 фрагментов)
+    mcts       — Monte Carlo Tree Search (6–25 фрагментов)
+    auto       — автовыбор по числу фрагментов
+    all        — все 8 методов, выбор лучшего
 
 Алгоритм (6 этапов):
     1. Сегментация каждого фрагмента (Otsu / Adaptive / GrabCut)
@@ -23,6 +31,8 @@
     6. OCR-верификация и экспорт
 """
 import argparse
+import hashlib
+import json
 import sys
 import time
 import numpy as np
@@ -65,10 +75,15 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     # Основные аргументы
-    parser.add_argument("--input",  "-i", required=True,
-                        help="Директория с отсканированными фрагментами")
+    input_grp = parser.add_mutually_exclusive_group(required=True)
+    input_grp.add_argument("--input",  "-i",
+                           help="Директория с отсканированными фрагментами")
+    input_grp.add_argument("--input-list",
+                           help="Файл со списком директорий (по одной на строку) "
+                                "для пакетной обработки (batch mode)")
     parser.add_argument("--output", "-o", default="result.png",
-                        help="Путь для сохранения результата")
+                        help="Путь для сохранения результата "
+                             "(в batch mode — директория)")
 
     # Конфигурация
     parser.add_argument("--config", "-c", default=None,
@@ -122,6 +137,22 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Подробный вывод (DEBUG-уровень)")
     parser.add_argument("--log-file",  default=None,
                         help="Записывать лог в файл")
+
+    # Исследовательский режим (Фаза 7)
+    parser.add_argument("--research", action="store_true",
+                        help="Исследовательский режим: сравнение методов, "
+                             "консенсусная сборка, экспорт JSON (работает с "
+                             "--method all или --method auto)")
+    parser.add_argument("--no-consensus", action="store_true",
+                        help="Отключить консенсусную сборку в research mode")
+    parser.add_argument("--export-json", default=None,
+                        help="Путь для экспорта comparison.json "
+                             "(по умолчанию: comparison.json рядом с --output)")
+
+    # Кэш дескрипторов (Фаза 6)
+    parser.add_argument("--cache-dir", default=None,
+                        help="Директория для кэша EdgeSignatures между запусками "
+                             "(ускоряет повторные прогоны на том же наборе фрагментов)")
     return parser
 
 
@@ -149,6 +180,23 @@ def load_fragments(input_dir: Path, log) -> list[Fragment]:
 
 def process_fragment(frag: Fragment, cfg: Config, log) -> Fragment:
     """Полная обработка одного фрагмента."""
+    # Предобработка (цепочка фильтров — Мост №2)
+    if not cfg.preprocessing.is_empty() if hasattr(cfg.preprocessing, 'is_empty') else \
+            (cfg.preprocessing.chain or cfg.preprocessing.auto_enhance):
+        from puzzle_reconstruction.preprocessing.chain import PreprocessingChain
+        chain = PreprocessingChain(
+            filters=cfg.preprocessing.chain,
+            quality_threshold=cfg.preprocessing.quality_threshold,
+            auto_enhance=cfg.preprocessing.auto_enhance,
+        )
+        enhanced = chain.apply(frag.image)
+        if enhanced is None:
+            raise ValueError(
+                f"фрагмент #{frag.fragment_id} отклонён по качеству"
+                f" (порог={cfg.preprocessing.quality_threshold})"
+            )
+        frag.image = enhanced
+
     # Сегментация
     frag.mask = segment_fragment(frag.image, method=cfg.segmentation.method,
                                   morph_kernel=cfg.segmentation.morph_kernel)
@@ -193,7 +241,12 @@ def _auto_methods(n_fragments: int) -> list:
 
 
 def assemble(fragments, entries, cfg: Config, log):
-    """Запускает выбранный метод(ы) сборки через единый реестр parallel.py."""
+    """
+    Запускает выбранный метод(ы) сборки через единый реестр parallel.py.
+
+    Returns:
+        (Assembly, List[MethodResult]) — лучшая сборка и список всех результатов.
+    """
     method = cfg.assembly.method
     log.info(f"  Метод: {method}")
 
@@ -217,7 +270,7 @@ def assemble(fragments, entries, cfg: Config, log):
         if best is None:
             log.error("Все методы завершились с ошибкой")
             sys.exit(1)
-        return best
+        return best, results
 
     if method == "auto":
         methods = _auto_methods(len(fragments))
@@ -233,7 +286,7 @@ def assemble(fragments, entries, cfg: Config, log):
         if best is None:
             log.error("Все автовыбранные методы завершились с ошибкой")
             sys.exit(1)
-        return best
+        return best, results
 
     # Одиночный метод
     try:
@@ -245,13 +298,188 @@ def assemble(fragments, entries, cfg: Config, log):
         err = results[0].error if results else "нет результата"
         log.error(f"Метод {method!r} завершился с ошибкой: {err}")
         sys.exit(1)
-    return results[0].assembly
+    return results[0].assembly, results
+
+
+def _fragment_cache_key(img: np.ndarray) -> str:
+    """Вычисляет хэш изображения для кэширования дескрипторов."""
+    h = hashlib.md5(img.tobytes()).hexdigest()
+    return f"frag_{img.shape[0]}x{img.shape[1]}_{h}"
+
+
+def _try_load_cached_fragment(cache, key: str):
+    """Загружает Fragment из кэша. Возвращает None если кэш пуст или недоступен."""
+    if cache is None:
+        return None
+    try:
+        return cache.get(key)
+    except Exception:
+        return None
+
+
+def _try_save_fragment(cache, key: str, frag) -> None:
+    """Сохраняет Fragment в кэш (игнорирует ошибки)."""
+    if cache is None:
+        return
+    try:
+        cache.put(key, frag)
+    except Exception:
+        pass
+
+
+def _make_descriptor_cache(cache_dir: str | None):
+    """Создаёт ResultCache для кэша дескрипторов или возвращает None."""
+    if cache_dir is None:
+        return None
+    try:
+        from puzzle_reconstruction.utils.result_cache import make_cache, CachePolicy
+        Path(cache_dir).mkdir(parents=True, exist_ok=True)
+        return make_cache(CachePolicy(namespace="fragments", ttl=0.0))
+    except Exception:
+        return None
+
+
+def _run_research_mode(assembly_results, entries, cfg, log) -> dict:
+    """
+    Исследовательский режим (Фаза 7):
+    - Строит consensus-сборку из успешных методов
+    - Собирает метрики через MetricTracker
+    - Возвращает словарь для экспорта в JSON
+
+    Args:
+        assembly_results: List[MethodResult] из run_all_methods
+        entries:          Список CompatEntry (матрица совместимости)
+        cfg:              Config
+        log:              Logger
+
+    Returns:
+        dict с полями methods, consensus_score, best_method
+    """
+    report = {"methods": [], "consensus_score": 0.0, "best_method": None}
+
+    # ── MetricTracker: регистрируем score каждого метода ──────────────────
+    try:
+        from puzzle_reconstruction.utils.metric_tracker import make_tracker
+        tracker = make_tracker()
+        for i, r in enumerate(assembly_results):
+            if r.success:
+                tracker.record(r.method, r.assembly.total_score, step=i)
+        report["metric_stats"] = {
+            name: {"mean": float(st.mean), "max": float(st.maximum), "last": float(st.last)}
+            for name, st in (
+                (m, tracker.stats(m))
+                for m in tracker.metrics()
+            )
+            if st is not None
+        }
+    except Exception:
+        pass
+
+    # ── Таблица методов ───────────────────────────────────────────────────
+    for r in assembly_results:
+        entry = {
+            "method":  r.method,
+            "success": r.success,
+            "score":   float(r.assembly.total_score) if r.success else 0.0,
+            "time_s":  float(r.elapsed) if hasattr(r, "elapsed") else 0.0,
+            "error":   r.error if not r.success else None,
+        }
+        report["methods"].append(entry)
+
+    successful = [r for r in assembly_results if r.success]
+    if successful:
+        best = max(successful, key=lambda r: r.assembly.total_score)
+        report["best_method"] = best.method
+        report["best_score"]  = float(best.assembly.total_score)
+
+    # ── Консенсусная сборка ───────────────────────────────────────────────
+    if cfg.research.consensus and len(successful) >= 2:
+        try:
+            from puzzle_reconstruction.matching.consensus import build_consensus
+            assemblies = [r.assembly for r in successful]
+            threshold  = cfg.research.consensus_threshold
+            consensus_asm = build_consensus(
+                assemblies, entries, threshold=threshold
+            )
+            if consensus_asm is not None:
+                report["consensus_score"] = float(consensus_asm.total_score)
+                log.info(f"  Консенсус ({len(assemblies)} методов, "
+                         f"порог={threshold:.0%}): "
+                         f"score={consensus_asm.total_score:.1%}")
+        except Exception as exc:
+            log.debug(f"  Консенсус недоступен: {exc}")
+
+    return report
+
+
+def _export_comparison(report: dict, path: str | Path, log) -> None:
+    """Сохраняет comparison.json."""
+    try:
+        path = Path(path)
+        path.write_text(json.dumps(report, ensure_ascii=False, indent=2),
+                        encoding="utf-8")
+        log.info(f"  Сравнение экспортировано: {path}")
+    except Exception as exc:
+        log.warning(f"  Не удалось сохранить comparison.json: {exc}")
+
+
+def _run_batch(input_list_file: str, args: argparse.Namespace, log) -> None:
+    """
+    Пакетная обработка (Фаза 6): читает список директорий из файла и
+    запускает run() для каждой, используя BatchProcessor для отчётности.
+    """
+    try:
+        from puzzle_reconstruction.utils.batch_processor import (
+            process_items, ProcessConfig, filter_successful
+        )
+    except Exception as exc:
+        log.error(f"batch_processor недоступен: {exc}")
+        sys.exit(1)
+
+    lines = Path(input_list_file).read_text(encoding="utf-8").splitlines()
+    dirs  = [l.strip() for l in lines if l.strip() and not l.startswith("#")]
+
+    if not dirs:
+        log.error(f"Файл {input_list_file!r} не содержит директорий")
+        sys.exit(1)
+
+    output_root = Path(args.output)
+    output_root.mkdir(parents=True, exist_ok=True)
+    log.info(f"Пакетная обработка: {len(dirs)} директорий → {output_root}")
+
+    def _process_one_dir(input_dir: str) -> dict:
+        dir_name   = Path(input_dir).name
+        out_file   = str(output_root / f"{dir_name}_result.png")
+        batch_args = argparse.Namespace(**vars(args))
+        batch_args.input       = input_dir
+        batch_args.input_list  = None
+        batch_args.output      = out_file
+        batch_args.visualize   = False
+        batch_args.interactive = False
+        run(batch_args)
+        return {"input": input_dir, "output": out_file}
+
+    cfg_proc = ProcessConfig(batch_size=1, max_retries=1, stop_on_error=False)
+    summary  = process_items(dirs, _process_one_dir, cfg_proc)
+    ok       = filter_successful(summary)
+
+    log.info(f"\nПакетная обработка завершена:")
+    log.info(f"  Успешно: {len(ok)}/{summary.total_items}")
+    if summary.failed_items:
+        log.warning(f"  Ошибки:")
+        for item in summary.failed_items:
+            log.warning(f"    [{item.index}] {dirs[item.index]}: {item.error}")
 
 
 def run(args: argparse.Namespace) -> None:
     import logging
     log_level = logging.DEBUG if args.verbose else logging.INFO
     log = get_logger("puzzle", level=log_level, log_file=args.log_file)
+
+    # ── Пакетный режим (batch) ────────────────────────────────────────────
+    if getattr(args, "input_list", None):
+        _run_batch(args.input_list, args, log)
+        return
 
     timer = PipelineTimer()
 
@@ -279,13 +507,29 @@ def run(args: argparse.Namespace) -> None:
         auto_timeout=args.auto_timeout,
     )
 
+    # Research mode: --research включает cfg.research.enabled
+    if getattr(args, "research", False):
+        cfg.research.enabled = True
+    if getattr(args, "no_consensus", False):
+        cfg.research.consensus = False
+    if getattr(args, "export_json", None):
+        cfg.research.comparison_file = args.export_json
+        cfg.research.export_comparison = True
+
     input_dir   = Path(args.input)
     output_path = Path(args.output)
 
     log.info("=" * 55)
     log.info("ВОССТАНОВЛЕНИЕ РАЗОРВАННОГО ДОКУМЕНТА")
     log.info(f"Метод: {cfg.assembly.method}  |  α={cfg.synthesis.alpha}")
+    if cfg.research.enabled:
+        log.info("  [Research Mode: ON]")
     log.info("=" * 55)
+
+    # Кэш дескрипторов (Фаза 6 — ResultCache)
+    descriptor_cache = _make_descriptor_cache(getattr(args, "cache_dir", None))
+    if descriptor_cache is not None:
+        log.info(f"  Кэш дескрипторов: {args.cache_dir}")
 
     # ── Этап 1: Загрузка ──────────────────────────────────────────────────
     with stage("Загрузка фрагментов", log), timer.measure("загрузка"):
@@ -294,9 +538,20 @@ def run(args: argparse.Namespace) -> None:
     # ── Этап 2: Обработка ─────────────────────────────────────────────────
     with stage("Обработка фрагментов", log), timer.measure("обработка"):
         processed = []
+        cache_hits = 0
         for i, frag in enumerate(fragments):
             try:
-                frag = process_fragment(frag, cfg, log)
+                # Попытка получить из кэша (Фаза 6)
+                cache_key    = _fragment_cache_key(frag.image)
+                cached_frag  = _try_load_cached_fragment(descriptor_cache, cache_key)
+                if cached_frag is not None:
+                    cached_frag.fragment_id = frag.fragment_id
+                    frag = cached_frag
+                    cache_hits += 1
+                else:
+                    frag = process_fragment(frag, cfg, log)
+                    _try_save_fragment(descriptor_cache, cache_key, frag)
+
                 fd = (frag.fractal.fd_box + frag.fractal.fd_divider) / 2
                 log.debug(f"  #{frag.fragment_id:3d}  "
                            f"форма={frag.tangram.shape_class.value:<12}  "
@@ -305,6 +560,9 @@ def run(args: argparse.Namespace) -> None:
                 processed.append(frag)
             except Exception as e:
                 log.warning(f"  Фрагмент #{i}: {e}")
+
+        if cache_hits:
+            log.info(f"  Из кэша: {cache_hits}/{len(fragments)}")
 
     log.info(f"  Обработано: {len(processed)}/{len(fragments)}")
 
@@ -323,12 +581,13 @@ def run(args: argparse.Namespace) -> None:
 
     # ── Этап 4: Сборка ────────────────────────────────────────────────────
     with stage("Сборка", log), timer.measure("сборка"):
-        assembly = assemble(processed, entries, cfg, log)
+        assembly, _all_results = assemble(processed, entries, cfg, log)
         assembly.compat_matrix = compat_matrix
         log.info(f"  Score: {assembly.total_score:.4f}")
 
     # ── Этап 5: Верификация ───────────────────────────────────────────────
-    with stage("OCR-верификация", log), timer.measure("верификация"):
+    with stage("Верификация", log), timer.measure("верификация"):
+        # OCR-верификация
         if cfg.verification.run_ocr:
             assembly.ocr_score = verify_full_assembly(
                 assembly, lang=cfg.verification.ocr_lang
@@ -336,6 +595,28 @@ def run(args: argparse.Namespace) -> None:
             log.info(f"  OCR coherence: {assembly.ocr_score:.1%}")
         else:
             log.info("  OCR отключён")
+
+        # Расширенная верификация (VerificationSuite — спящие модули)
+        if cfg.verification.validators:
+            from puzzle_reconstruction.verification.suite import VerificationSuite
+            suite = VerificationSuite(validators=cfg.verification.validators)
+            v_report = suite.run(assembly)
+            log.info(v_report.summary())
+            log.info(f"  Suite score: {v_report.final_score:.1%}")
+
+    # ── Research Mode (Фаза 7) ────────────────────────────────────────────
+    if cfg.research.enabled and cfg.assembly.method in ("all", "auto"):
+        with stage("Research Mode", log), timer.measure("research"):
+            research_report = _run_research_mode(_all_results, entries, cfg, log)
+            research_report["input"]  = str(input_dir)
+            research_report["output"] = str(output_path)
+            research_report["method"] = cfg.assembly.method
+
+            if cfg.research.export_comparison:
+                cmp_path = cfg.research.comparison_file or (
+                    str(output_path.with_suffix("")) + "_comparison.json"
+                )
+                _export_comparison(research_report, cmp_path, log)
 
     # ── Этап 6: Экспорт ───────────────────────────────────────────────────
     with stage("Экспорт", log), timer.measure("экспорт"):
@@ -377,6 +658,11 @@ def _quick_preview(canvas: np.ndarray, assembly) -> None:
 def main():
     parser = build_parser()
     args   = parser.parse_args()
+    # Нормализуем имена атрибутов (argparse конвертирует дефисы в подчёркивания)
+    if not hasattr(args, "input"):
+        args.input = None
+    if not hasattr(args, "input_list"):
+        args.input_list = None
     run(args)
 
 

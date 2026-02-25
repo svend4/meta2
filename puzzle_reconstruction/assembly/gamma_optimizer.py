@@ -154,7 +154,7 @@ def gamma_optimizer(fragments: List[Fragment],
 
     # Температура: адаптивная (начинаем с T пропорциональной разбросу score)
     T = max(0.5, abs(current_ll) / max(1, len(entries)))
-    cooling = np.exp(np.log(0.01) / n_iter)  # T → 0.01·T за n_iter шагов
+    cooling = np.exp(np.log(0.01) / n_iter) if n_iter > 0 else 1.0  # T → 0.01·T за n_iter шагов
 
     for step in range(n_iter):
         # Случайный ход

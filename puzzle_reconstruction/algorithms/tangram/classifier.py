@@ -66,8 +66,8 @@ def _classify_quad(polygon: np.ndarray) -> ShapeClass:
     sides = np.array([polygon[(i + 1) % 4] - polygon[i] for i in range(4)])
     dot01 = abs(np.dot(sides[0], sides[2]))  # стороны 0 и 2
     dot13 = abs(np.dot(sides[1], sides[3]))  # стороны 1 и 3
-    cross01 = abs(np.cross(sides[0], sides[2]))
-    cross13 = abs(np.cross(sides[1], sides[3]))
+    cross01 = abs(sides[0][0] * sides[2][1] - sides[0][1] * sides[2][0])
+    cross13 = abs(sides[1][0] * sides[3][1] - sides[1][1] * sides[3][0])
     if cross01 < 0.1 * dot01 and cross13 < 0.1 * dot13:
         return ShapeClass.PARALLELOGRAM
 

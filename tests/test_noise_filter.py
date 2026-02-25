@@ -123,7 +123,7 @@ class TestGaussianFilter:
         assert out.shape == img.shape
 
     def test_constant_image_unchanged(self):
-        img = np.full((20, 20), 200, dtype=np.uint8)
+        img = np.full((32, 32), 200, dtype=np.uint8)
         out = gaussian_filter(img, kernel_size=5)
         np.testing.assert_array_equal(out, img)
 

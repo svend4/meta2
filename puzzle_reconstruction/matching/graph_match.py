@@ -324,7 +324,8 @@ def random_walk_similarity(graph:   FragmentGraph,
     A, _ = graph.adjacency_matrix()
     # Нормируем строки → матрица переходов P
     row_sums = A.sum(axis=1, keepdims=True)
-    P = np.where(row_sums > 0, A / row_sums, 1.0 / n)  # Равномерный fallback
+    safe_sums = np.where(row_sums > 0, row_sums, 1.0)
+    P = np.where(row_sums > 0, A / safe_sums, 1.0 / n)  # Равномерный fallback
 
     # PageRank для каждого стартового узла
     R = np.zeros((n, n), dtype=np.float64)

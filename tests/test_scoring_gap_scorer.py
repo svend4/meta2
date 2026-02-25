@@ -313,11 +313,11 @@ class TestBuildGapReport:
 class TestFilterGapMeasures:
     def _report(self) -> GapReport:
         ms = [
-            GapMeasure(id_a=0, id_b=1, distance=5.0, score=1.0, penalty=0.0),
+            GapMeasure(id_a=0, id_b=1, distance=5.0, score=0.9, penalty=0.0),
             GapMeasure(id_a=1, id_b=2, distance=15.0, score=0.3, penalty=2.0),
             GapMeasure(id_a=2, id_b=3, distance=7.0, score=0.7, penalty=0.5),
         ]
-        return GapReport(measures=ms, mean_score=0.67,
+        return GapReport(measures=ms, mean_score=0.63,
                          total_penalty=2.5, n_acceptable=2)
 
     def test_returns_list(self):
@@ -335,7 +335,7 @@ class TestFilterGapMeasures:
 
     def test_filter_all_out(self):
         r = self._report()
-        assert filter_gap_measures(r, 1.1) == []
+        assert filter_gap_measures(r, 1.0) == []
 
     def test_min_score_neg_raises(self):
         r = self._report()
