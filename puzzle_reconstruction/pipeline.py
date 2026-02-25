@@ -58,6 +58,12 @@ from .scoring.threshold_selector import select_threshold, ThresholdConfig
 from .scoring.consistency_checker import run_consistency_check, ConsistencyReport
 from .io.image_loader import load_from_directory
 from .io.result_exporter import export_result, ExportConfig, AssemblyResult
+from .algorithms.bridge import (
+    get_algorithm,
+    list_algorithms,
+    get_category,
+    ALGORITHM_CATEGORIES,
+)
 
 
 class PipelineResult:
@@ -170,13 +176,32 @@ class Pipeline:
                  n_workers:    int = 4,
                  on_progress:  Optional[Callable[[str, int, int], None]] = None,
                  log_level:    int = logging.INFO,
-                 log_file:     Optional[str] = None):
+                 log_file:     Optional[str] = None,
+                 algorithms:   Optional[List[str]] = None):
+        """
+        Args:
+            algorithms: Список алгоритмов из Bridge №5 для активации на уровне
+                        фрагмента (fragment-level). None = отключено.
+                        Пример: ["fragment_classifier", "fragment_quality",
+                                 "fourier_descriptor", "shape_context"]
+        """
         self.cfg         = cfg or Config.default()
         self.n_workers   = n_workers
         self.on_progress = on_progress
         self.log         = get_logger("pipeline", level=log_level, log_file=log_file)
         self._timer      = PipelineTimer()
         self._bus: Optional[EventBus] = None
+        # Bridge №5: алгоритмы уровня фрагмента
+        self._fragment_algorithms: List[str] = [
+            name for name in (algorithms or [])
+            if get_category(name) == "fragment"
+        ]
+        if self._fragment_algorithms:
+            self.log.info(
+                "Bridge №5 (algorithms): активировано %d fragment-алгоритмов: %s",
+                len(self._fragment_algorithms),
+                ", ".join(self._fragment_algorithms),
+            )
         try:
             self._bus = make_event_bus()
         except Exception:
@@ -330,11 +355,55 @@ class Pipeline:
             self.log.debug(f"    #{idx}  краёв={len(frag.edges)}  "
                             f"FD={frag.fractal.fd_box:.3f}  "
                             f"форма={frag.tangram.shape_class.value}")
+
+            # 8. Bridge №5: опциональные fragment-level алгоритмы
+            self._run_fragment_algorithms(idx, frag)
+
             return frag
 
         except Exception as e:
             self.log.debug(f"    #{idx}: {type(e).__name__}: {e}")
             return None
+
+    def _run_fragment_algorithms(self, idx: int, frag: "Fragment") -> None:
+        """
+        Запускает алгоритмы Bridge №5 (fragment-level) для одного фрагмента.
+
+        Каждый алгоритм вызывается с img и/или contour фрагмента.
+        Результаты логируются; фрагмент не изменяется (алгоритмы read-only).
+        """
+        if not self._fragment_algorithms:
+            return
+        for name in self._fragment_algorithms:
+            fn = get_algorithm(name)
+            if fn is None:
+                continue
+            try:
+                if name in ("fragment_classifier", "line_detector",
+                            "word_segmentation", "region_segmenter"):
+                    result = fn(frag.image)
+                elif name in ("fragment_quality",):
+                    result = fn(frag.image, frag.mask)
+                elif name in ("boundary_descriptor", "fourier_descriptor",
+                              "shape_context", "contour_smoother"):
+                    if frag.contour is not None and len(frag.contour) >= 4:
+                        result = fn(frag.contour)
+                    else:
+                        continue
+                elif name in ("contour_tracker", "region_splitter"):
+                    if frag.mask is not None:
+                        result = fn(frag.mask)
+                    else:
+                        continue
+                elif name in ("color_palette", "color_space",
+                              "texture_descriptor", "gradient_flow",
+                              "edge_extractor", "rotation_estimator"):
+                    result = fn(frag.image)
+                else:
+                    result = fn(frag.image)
+                self.log.debug("    #%d  %s → %s", idx, name, type(result).__name__)
+            except Exception as exc:
+                self.log.debug("    #%d  %s failed: %s", idx, name, exc)
 
     # ── Этап 2: Сопоставление ────────────────────────────────────────────
 
