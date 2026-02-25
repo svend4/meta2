@@ -332,14 +332,15 @@ def _make_descriptor_cache(cache_dir: str | None):
     if cache_dir is None:
         return None
     try:
-        from puzzle_reconstruction.utils.result_cache import make_cache, CachePolicy
+        from puzzle_reconstruction.utils.result_cache import ResultCache, CachePolicy
         Path(cache_dir).mkdir(parents=True, exist_ok=True)
-        return make_cache(CachePolicy(namespace="fragments", ttl=0.0))
+        return ResultCache(CachePolicy(namespace="fragments", ttl=0.0))
     except Exception:
         return None
 
 
-def _run_research_mode(assembly_results, entries, cfg, log) -> dict:
+def _run_research_mode(assembly_results, entries, cfg, log,
+                       fragments=None) -> dict:
     """
     Исследовательский режим (Фаза 7):
     - Строит consensus-сборку из успешных методов
@@ -351,6 +352,7 @@ def _run_research_mode(assembly_results, entries, cfg, log) -> dict:
         entries:          Список CompatEntry (матрица совместимости)
         cfg:              Config
         log:              Logger
+        fragments:        List[Fragment] (для консенсусной сборки)
 
     Returns:
         dict с полями methods, consensus_score, best_method
@@ -363,12 +365,12 @@ def _run_research_mode(assembly_results, entries, cfg, log) -> dict:
         tracker = make_tracker()
         for i, r in enumerate(assembly_results):
             if r.success:
-                tracker.record(r.method, r.assembly.total_score, step=i)
+                tracker.record(r.name, r.assembly.total_score, step=i)
         report["metric_stats"] = {
             name: {"mean": float(st.mean), "max": float(st.maximum), "last": float(st.last)}
             for name, st in (
                 (m, tracker.stats(m))
-                for m in tracker.metrics()
+                for m in tracker.metric_names()
             )
             if st is not None
         }
@@ -378,7 +380,7 @@ def _run_research_mode(assembly_results, entries, cfg, log) -> dict:
     # ── Таблица методов ───────────────────────────────────────────────────
     for r in assembly_results:
         entry = {
-            "method":  r.method,
+            "method":  r.name,
             "success": r.success,
             "score":   float(r.assembly.total_score) if r.success else 0.0,
             "time_s":  float(r.elapsed) if hasattr(r, "elapsed") else 0.0,
@@ -398,14 +400,16 @@ def _run_research_mode(assembly_results, entries, cfg, log) -> dict:
             from puzzle_reconstruction.matching.consensus import build_consensus
             assemblies = [r.assembly for r in successful]
             threshold  = cfg.research.consensus_threshold
-            consensus_asm = build_consensus(
-                assemblies, entries, threshold=threshold
+            consensus_result = build_consensus(
+                assemblies, fragments or [], entries, threshold=threshold
             )
-            if consensus_asm is not None:
-                report["consensus_score"] = float(consensus_asm.total_score)
+            if (consensus_result is not None
+                    and consensus_result.assembly is not None):
+                c_score = float(consensus_result.assembly.total_score)
+                report["consensus_score"] = c_score
                 log.info(f"  Консенсус ({len(assemblies)} методов, "
                          f"порог={threshold:.0%}): "
-                         f"score={consensus_asm.total_score:.1%}")
+                         f"score={c_score:.1%}")
         except Exception as exc:
             log.debug(f"  Консенсус недоступен: {exc}")
 
@@ -463,11 +467,12 @@ def _run_batch(input_list_file: str, args: argparse.Namespace, log) -> None:
     summary  = process_items(dirs, _process_one_dir, cfg_proc)
     ok       = filter_successful(summary)
 
+    failed = [item for item in summary.items if not item.success]
     log.info(f"\nПакетная обработка завершена:")
-    log.info(f"  Успешно: {len(ok)}/{summary.total_items}")
-    if summary.failed_items:
+    log.info(f"  Успешно: {len(ok)}/{summary.total}")
+    if failed:
         log.warning(f"  Ошибки:")
-        for item in summary.failed_items:
+        for item in failed:
             log.warning(f"    [{item.index}] {dirs[item.index]}: {item.error}")
 
 
@@ -607,7 +612,9 @@ def run(args: argparse.Namespace) -> None:
     # ── Research Mode (Фаза 7) ────────────────────────────────────────────
     if cfg.research.enabled and cfg.assembly.method in ("all", "auto"):
         with stage("Research Mode", log), timer.measure("research"):
-            research_report = _run_research_mode(_all_results, entries, cfg, log)
+            research_report = _run_research_mode(
+                _all_results, entries, cfg, log, fragments=processed
+            )
             research_report["input"]  = str(input_dir)
             research_report["output"] = str(output_path)
             research_report["method"] = cfg.assembly.method

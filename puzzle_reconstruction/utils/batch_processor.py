@@ -111,9 +111,19 @@ class BatchSummary:
         return float(self.n_success) / float(self.total)
 
     @property
+    def total_items(self) -> int:
+        """Псевдоним для total (общее число элементов)."""
+        return self.total
+
+    @property
     def failed_indices(self) -> List[int]:
         """Индексы элементов, обработка которых завершилась с ошибкой."""
         return [item.index for item in self.items if not item.success]
+
+    @property
+    def failed_items(self) -> List[ProcessItem]:
+        """Элементы, обработка которых завершилась с ошибкой."""
+        return [item for item in self.items if not item.success]
 
     @property
     def successful_results(self) -> List[Any]:
