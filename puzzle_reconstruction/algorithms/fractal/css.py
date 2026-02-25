@@ -69,7 +69,11 @@ def css_to_feature_vector(css: List[Tuple[float, np.ndarray]],
         return np.zeros(n_bins)
     vec = np.concatenate(parts)
     norm = np.linalg.norm(vec)
-    return vec / norm if norm > 0 else vec
+    if norm > 0:
+        return vec / norm
+    # All scales have no zero crossings (featureless/constant-curvature shape)
+    # Return a uniform unit vector so identical featureless shapes have similarity 1.0
+    return np.ones(len(vec)) / np.sqrt(len(vec)) if len(vec) > 0 else vec
 
 
 def css_similarity(css_a: np.ndarray, css_b: np.ndarray) -> float:

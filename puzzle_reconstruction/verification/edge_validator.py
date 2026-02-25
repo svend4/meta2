@@ -128,6 +128,8 @@ class EdgeValidResult:
 
 def _intensity_diff(profile_a: np.ndarray, profile_b: np.ndarray) -> float:
     """Средняя абсолютная разница нормированных профилей [0, 1]."""
+    if len(profile_a) == 0 or len(profile_b) == 0:
+        return 0.0
     a = profile_a.astype(float)
     b = profile_b.astype(float)
     # Нормировать в [0, 1]
@@ -349,6 +351,10 @@ def batch_validate_edges(
     empty_1d = np.zeros(0)
 
     for a_id, b_id in pairs:
+        if a_id not in intensity_map and b_id not in intensity_map:
+            raise ValueError(
+                f"Neither fragment {a_id} nor {b_id} found in intensity_map"
+            )
         ia = intensity_map.get(a_id, empty_1d)
         ib = intensity_map.get(b_id, empty_1d)
         pa = points_map.get(a_id, empty)

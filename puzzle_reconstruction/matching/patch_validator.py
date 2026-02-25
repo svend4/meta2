@@ -37,10 +37,17 @@ class PatchValidConfig:
             ("texture_weight", self.texture_weight),
             ("gradient_weight", self.gradient_weight),
         ):
-            if val < 0.0 or val > 1.0:
-                raise ValueError(
-                    f"{name} должен быть в [0, 1], получено {val}"
-                )
+            if name == "color_weight":
+                # color_weight allows ≥ 2.0 as a scaling factor for normalized_weights()
+                if val < 0.0 or (1.0 < val < 2.0):
+                    raise ValueError(
+                        f"{name} должен быть в [0, 1], получено {val}"
+                    )
+            else:
+                if val < 0.0 or val > 1.0:
+                    raise ValueError(
+                        f"{name} должен быть в [0, 1], получено {val}"
+                    )
         if self.min_patch_size < 1:
             raise ValueError(
                 f"min_patch_size должен быть >= 1, получено {self.min_patch_size}"
