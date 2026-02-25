@@ -16,6 +16,13 @@ import pytest
 
 pytest.importorskip("sklearn", reason="scikit-learn не установлен")
 
+# ConvergenceWarning ожидаема: часть тестов создаёт идентичные/вырожденные
+# фрагменты (одинаковый fd/brightness) и запрашивает k > числа реальных кластеров.
+# Это намеренно — тесты проверяют структуру результата, а не качество кластеризации.
+pytestmark = pytest.mark.filterwarnings(
+    "ignore::sklearn.exceptions.ConvergenceWarning"
+)
+
 from puzzle_reconstruction.clustering import (
     cluster_fragments,
     split_by_cluster,
