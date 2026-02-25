@@ -2,7 +2,7 @@
 
 > Дата: 2026-02-25 (обновлено)
 > Ветка: `claude/puzzle-text-docs-3tcRj`
-> Версия проекта: **0.3.0-alpha**
+> Версия проекта: **0.4.0-beta**
 > Последний коммит: `0b6a789` — docs: sync all uppercase docs with current codebase state
 
 ---
@@ -397,6 +397,7 @@ tests/
 |---|---|---|
 | 20–24 фев | iter-1 — iter-249, финализация | До 133 оставшихся сбоев |
 | 25 фев | Исправление 3 предупреждений (gamma_optimizer, graph_match, classifier) | **0 failures** |
+| 25 фев | Исправление 2 предупреждений (box_counting RankWarning, edge_scorer RuntimeWarning) | **0 warnings** |
 
 > **Примечание:** 9 тестов с `xfail` (ожидаемый провал) теперь проходят → `xpassed` — позитивный результат.
 
@@ -408,11 +409,11 @@ tests/
 
 | Алгоритм | N фрагментов | Сложность | Качество | Детерминирован | CLI |
 |---|---|---|---|---|---|
-| `exhaustive` | ≤ 8 | O(N!) | ⭐⭐⭐⭐⭐ | ✅ да | 🔴 нет |
+| `exhaustive` | ≤ 8 | O(N!) | ⭐⭐⭐⭐⭐ | ✅ да | ✅ да |
 | `beam` | 6–20 | O(W·N²) | ⭐⭐⭐⭐ | ✅ да | ✅ да |
-| `mcts` | 6–25 | O(S·D) | ⭐⭐⭐⭐ | ❌ нет | 🔴 нет |
-| `genetic` | 15–40 | O(G·P·N²) | ⭐⭐⭐⭐ | ❌ нет | 🔴 нет |
-| `ant_colony` | 20–60 | O(I·A·N²) | ⭐⭐⭐⭐ | ❌ нет | 🔴 нет |
+| `mcts` | 6–25 | O(S·D) | ⭐⭐⭐⭐ | ❌ нет | ✅ да |
+| `genetic` | 15–40 | O(G·P·N²) | ⭐⭐⭐⭐ | ❌ нет | ✅ да |
+| `ant_colony` | 20–60 | O(I·A·N²) | ⭐⭐⭐⭐ | ❌ нет | ✅ да |
 | `gamma` | 20–100 | O(I·N²) | ⭐⭐⭐⭐⭐ | ❌ нет | ✅ да |
 | `sa` | любой | O(I) | ⭐⭐⭐ | ❌ нет | ✅ да |
 | `greedy` | любой | O(N²) | ⭐⭐ | ✅ да | ✅ да |
@@ -729,6 +730,8 @@ matching/pairwise.py       ──── жёсткие веса ──▶  match
 | Только JSON-конфиг | ✅ JSON + YAML + `apply_overrides()` |
 | 127 устаревших базовых тестов | ✅ Исправлены, 0 failures |
 | 3 RuntimeWarning/DeprecationWarning | ✅ Устранены в `gamma_optimizer`, `graph_match`, `classifier` |
+| RankWarning в `box_counting.py` | ✅ Устранён: guard для `n_scales < 2` |
+| RuntimeWarning в `edge_scorer.py` | ✅ Устранён: `np.errstate(invalid='ignore')` вокруг `corrcoef` |
 
 ### Актуальные ограничения
 
@@ -754,16 +757,17 @@ matching/pairwise.py       ──── жёсткие веса ──▶  match
 | Матчеры совместимости | **100% кода**, **100% через matcher_registry** |
 | Предобработка | **100% кода**, **100% через PreprocessingChain** |
 | Верификация | **100% кода**, **100% через VerificationSuite** |
-| Тестирование | **100% покрытие модулей**, **99.97% тестов проходят** (0 failures) |
-| Документация | **100%** (README, PUZZLE_RECONSTRUCTION, INTEGRATION_ROADMAP, REPORT, STATUS, DEV_STATUS) |
+| Тестирование | **100% покрытие модулей**, **99.97% тестов проходят** (0 failures, 0 warnings) |
+| Документация | **100%** (README, PUZZLE_RECONSTRUCTION, INTEGRATION_ROADMAP, REPORT, STATUS, DEV_STATUS, CHANGELOG) |
 | CLI-инструменты | **100%** (7 команд в pyproject.toml + research mode + batch mode) |
 
 ### Стадия разработки
 
-Проект завершил стадию **Alpha (v0.3.0)** интеграции. Все семь фаз INTEGRATION_ROADMAP выполнены:
+Проект завершил стадию **Alpha (v0.3.0)** и перешёл в **Beta (v0.4.0)**. Все семь фаз INTEGRATION_ROADMAP выполнены:
 - 305 модулей реализованы, покрыты тестами и подключены через реестры
 - 42 208 тестов, 0 сбоев, 0 предупреждений
-- Готов к переходу в **Beta** (v0.4.0): Docker, CHANGELOG, расширенный mypy coverage
+- Docker-образ, Makefile, CHANGELOG.md, расширенный mypy coverage — добавлены
+- CI lint + integration тесты переведены в blocking-режим
 
 ---
 

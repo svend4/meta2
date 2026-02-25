@@ -1,10 +1,10 @@
 # Текущий статус разработки — puzzle-reconstruction (meta2)
 
-> Дата формирования отчёта: 2026-02-25 (финальное обновление)
-> Предыдущие версии: 2026-02-23, 2026-02-24
-> Версия: **0.3.0** (Alpha → Beta ready)
+> Дата формирования отчёта: 2026-02-25 (v0.4.0-beta)
+> Предыдущие версии: 2026-02-23, 2026-02-24, 2026-02-25 (v0.3.0-alpha)
+> Версия: **0.4.0-beta**
 > Текущая ветка: `claude/puzzle-text-docs-3tcRj`
-> Все 7 фаз INTEGRATION_ROADMAP выполнены
+> Все 7 фаз INTEGRATION_ROADMAP выполнены. Beta-инфраструктура готова.
 
 ---
 
@@ -59,6 +59,8 @@
 **Тесты (финальный статус):**
 - 42 219 тестов, 42 208 passed (99.97%), **0 failures**
 - 3 RuntimeWarning/DeprecationWarning устранены (gamma_optimizer, graph_match, classifier)
+- 2 дополнительных предупреждения устранены: RankWarning в `box_counting.py`, RuntimeWarning в `edge_scorer.py`
+- **Итог: 0 warnings, 0 failures**
 
 ---
 
@@ -809,15 +811,19 @@ CI/CD:             ██████░░░░  60%  — настроен, li
 Деплой:            ██░░░░░░░░  20%  — нет Docker
 ```
 
-**Общая стадия**: Проект успешно завершил стадию интеграции **Alpha (v0.3.0)**.
+**Общая стадия**: Проект перешёл в **Beta (v0.4.0)**.
 Все ~48 200 LOC «спящего» кода активированы через архитектурные реестры.
-305 модулей. 93 279 строк. 42 208 тестов. 0 сбоев.
+305 модулей. 93 279 строк. 42 208 тестов. 0 сбоев. 0 предупреждений.
 
-Для перехода в **Beta (v0.4.0)** осталось:
-1. Добавить Docker-образ
-2. Создать git tag `v0.3.0`
-3. Сделать lint и integration тесты блокирующими в CI
-4. Расширить mypy coverage за пределы 3 файлов
+Beta-инфраструктура реализована:
+1. ✅ Dockerfile + docker-compose.yml — готов к контейнерному развёртыванию
+2. ✅ git tag `v0.3.0` создан (финальная Alpha)
+3. ✅ CI lint и integration тесты — blocking-режим
+4. ✅ mypy coverage расширен (pipeline, config, models, clustering, export, algorithms-core)
+5. ✅ Makefile — удобные команды для разработчика
+6. ✅ CHANGELOG.md — история всех релизов
+7. ✅ OpenAPI /spec endpoint в tools/server.py
+8. ✅ shapely, networkx, matplotlib — в pyproject.toml[optional-dependencies]
 
 ---
 

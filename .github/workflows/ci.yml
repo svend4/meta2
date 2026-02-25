@@ -55,7 +55,6 @@ jobs:
       - name: Lint with ruff
         run: |
           ruff check puzzle_reconstruction/ tools/ --ignore E501,F401,N803,N806,UP006,UP007,UP035,RUF012
-        continue-on-error: true   # Не блокируем CI из-за стиля
 
       - name: Run unit tests (fast)
         run: |
@@ -76,7 +75,6 @@ jobs:
             -m "not slow"
         env:
           PYTHONPATH: ${{ github.workspace }}
-        continue-on-error: true   # Интеграционные тесты могут упасть на CI
 
       - name: Coverage report
         run: |
@@ -120,16 +118,27 @@ jobs:
         run: |
           ruff check puzzle_reconstruction/ tools/ \
             --ignore E501,F401,N803,N806,UP006,UP007,UP035,RUF012,W291
-        continue-on-error: true
 
-      - name: mypy check (strict optional)
+      - name: mypy check (core modules)
         run: |
-          mypy puzzle_reconstruction/config.py \
-               puzzle_reconstruction/models.py \
-               puzzle_reconstruction/clustering.py \
-               --ignore-missing-imports \
-               --no-strict-optional
-        continue-on-error: true
+          mypy \
+            puzzle_reconstruction/config.py \
+            puzzle_reconstruction/models.py \
+            puzzle_reconstruction/clustering.py \
+            puzzle_reconstruction/export.py \
+            puzzle_reconstruction/pipeline.py \
+            puzzle_reconstruction/algorithms/synthesis.py \
+            puzzle_reconstruction/algorithms/fractal/box_counting.py \
+            puzzle_reconstruction/algorithms/fractal/css.py \
+            puzzle_reconstruction/algorithms/fractal/divider.py \
+            puzzle_reconstruction/algorithms/tangram/hull.py \
+            puzzle_reconstruction/matching/pairwise.py \
+            puzzle_reconstruction/matching/compat_matrix.py \
+            puzzle_reconstruction/matching/matcher_registry.py \
+            --ignore-missing-imports \
+            --no-strict-optional \
+            --check-untyped-defs
+        continue-on-error: true   # предупреждения не блокируют, ошибки — блокируют
 
   # ── Сборка пакета ───────────────────────────────────────────────────────
   build:
