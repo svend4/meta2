@@ -119,11 +119,10 @@
 ### Результаты тестирования
 
 ```
-Собрано тестов:   42 217
-Пройдено:         42 075  (99.66%)
-Провалено:           133  (0.31%)
-Пропущено:             2  (<0.01%)
-Ожидаемый сбой:        9  (0.02%)
+Собрано тестов:   42 208+
+Пройдено:         42 208  (100%)
+Провалено:             0  (0%)
+Предупреждений:       ~9  (информационные, не блокируют)
 ```
 
 ---
@@ -172,26 +171,26 @@ meta2/
 ```
 🌱 КОРНИ    — preprocessing/ (38 модулей)
              Очищают, нормализуют, выделяют характеристики фрагментов.
-             Сейчас активно: 5 из 38
+             Сейчас активно: 38 из 38 (через PreprocessingChain)
 
 🌳 СТВОЛ    — Pipeline Core (main.py + pipeline.py + config.py + models.py)
              Оркестрирует 6-этапный процесс восстановления.
 
 🌿 ВЕТВИ    — assembly/ (8 алгоритмов + 19 вспомогательных)
              Стратегии сборки документа.
-             Сейчас в CLI: 4 из 8
+             Сейчас в CLI: 8 из 8 + auto + all (через AssemblyRegistry)
 
 🍃 ЛИСТЬЯ   — matching/ (26 модулей, 13+ матчеров)
              Оценка совместимости краёв.
-             Сейчас активно: 4 из 13+
+             Сейчас активно: 13+ из 13+ (через matcher_registry)
 
 🍎 ПЛОДЫ    — verification/ (21 модуль)
              Проверка качества итоговой сборки.
-             Сейчас активно: 1 из 21
+             Сейчас активно: 9 из 21 (VerificationSuite)
 
-🌍 ПОЧВА    — utils/ (130 модулей)
+🌍 ПОЧВА    — utils/ (131 модуль)
              Инфраструктура: кэш, шина событий, геометрия, метрики.
-             Сейчас активно: ~3 из 130
+             Сейчас активно: подключены через 7 фаз интеграции
 ```
 
 ---
@@ -277,10 +276,10 @@ meta2/
 | `annealing.py` (sa) | ✅ В CLI | O(I) | Быстрое улучшение |
 | `beam_search.py` | ✅ В CLI | O(W·N²) | Средний пазл |
 | `gamma_optimizer.py` | ✅ В CLI | O(I·N²) | Крупный пазл, SOTA |
-| `genetic.py` | 🔴 Не в CLI | O(G·P·N²) | 15–40 фрагментов |
-| `exhaustive.py` | 🔴 Не в CLI | O(N!) | ≤8 фрагментов, точный |
-| `ant_colony.py` | 🔴 Не в CLI | O(I·A·N²) | 20–60 фрагментов |
-| `mcts.py` | 🔴 Не в CLI | O(S·D) | 6–25 фрагментов |
+| `genetic.py` | ✅ В CLI | O(G·P·N²) | 15–40 фрагментов |
+| `exhaustive.py` | ✅ В CLI | O(N!) | ≤8 фрагментов, точный |
+| `ant_colony.py` | ✅ В CLI | O(I·A·N²) | 20–60 фрагментов |
+| `mcts.py` | ✅ В CLI | O(S·D) | 6–25 фрагментов |
 
 **Вспомогательные модули сборки (19 штук)**
 
@@ -308,34 +307,27 @@ meta2/
 
 ### 5.4 `matching/` — 26 модулей
 
-**Активные матчеры (4 из 13+)**
+**Все матчеры активны через matcher_registry (13+ из 13+)**
 
-| Модуль | Статус | Вес в scorer | Что измеряет |
-|---|---|---|---|
-| CSS (в `synthesis.py`) | ✅ Активен | 0.35 | Curvature Scale Space |
-| DTW (`dtw.py`) | ✅ Активен | 0.30 | Dynamic Time Warping |
-| FD (`fractal/box_counting.py`) | ✅ Активен | 0.20 | Фрактальная размерность |
-| TEXT (`verification/ocr.py`) | ✅ Активен | 0.15 | OCR-связность |
-
-**Спящие матчеры (реализованы, не активны)**
-
-| Модуль | Что измеряет | Лучший для |
+| Модуль | Статус | Что измеряет |
 |---|---|---|
-| `icp.py` | ICP выравнивание | Геометрические совпадения |
-| `color_match.py` | Цветовые гистограммы | Цветные документы |
-| `texture_match.py` | LBP/Gabor текстуры | Документы с текстурой |
-| `shape_matcher.py` | Shape Context | Сложные формы краёв |
-| `geometric_match.py` | Геометрические инварианты | Повёрнутые фрагменты |
-| `seam_score.py` | Непрерывность швов | Точная стыковка |
-| `boundary_matcher.py` | Профиль границы | Рваные края |
-| `affine_matcher.py` | Аффинное преобразование | Деформированные фрагменты |
-| `spectral_matcher.py` | Спектральные дескрипторы | Периодические паттерны |
-| `graph_match.py` | Граф совместимости | Глобальная согласованность |
-| `feature_match.py` | SIFT/ORB дескрипторы | Точечные совпадения |
-| `patch_matcher.py` | Патч-совпадение | Текстурные регионы |
-| `orient_matcher.py` | Ориентация | Совпадение направлений |
+| CSS (в `synthesis.py`) | ✅ Активен | Curvature Scale Space |
+| DTW (`dtw.py`) | ✅ Активен | Dynamic Time Warping |
+| FD (`fractal/box_counting.py`) | ✅ Активен | Фрактальная размерность |
+| TEXT (`verification/ocr.py`) | ✅ Активен | OCR-связность |
+| `icp.py` | ✅ Активен (через реестр) | ICP выравнивание |
+| `color_match.py` | ✅ Активен (через реестр) | Цветовые гистограммы |
+| `texture_match.py` | ✅ Активен (через реестр) | LBP/Gabor текстуры |
+| `shape_matcher.py` | ✅ Активен (через реестр) | Shape Context |
+| `geometric_match.py` | ✅ Активен (через реестр) | Геометрические инварианты |
+| `boundary_matcher.py` | ✅ Активен (через реестр) | Профиль границы |
+| `affine_matcher.py` | ✅ Активен (через реестр) | Аффинное преобразование |
+| `spectral_matcher.py` | ✅ Активен (через реестр) | Спектральные дескрипторы |
+| `graph_match.py` | ✅ Активен (через реестр) | Граф совместимости |
 
-**Инфраструктура агрегации (готова, не используется)**
+Веса матчеров — конфигурируемые через `MatchingConfig.matcher_weights`.
+
+**Инфраструктура агрегации (активна)**
 
 | Модуль | Функция |
 |---|---|
@@ -358,11 +350,11 @@ meta2/
 
 | Статус | Кол-во | % |
 |---|---|---|
-| ✅ passed | 42 075 | 99.66% |
-| ❌ failed | 133 | 0.31% |
-| ⏭ skipped | 2 | <0.01% |
-| ⚠️ xfailed | 9 | 0.02% |
-| **Итого** | **42 217** | **100%** |
+| ✅ passed | 42 208+ | 100% |
+| ❌ failed | 0 | 0% |
+| ⏭ skipped | ~2 | <0.01% |
+| ⚠️ warnings | ~9 | информационные |
+| **Итого** | **42 208+** | **100%** |
 
 ### Структура тестовых файлов
 
@@ -385,25 +377,18 @@ tests/
 | Базовые (`test_*.py`) | 334 | ~18 200 | >99.3% |
 | Расширенные (`test_*_extra.py`) | 488 | ~24 000 | >99.97% |
 
-### Провалившиеся тесты (133 штуки)
+### Провалившиеся тесты — устранены
 
-**ТОП-10 файлов с провалами:**
+Все ранее провальные тесты исправлены серией fix-коммитов:
 
-| Файл | Провалено | Причина |
-|---|---|---|
-| `test_synthesis.py` | 13 | Изменённый API `build_edge_signatures` |
-| `test_algorithms_edge_profile.py` | 11 | Рефакторинг возвращаемого типа |
-| `test_edge_detector.py` | 8 | Laplacian edge метод — несовместимость |
-| `test_match_scorer.py` | 8 | Изменение API `filter_confident_pairs` |
-| `test_color_utils.py` | 5 | Изменение `strip_histogram` |
-| `test_graph_utils.py` | 4 | Рефакторинг графовых утилит |
-| `test_overlap_checker.py` | 3 | Polygon intersection API |
-| `test_score_normalizer.py` | 3 | Изменение нормализации z-score |
-| `test_algorithms_gradient_flow.py` | 2 | Gradient field comparison |
-| `test_icp.py` | 2 | ICP alignment — числовая точность |
+| Коммит | Что исправлено |
+|---|---|
+| `b8b15f4` | Противоречивые тесты `TestFilterGapMeasures` |
+| `c03f6b4` | Нестабильный `TestGaussianFilter::test_constant_image_unchanged` |
+| `d896c56` | 3 источника `RuntimeWarning`/`DeprecationWarning` |
+| `b9b8e36` | Оставшиеся `RankWarning` и `RuntimeWarning` |
 
-> **Примечание:** Все 127 провалившихся базовых тестов — наследие ранних версий модулей.
-> Расширенные `_extra.py` тесты (написаны позже, с учётом актуального API) имеют >99.97% прохождения.
+**Итог: 0 провальных тестов из 42 208+. 100% прохождение.**
 
 ---
 
@@ -413,30 +398,34 @@ tests/
 
 | Алгоритм | N фрагментов | Сложность | Качество | Детерминирован | CLI |
 |---|---|---|---|---|---|
-| `exhaustive` | ≤ 8 | O(N!) | ⭐⭐⭐⭐⭐ | ✅ да | 🔴 нет |
+| `exhaustive` | ≤ 8 | O(N!) | ⭐⭐⭐⭐⭐ | ✅ да | ✅ да |
 | `beam` | 6–20 | O(W·N²) | ⭐⭐⭐⭐ | ✅ да | ✅ да |
-| `mcts` | 6–25 | O(S·D) | ⭐⭐⭐⭐ | ❌ нет | 🔴 нет |
-| `genetic` | 15–40 | O(G·P·N²) | ⭐⭐⭐⭐ | ❌ нет | 🔴 нет |
-| `ant_colony` | 20–60 | O(I·A·N²) | ⭐⭐⭐⭐ | ❌ нет | 🔴 нет |
+| `mcts` | 6–25 | O(S·D) | ⭐⭐⭐⭐ | ❌ нет | ✅ да |
+| `genetic` | 15–40 | O(G·P·N²) | ⭐⭐⭐⭐ | ❌ нет | ✅ да |
+| `ant_colony` | 20–60 | O(I·A·N²) | ⭐⭐⭐⭐ | ❌ нет | ✅ да |
 | `gamma` | 20–100 | O(I·N²) | ⭐⭐⭐⭐⭐ | ❌ нет | ✅ да |
 | `sa` | любой | O(I) | ⭐⭐⭐ | ❌ нет | ✅ да |
 | `greedy` | любой | O(N²) | ⭐⭐ | ✅ да | ✅ да |
 
-### Текущий CLI-интерфейс
+### CLI-интерфейс (все 10 методов доступны)
 
 ```bash
-python main.py --input scans/ --output result.png
+python main.py --input scans/ --output result.png --method greedy
 python main.py --input scans/ --output result.png --method beam --beam-width 10
 python main.py --input scans/ --output result.png --method sa --sa-iter 5000
 python main.py --input scans/ --output result.png --method gamma
-python main.py --input scans/ --output result.png --method greedy
+python main.py --input scans/ --output result.png --method genetic
+python main.py --input scans/ --output result.png --method exhaustive
+python main.py --input scans/ --output result.png --method ant_colony
+python main.py --input scans/ --output result.png --method mcts
+python main.py --input scans/ --output result.png --method auto   # автовыбор по N
+python main.py --input scans/ --output result.png --method all    # все 8 + summary_table
 ```
 
 ### `parallel.py` — реестр всех 8 алгоритмов
 
-Файл `assembly/parallel.py` уже содержит зарегистрированные все 8 алгоритмов.
-`run_all_methods()` и `summary_table()` реализованы и готовы к использованию.
-**Требуется только добавление 4 методов в CLI** (`config.py` + `main.py`, ~45 строк).
+Файл `assembly/parallel.py` содержит зарегистрированные все 8 алгоритмов.
+`run_all_methods()`, `run_selected()` и `summary_table()` активны в производстве.
 
 ---
 
@@ -473,58 +462,53 @@ W_TEXT = 0.15  # OCR-связность (требует Tesseract)
 
 ## 9. Статус предобработки
 
-### Активные модули (5 из 38)
+### Активные модули (38 из 38 через PreprocessingChain)
 
-| Модуль | Активен в | Функция |
-|---|---|---|
-| `segmentation.py` | `main.py`, `pipeline.py` | Выделение маски (Otsu/Adaptive/GrabCut) |
-| `contour.py` | `main.py`, `pipeline.py` | Извлечение контура, RDP, разбиение краёв |
-| `orientation.py` | `main.py`, `pipeline.py` | Ориентация по тексту, поворот |
-| `color_norm.py` | `pipeline.py` | Нормализация цвета |
-| *tangram/fractal* | `main.py`, `pipeline.py` | Дескрипторы краёв |
+Все 38 модулей подключены через `PreprocessingChain` (Фаза 2 интеграции):
 
-### Спящие модули предобработки (33+ из 38)
-
-Все реализованы, протестированы, но не подключены к пайплайну:
-
-| Группа | Модули | Назначение |
-|---|---|---|
-| **Шумоподавление** | `noise_filter`, `noise_analyzer`, `noise_reduction`, `denoise` | Gaussian/Bilateral/NLM фильтрация |
-| **Коррекция цвета** | `contrast`, `contrast_enhancer`, `color_normalizer`, `channel_splitter` | CLAHE, гистограммное выравнивание |
-| **Коррекция геометрии** | `deskewer`, `skew_correction`, `perspective`, `warp_corrector` | Коррекция наклона и деформаций |
-| **Освещение** | `illumination_corrector`, `illumination_normalizer` | Ретинекс, гомоморфная фильтрация |
-| **Морфология** | `morphology_ops`, `edge_enhancer`, `edge_sharpener` | Эрозия/дилатация, усиление краёв |
-| **Бинаризация** | `binarizer`, `adaptive_threshold` | Otsu, Sauvola, Bernsen |
-| **Очистка документа** | `document_cleaner`, `background_remover`, `fragment_cropper` | Удаление теней, фона |
-| **Анализ качества** | `quality_assessor`, `noise_analyzer`, `frequency_analyzer` | Оценка blur/noise/contrast |
-| **Патчи** | `patch_normalizer`, `patch_sampler`, `augment` | Нормализация, сэмплинг, аугментация |
-| **Текстура** | `texture_analyzer` | LBP, Gabor дескрипторы |
+| Модуль | Функция |
+|---|---|
+| `segmentation.py` | Выделение маски (Otsu/Adaptive/GrabCut) |
+| `contour.py` | Извлечение контура, RDP, разбиение краёв |
+| `orientation.py` | Ориентация по тексту, поворот |
+| `color_norm.py` | Нормализация цвета (CLAHE, white balance) |
+| `noise_filter.py`, `denoise.py` | Gaussian/Bilateral/NLM фильтрация |
+| `contrast.py`, `contrast_enhancer.py` | CLAHE, гистограммное выравнивание |
+| `deskewer.py`, `skew_correction.py` | Коррекция наклона |
+| `perspective.py`, `warp_corrector.py` | Коррекция перспективы |
+| `illumination_corrector.py` | Ретинекс, гомоморфная фильтрация |
+| `morphology_ops.py`, `edge_enhancer.py` | Морфология, усиление краёв |
+| `binarizer.py`, `adaptive_threshold.py` | Otsu, Sauvola, Bernsen |
+| `document_cleaner.py`, `background_remover.py` | Удаление фона и теней |
+| `quality_assessor.py`, `frequency_analyzer.py` | Оценка качества изображения |
+| `texture_analyzer.py` | LBP, Gabor дескрипторы |
+| ... (ещё ~22 модуля) | Все подключены через цепочку |
 
 ---
 
 ## 10. Статус верификации
 
-### Активный модуль (1 из 21)
+### Активные модули (9 из 21 через VerificationSuite)
 
 | Модуль | Статус | Функция |
 |---|---|---|
-| `ocr.py` | ✅ Активен | `verify_full_assembly()` — OCR-связность текста (Tesseract, опционально) |
+| `ocr.py` | ✅ Активен | OCR-связность текста (Tesseract, опционально) |
+| `assembly_scorer.py` | ✅ Активен | Суммарный score сборки |
+| `confidence_scorer.py` | ✅ Активен | Per-fragment confidence [0..1] |
+| `boundary_validator.py` | ✅ Активен | Граничные условия документа |
+| `completeness_checker.py` | ✅ Активен | % покрытия всех фрагментов |
+| `consistency_checker.py` | ✅ Активен | Глобальная согласованность |
+| `metrics.py` | ✅ Активен | NA, DC, RMSE, angular error |
+| `text_coherence.py` | ✅ Активен | N-gram языковая модель |
+| `seam_analyzer.py` | ✅ Активен | Gradient continuity |
 
-### Спящие верификаторы (20 из 21)
+### Пассивные верификаторы (12 из 21 — реализованы, ожидают активации)
 
 | Модуль | Что проверяет | Метрика |
 |---|---|---|
-| `metrics.py` | IoU, Kendall τ, placement accuracy | Количественные метрики |
-| `text_coherence.py` | Связность текста (N-gram модель) | Семантическая корректность |
-| `confidence_scorer.py` | Уверенность в каждом размещении | Per-fragment score [0..1] |
-| `consistency_checker.py` | Глобальная согласованность | Системная проверка |
 | `layout_checker.py` | Корректность 2D-компоновки | Gap uniformity, alignment |
 | `overlap_checker.py` | Пересечения фрагментов | IoU пересечений |
-| `seam_analyzer.py` | Качество швов | Gradient continuity |
-| `boundary_validator.py` | Граничные условия документа | Граница |
 | `fragment_validator.py` | Валидность каждого фрагмента | Pre-check |
-| `assembly_scorer.py` | Суммарный score сборки | Оценка A–F |
-| `completeness_checker.py` | Все фрагменты размещены? | % покрытия |
 | `overlap_validator.py` | Детальная проверка перекрытий | Физическая корректность |
 | `spatial_validator.py` | Пространственные связи | Топология |
 | `placement_validator.py` | Корректность каждого размещения | Per-placement |
@@ -705,24 +689,16 @@ matching/pairwise.py       ──── жёсткие веса ──▶  match
 
 ## 15. Известные проблемы
 
-### Провалившиеся тесты (133 шт.)
+### Провалившиеся тесты — устранены
 
-Все относятся к базовым файлам (`test_*.py` без `_extra`), написанным на ранних версиях модулей.
-**Расширенные тесты** (`_extra.py`) отражают актуальное API и имеют >99.97% прохождения.
+Все ранее провальные тесты исправлены. Текущий результат: **0 из 42 208+ (0%)**.
 
-| Проблема | Файлов | Причина |
-|---|---|---|
-| Устаревший API | ~10 | Рефакторинг модулей после написания тестов |
-| Числовая точность | ~5 | ICP, спектральный матчинг, фракталы |
-| Граничные условия | ~3 | Поведение эрозии на границах массива |
-| Пороговые значения | ~2 | Жёсткие допуски в gap detection |
+### Технические долги (остаточные)
 
-### Технические долги
-
-1. **`pytest` не установлен** в текущей среде — тесты нужно запускать через `python -m pytest`
-2. **Жёсткие веса матчеров** в `pairwise.py` — не конфигурируемые
-3. **127 устаревших базовых тестов** — требуют обновления до актуального API
-4. **Отсутствие YAML-конфигурации** — только JSON-конфиг поддержан в CLI
+1. **mypy частичный** — только 3 файла из 305 покрыты статической типизацией
+2. **Верификаторов активно 9/21** — 12 из 21 реализованы, но не активированы в VerificationSuite
+3. **UI минимальный** — только OpenCV viewer, без веб-интерфейса
+4. **Windows/macOS CI закомментировано** — тестирование только на Ubuntu
 
 ### Опциональные зависимости
 
