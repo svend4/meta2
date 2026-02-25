@@ -209,6 +209,31 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Bridge #6: путь для экспорта журнала событий (JSONL).")
     parser.add_argument("--list-utils", action="store_true",
                         help="Показать список утилит Bridge #6 (124 утилиты) и выйти.")
+    # Bridge #7 — Tools
+    parser.add_argument(
+        "--tool",
+        choices=["benchmark", "evaluate", "mix", "profile", "serve", "tear"],
+        default=None, metavar="TOOL",
+        help=("Bridge #7: запустить автономный инструмент. "
+              "Инструменты: benchmark, evaluate, mix, profile, serve, tear. "
+              "Дополнительные параметры: --n-fragments, --n-pieces, --methods, "
+              "--n-trials, --port, --host."),
+    )
+    parser.add_argument("--list-tools", action="store_true",
+                        help="Показать список инструментов Bridge #7 и выйти.")
+    # Дополнительные параметры для инструментов
+    parser.add_argument("--n-fragments", type=int, default=8,
+                        help="Число фрагментов для --tool profile / benchmark.")
+    parser.add_argument("--n-pieces", type=int, default=6,
+                        help="Число частей для --tool tear / mix / evaluate.")
+    parser.add_argument("--n-trials", type=int, default=3,
+                        help="Число повторений для --tool benchmark / evaluate.")
+    parser.add_argument("--methods", default="beam,sa", metavar="METHODS",
+                        help="Методы сборки через запятую для --tool benchmark/evaluate.")
+    parser.add_argument("--host", default="0.0.0.0",
+                        help="Хост для --tool serve.")
+    parser.add_argument("--port", type=int, default=5000,
+                        help="Порт для --tool serve.")
     return parser
 
 
@@ -955,6 +980,114 @@ def _quick_preview(canvas: np.ndarray, assembly) -> None:
     cv2.destroyAllWindows()
 
 
+def _run_tool_from_args(args) -> None:
+    """
+    Bridge #7: запускает автономный инструмент по args.tool.
+
+    Поддерживаемые инструменты:
+        profile    — run_profile(n_fragments, verbose=True)
+        benchmark  — run_benchmark(n_pieces_list, methods, n_trials)
+        evaluate   — run_evaluation(methods, n_pieces_list, n_trials, ...)
+        mix        — mix_from_generated(n_docs, n_pieces, output_dir)
+        tear       — tear_document(image, n_pieces, noise_level) → сохраняет в --output
+        serve      — Flask REST API (host, port)
+    """
+    from tools.registry import get_tool
+    log = get_logger("tools")
+
+    name = args.tool
+    info = get_tool(name)
+    if info is None:
+        print(f"Ошибка: инструмент {name!r} не найден.")
+        sys.exit(1)
+
+    fn = info.load()
+    if fn is None:
+        print(f"Ошибка: инструмент {name!r} недоступен "
+              f"(отсутствует зависимость). "
+              f"Проверьте вывод --list-tools.")
+        sys.exit(1)
+
+    methods_list = [m.strip() for m in getattr(args, "methods", "beam,sa").split(",")
+                    if m.strip()]
+
+    if name == "profile":
+        n_frags = getattr(args, "n_fragments", 8)
+        log.info(f"[tools] profile: n_fragments={n_frags}")
+        result = fn(n_fragments=n_frags, verbose=True)
+        print(f"\nПрофиль завершён. Итого этапов: {len(result.stages)}")
+
+    elif name == "benchmark":
+        n_pieces = getattr(args, "n_pieces", 6)
+        n_trials = getattr(args, "n_trials", 3)
+        out      = getattr(args, "output", None)
+        log.info(f"[tools] benchmark: pieces={n_pieces} methods={methods_list}")
+        fn(
+            n_pieces_list=[n_pieces],
+            methods=methods_list,
+            n_trials=n_trials,
+            output_path=out,
+        )
+
+    elif name == "evaluate":
+        n_pieces = getattr(args, "n_pieces", 6)
+        n_trials = getattr(args, "n_trials", 3)
+        out_dir  = Path(getattr(args, "output", "evaluation_results"))
+        log.info(f"[tools] evaluate: methods={methods_list} pieces={n_pieces}")
+        fn(
+            methods=methods_list,
+            n_pieces_list=[n_pieces],
+            n_trials=n_trials,
+            noise=0.5,
+            output_dir=out_dir,
+            save_html=True,
+            save_md=True,
+        )
+        log.info(f"[tools] evaluate: результаты в {out_dir}")
+
+    elif name == "mix":
+        n_pieces = getattr(args, "n_pieces", 6)
+        out_dir  = Path(getattr(args, "output", "mixed_fragments"))
+        log.info(f"[tools] mix: n_docs=2 n_pieces={n_pieces}")
+        fn(
+            n_docs=2,
+            n_pieces=n_pieces,
+            output_dir=out_dir,
+        )
+        log.info(f"[tools] mix: фрагменты сохранены в {out_dir}")
+
+    elif name == "tear":
+        input_path = getattr(args, "input", None) or getattr(args, "output", None)
+        out_dir    = Path(getattr(args, "output", "torn_fragments"))
+        n_pieces   = getattr(args, "n_pieces", 6)
+        if input_path and Path(input_path).is_file():
+            img = cv2.imread(str(input_path))
+            if img is None:
+                print(f"Ошибка: не удалось загрузить изображение {input_path}")
+                sys.exit(1)
+        else:
+            # Генерируем тестовый документ
+            from tools.tear_generator import generate_test_document
+            img = generate_test_document()
+            log.info("[tools] tear: синтетический документ сгенерирован")
+        pieces = fn(image=img, n_pieces=n_pieces)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        for i, piece in enumerate(pieces):
+            path = out_dir / f"fragment_{i:03d}.png"
+            cv2.imwrite(str(path), piece)
+        log.info(f"[tools] tear: {len(pieces)} фрагментов → {out_dir}")
+
+    elif name == "serve":
+        host = getattr(args, "host", "0.0.0.0")
+        port = getattr(args, "port", 5000)
+        log.info(f"[tools] serve: http://{host}:{port}")
+        fn(host=host, port=port, debug=False)
+
+    else:
+        print(f"Инструмент {name!r}: обработчик не реализован.")
+        sys.exit(1)
+
+
 def main():
     # --list-validators не требует --input, поэтому обрабатываем до parse_args
     if "--list-validators" in sys.argv:
@@ -1010,6 +1143,41 @@ def main():
         print("Использование:")
         print("  --utils-event-log --utils-progress --utils-profiler")
         print("  --utils-image-stats --utils-export-log events.jsonl")
+        return
+
+    if "--list-tools" in sys.argv:
+        from tools.registry import list_tools
+        tools = list_tools()
+        print(f"Доступные инструменты Bridge #7 ({len(tools)} штук):\n")
+        for name, info in tools.items():
+            fn    = info.load()
+            avail = "доступен" if fn else "недоступен (зависимость отсутствует)"
+            print(f"  {name:14s} [{avail}]")
+            print(f"               {info.description}")
+            if info.params:
+                print(f"               Параметры: {', '.join(info.params)}")
+            print()
+        print("Использование:")
+        print("  python main.py --tool profile --n-fragments 8")
+        print("  python main.py --tool benchmark --methods beam,sa --n-pieces 4")
+        print("  python main.py --tool tear --input doc.png --n-pieces 6 --output frags/")
+        print("  python main.py --tool serve --port 5000")
+        return
+
+    # Bridge #7 — запуск инструмента до parse_args (--input не требуется)
+    if "--tool" in sys.argv:
+        _tool_parser = argparse.ArgumentParser(add_help=False)
+        _tool_parser.add_argument("--tool",        default=None)
+        _tool_parser.add_argument("--input", "-i", default=None)
+        _tool_parser.add_argument("--output",      default="output")
+        _tool_parser.add_argument("--n-fragments",  type=int, default=8)
+        _tool_parser.add_argument("--n-pieces",     type=int, default=6)
+        _tool_parser.add_argument("--n-trials",     type=int, default=3)
+        _tool_parser.add_argument("--methods",      default="beam,sa")
+        _tool_parser.add_argument("--host",         default="0.0.0.0")
+        _tool_parser.add_argument("--port",         type=int, default=5000)
+        _tool_args, _ = _tool_parser.parse_known_args()
+        _run_tool_from_args(_tool_args)
         return
 
     parser = build_parser()
