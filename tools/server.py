@@ -61,21 +61,200 @@ from puzzle_reconstruction.export import render_canvas, render_heatmap, render_m
 
 # ─── Приложение ───────────────────────────────────────────────────────────
 
-app  = Flask(__name__)
+app         = Flask(__name__)
 JOBS: Dict[str, dict] = {}   # job_id → {status, result, report, ts}
-LOCK = threading.Lock()
+LOCK        = threading.Lock()
+_START_TIME = time.perf_counter()
 
 
 # ─── /health ──────────────────────────────────────────────────────────────
+
+_VERSION = "0.4.0-beta"
+
 
 @app.get("/health")
 def health():
     """Проверка работоспособности сервера."""
     return jsonify({
         "status":    "ok",
-        "version":   "0.2.0",
+        "version":   _VERSION,
         "jobs":      len(JOBS),
+        "uptime_s":  round(time.perf_counter() - _START_TIME, 1),
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+    })
+
+
+# ─── /spec (OpenAPI 3.0) ──────────────────────────────────────────────────
+
+@app.get("/spec")
+def openapi_spec():
+    """OpenAPI 3.0 JSON-спецификация всех эндпоинтов."""
+    spec = {
+        "openapi": "3.0.3",
+        "info": {
+            "title":       "puzzle-reconstruction API",
+            "version":     _VERSION,
+            "description": "REST API для реконструкции разорванных документов из отсканированных фрагментов.",
+            "license":     {"name": "MIT"},
+        },
+        "servers": [{"url": "/", "description": "Текущий сервер"}],
+        "paths": {
+            "/health": {
+                "get": {
+                    "summary": "Проверка работоспособности",
+                    "operationId": "health",
+                    "responses": {
+                        "200": {
+                            "description": "Сервер работает",
+                            "content": {"application/json": {"schema": {
+                                "type": "object",
+                                "properties": {
+                                    "status":    {"type": "string", "example": "ok"},
+                                    "version":   {"type": "string"},
+                                    "jobs":      {"type": "integer"},
+                                    "uptime_s":  {"type": "number"},
+                                    "timestamp": {"type": "string"},
+                                },
+                            }}},
+                        }
+                    },
+                }
+            },
+            "/config": {
+                "get": {
+                    "summary": "Конфигурация по умолчанию",
+                    "operationId": "getConfig",
+                    "responses": {
+                        "200": {"description": "Объект конфигурации", "content": {"application/json": {"schema": {"type": "object"}}}},
+                    },
+                }
+            },
+            "/api/methods": {
+                "get": {
+                    "summary": "Список доступных методов сборки",
+                    "operationId": "listMethods",
+                    "responses": {
+                        "200": {"description": "Методы", "content": {"application/json": {"schema": {"type": "object"}}}},
+                    },
+                }
+            },
+            "/api/reconstruct": {
+                "post": {
+                    "summary": "Реконструировать документ из фрагментов",
+                    "operationId": "reconstruct",
+                    "requestBody": {
+                        "required": True,
+                        "content": {"multipart/form-data": {"schema": {
+                            "type": "object",
+                            "properties": {
+                                "files":     {"type": "array", "items": {"type": "string", "format": "binary"}, "description": "PNG/JPEG изображения фрагментов"},
+                                "method":    {"type": "string", "enum": ["greedy", "sa", "beam", "gamma", "genetic", "exhaustive", "ant_colony", "mcts", "auto", "all"], "default": "beam"},
+                                "alpha":     {"type": "number", "minimum": 0, "maximum": 1, "description": "Вес алгоритма Танграм"},
+                                "n_sides":   {"type": "integer", "minimum": 2, "description": "Ожидаемое число краёв на фрагмент"},
+                                "threshold": {"type": "number", "minimum": 0, "maximum": 1, "description": "Минимальная оценка совместимости"},
+                            },
+                            "required": ["files"],
+                        }}},
+                    },
+                    "responses": {
+                        "200": {
+                            "description": "Результат сборки",
+                            "content": {"application/json": {"schema": {
+                                "type": "object",
+                                "properties": {
+                                    "job_id":      {"type": "string"},
+                                    "n_input":     {"type": "integer"},
+                                    "n_placed":    {"type": "integer"},
+                                    "score":       {"type": "number"},
+                                    "ocr":         {"type": "number"},
+                                    "elapsed_sec": {"type": "number"},
+                                    "method":      {"type": "string"},
+                                    "placements":  {"type": "object"},
+                                },
+                            }}},
+                        },
+                        "400": {"description": "Некорректный запрос"},
+                    },
+                }
+            },
+            "/api/cluster": {
+                "post": {
+                    "summary": "Разбить фрагменты по документам",
+                    "operationId": "cluster",
+                    "requestBody": {
+                        "required": True,
+                        "content": {"multipart/form-data": {"schema": {
+                            "type": "object",
+                            "properties": {
+                                "files":  {"type": "array", "items": {"type": "string", "format": "binary"}},
+                                "k":      {"type": "integer", "minimum": 0, "description": "Число документов (0 = авто)"},
+                                "method": {"type": "string", "enum": ["kmeans", "gmm", "spectral"], "default": "gmm"},
+                            },
+                            "required": ["files"],
+                        }}},
+                    },
+                    "responses": {
+                        "200": {"description": "Результат кластеризации"},
+                        "400": {"description": "Некорректный запрос"},
+                        "422": {"description": "Нет читаемых фрагментов"},
+                    },
+                }
+            },
+            "/api/report/{job_id}": {
+                "get": {
+                    "summary": "JSON-отчёт по завершённому заданию",
+                    "operationId": "reportJson",
+                    "parameters": [{"name": "job_id", "in": "path", "required": True, "schema": {"type": "string"}}],
+                    "responses": {
+                        "200": {"description": "Отчёт"},
+                        "404": {"description": "Задание не найдено"},
+                    },
+                }
+            },
+            "/api/report/{job_id}/html": {
+                "get": {
+                    "summary": "HTML-отчёт по завершённому заданию",
+                    "operationId": "reportHtml",
+                    "parameters": [{"name": "job_id", "in": "path", "required": True, "schema": {"type": "string"}}],
+                    "responses": {
+                        "200": {"description": "HTML-страница отчёта", "content": {"text/html": {}}},
+                        "404": {"description": "Задание не найдено"},
+                    },
+                }
+            },
+            "/spec": {
+                "get": {
+                    "summary": "OpenAPI спецификация",
+                    "operationId": "spec",
+                    "responses": {
+                        "200": {"description": "OpenAPI 3.0 JSON"},
+                    },
+                }
+            },
+        },
+    }
+    return jsonify(spec)
+
+
+# ─── /api/methods ─────────────────────────────────────────────────────────
+
+@app.get("/api/methods")
+def list_methods():
+    """Список доступных методов сборки с описаниями."""
+    return jsonify({
+        "methods": [
+            {"id": "greedy",     "desc": "Жадный алгоритм (O(N²), детерминирован, быстрый)",       "n_range": "любой"},
+            {"id": "sa",         "desc": "Имитация отжига (O(I), стохастический)",                   "n_range": "любой"},
+            {"id": "beam",       "desc": "Beam search (O(W·N²), детерминирован) — рекомендуется",   "n_range": "6–20"},
+            {"id": "gamma",      "desc": "Gamma optimizer (O(I·N²), SOTA качество)",                 "n_range": "20–100"},
+            {"id": "genetic",    "desc": "Генетический алгоритм (O(G·P·N²))",                        "n_range": "15–40"},
+            {"id": "exhaustive", "desc": "Полный перебор — гарантированный оптимум",                 "n_range": "≤8"},
+            {"id": "ant_colony", "desc": "Муравьиные колонии ACO (O(I·A·N²))",                       "n_range": "20–60"},
+            {"id": "mcts",       "desc": "Monte Carlo Tree Search (O(S·D))",                         "n_range": "6–25"},
+            {"id": "auto",       "desc": "Автовыбор метода по числу фрагментов",                     "n_range": "любой"},
+            {"id": "all",        "desc": "Все 8 методов — выбор лучшего по score",                   "n_range": "любой"},
+        ],
+        "default": "beam",
     })
 
 
@@ -286,19 +465,25 @@ def main():
     parser.add_argument("--port",   type=int, default=5000)
     parser.add_argument("--debug",  action="store_true")
     parser.add_argument("--method", default="beam",
-                         choices=["greedy", "sa", "beam", "gamma", "exhaustive"])
+                         choices=["greedy", "sa", "beam", "gamma",
+                                  "genetic", "exhaustive", "ant_colony", "mcts",
+                                  "auto", "all"])
     args = parser.parse_args()
 
     print(f"""
 ╔══════════════════════════════════════════════════╗
-║   Puzzle Reconstruction API  v0.2.0             ║
+║   Puzzle Reconstruction API  {_VERSION:<18} ║
 ║   http://{args.host}:{args.port:<5}                         ║
 ║                                                  ║
 ║   Эндпоинты:                                     ║
-║     GET  /health                                 ║
-║     POST /api/reconstruct                        ║
-║     POST /api/cluster                            ║
-║     GET  /api/report/<job_id>/html               ║
+║     GET  /health          — статус сервера       ║
+║     GET  /config          — конфигурация         ║
+║     GET  /spec            — OpenAPI 3.0 JSON     ║
+║     GET  /api/methods     — список методов       ║
+║     POST /api/reconstruct — реконструкция        ║
+║     POST /api/cluster     — кластеризация        ║
+║     GET  /api/report/<id> — JSON-отчёт           ║
+║     GET  /api/report/<id>/html — HTML-отчёт      ║
 ╚══════════════════════════════════════════════════╝
 """)
 

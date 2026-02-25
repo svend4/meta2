@@ -168,7 +168,8 @@ def score_gradient_compat(img1:      np.ndarray,
         # Один из профилей плоский
         return 0.5
 
-    corr = float(np.corrcoef(p1, p2)[0, 1])
+    with np.errstate(invalid='ignore'):  # std→0 даёт NaN, поймаем ниже
+        corr = float(np.corrcoef(p1, p2)[0, 1])
     if not np.isfinite(corr):
         return 0.5
     return float(np.clip((corr + 1.0) / 2.0, 0.0, 1.0))

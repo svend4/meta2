@@ -31,7 +31,7 @@ from .config import Config
 from .clustering import cluster_fragments, ClusteringResult, split_by_cluster
 from .pipeline import Pipeline, PipelineResult
 
-__version__ = "0.3.0"
+__version__ = "0.4.0b1"
 __all__ = [
     # Модели данных
     "Fragment",

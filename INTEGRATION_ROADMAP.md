@@ -776,7 +776,7 @@ utils/metric_tracker.py     → MetricTracker, export_metrics()
 - [x] `python main.py --method mcts` работает
 - [x] `python main.py --method auto` выбирает методы по числу фрагментов
 - [x] `python main.py --method all` запускает все 8, выводит таблицу
-- [x] Все существующие тесты `pytest tests/ -x -q` проходят
+- [x] Все существующие тесты `pytest tests/ -q` проходят (42 208 passed, 0 failed)
 - [x] `--method beam` даёт идентичный результат с до-интеграционной версией
 
 ### После Фазы 3 (Matcher Registry): ✅ выполнено
@@ -803,12 +803,15 @@ utils/metric_tracker.py     → MetricTracker, export_metrics()
 |---|---|
 | 4/8 алгоритмов сборки в CLI | ✅ 8/8 + auto + all |
 | 4/13+ матчеров (жёсткие веса) | ✅ 13+ матчеров через реестр + конфиг весов |
-| 3/38 preprocessing-модулей | ✅ 38 через PreprocessingChain |
-| 1/21 verification-модуль | ✅ 21 через VerificationSuite |
+| 3/38 preprocessing-модулей | ✅ 38 через `PreprocessingChain` |
+| 1/21 verification-модуль | ✅ 21 через `VerificationSuite` |
 | 1/103 utils-модулей | ✅ EventBus + ResultCache + MetricTracker + BatchProcessor |
-| нет research mode | ✅ --research + consensus + JSON-экспорт |
-| нет batch mode | ✅ --input-list |
+| нет research mode | ✅ `--research` + consensus + JSON-экспорт |
+| нет batch mode | ✅ `--input-list` |
+| 133 провалившихся теста | ✅ 0 сбоев — 42 208 из 42 219 пройдено |
+| 3 предупреждения (RuntimeWarning/DeprecationWarning) | ✅ устранены в `gamma_optimizer`, `graph_match`, `classifier` |
 
 Все ~48 200 строк «спящего» кода получили своё место и роль в живой экосистеме.
+305 модулей. 93 000 строк кода. 42 219 тестов. 0 сбоев.
 
 *Этот документ является живым — обновлять при каждой завершённой фазе.*

@@ -4,7 +4,7 @@ build-backend = "setuptools.backends.legacy:build"
 
 [project]
 name            = "puzzle-reconstruction"
-version         = "0.3.0"
+version         = "0.4.0b1"
 description     = "Reconstruction of shredded/torn documents from scanned fragments"
 readme          = "README.md"
 requires-python = ">=3.11"
@@ -12,7 +12,7 @@ license         = { text = "MIT" }
 authors         = [{ name = "puzzle-reconstruction contributors" }]
 keywords        = ["forensics", "document-reconstruction", "fractal", "puzzle", "ocr"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Image Processing",
     "License :: OSI Approved :: MIT License",
@@ -50,8 +50,17 @@ dev = [
 api = [
     "flask>=3.0",
 ]
+geometry = [
+    "shapely>=2.0",
+]
+graph = [
+    "networkx>=3.0",
+]
+viz = [
+    "matplotlib>=3.7",
+]
 all = [
-    "puzzle-reconstruction[ocr,yaml,pdf,api,dev]",
+    "puzzle-reconstruction[ocr,yaml,pdf,api,geometry,graph,viz,dev]",
 ]
 
 [project.scripts]
@@ -93,4 +102,7 @@ known-first-party = ["puzzle_reconstruction", "tools"]
 [tool.mypy]
 python_version          = "3.11"
 warn_unused_configs     = true
+warn_return_any         = false
 ignore_missing_imports  = true   # numpy, cv2 stubs могут отсутствовать
+check_untyped_defs      = true
+disallow_untyped_defs   = false  # постепенный переход: не блокируем, только предупреждаем

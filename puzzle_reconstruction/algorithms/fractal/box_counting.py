@@ -54,6 +54,8 @@ def box_counting_fd(contour: np.ndarray,
     log_N     = np.array(log_N)
 
     # Линейная регрессия: FD = slope(log N / log(1/r))
+    if len(log_r_inv) < 2:  # Недостаточно точек для регрессии
+        return 1.0
     fd = float(np.polyfit(log_r_inv, log_N, 1)[0])
     return np.clip(fd, 1.0, 2.0)
 

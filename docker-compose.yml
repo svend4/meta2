@@ -1,0 +1,76 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.yml — puzzle-reconstruction v0.4.0-beta
+#
+# Запуск:
+#   docker compose up --build          # собрать + запустить
+#   docker compose up -d               # в фоне
+#   docker compose down                # остановить
+#
+# Профили:
+#   docker compose --profile cli up    # CLI-режим (разовый запуск)
+#   docker compose --profile dev up    # API + Jupyter (разработка)
+# ─────────────────────────────────────────────────────────────────────────────
+services:
+
+  # ── REST API (основной сервис) ────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      target: runtime
+    image: puzzle-reconstruction:0.4.0
+    container_name: puzzle-api
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - puzzle-input:/data/input
+      - puzzle-output:/data/output
+    environment:
+      PUZZLE_METHOD: "${PUZZLE_METHOD:-auto}"
+      PUZZLE_INPUT_DIR: /data/input
+      PUZZLE_OUTPUT_DIR: /data/output
+    command: ["python", "tools/server.py", "--host", "0.0.0.0", "--port", "5000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ── CLI-задача (профиль cli) ───────────────────────────────────────────────
+  cli:
+    build:
+      context: .
+      target: runtime
+    image: puzzle-reconstruction:0.4.0
+    container_name: puzzle-cli
+    profiles: [cli]
+    volumes:
+      - puzzle-input:/data/input
+      - puzzle-output:/data/output
+    environment:
+      PUZZLE_METHOD: "${PUZZLE_METHOD:-auto}"
+    command: >
+      python main.py
+        --input /data/input
+        --output /data/output/result.png
+        --method ${PUZZLE_METHOD:-auto}
+
+  # ── Бенчмарк (профиль bench) ──────────────────────────────────────────────
+  benchmark:
+    build:
+      context: .
+      target: runtime
+    image: puzzle-reconstruction:0.4.0
+    container_name: puzzle-bench
+    profiles: [bench]
+    volumes:
+      - puzzle-output:/data/output
+    command: ["python", "tools/benchmark.py", "--json", "/data/output/benchmark.json"]
+
+# ── Тома ─────────────────────────────────────────────────────────────────────
+volumes:
+  puzzle-input:
+    driver: local
+  puzzle-output:
+    driver: local
