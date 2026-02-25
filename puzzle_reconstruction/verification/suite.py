@@ -329,20 +329,21 @@ def _build_validator_registry() -> Dict[str, Callable]:
                 return 1.0, "недостаточно размещений для проверки границ"
 
             frags_by_id = {f.fragment_id: f for f in (asm.fragments or [])}
-            positions_list = []
-            sizes_list = []
+            # validate_all_pairs works on a single axis (x): positions = x-coords,
+            # sizes = widths. Sequential pairs check horizontal adjacency.
+            positions_list: list = []
+            sizes_list: list = []
             for i, p in enumerate(placements):
                 fid = getattr(p, "fragment_id", i)
                 pos = getattr(p, "position", None)
                 x = float(pos[0]) if pos is not None else float(i * 100)
-                y = float(pos[1]) if pos is not None else 0.0
-                positions_list.append((x, y))
+                positions_list.append(x)
                 frag = frags_by_id.get(fid)
                 if frag is not None and frag.image is not None:
-                    h, w = frag.image.shape[:2]
+                    _h, w = frag.image.shape[:2]
                 else:
-                    w, h = 100.0, 100.0
-                sizes_list.append((float(w), float(h)))
+                    w = 100.0
+                sizes_list.append(float(w))
 
             pairs = [(i, i + 1) for i in range(len(placements) - 1)]
             report = validate_all_pairs(pairs, positions_list, sizes_list)
