@@ -41,6 +41,41 @@
 
 ---
 
+### Добавлено (Фаза 8 — Unit-тесты для scoring/ и matching/ модулей)
+
+- **`tests/test_scoring_match_evaluator.py`** — 56 тестов для `scoring/match_evaluator.py`:
+  `MatchEval`, `EvalReport`, `compute_precision/recall/f_score`, `evaluate_match`,
+  `aggregate_eval`, `filter_by_score`, `rank_matches`
+- **`tests/test_scoring_threshold_selector.py`** — 51 тест для `scoring/threshold_selector.py`:
+  `ThresholdConfig`, `ThresholdResult`, `select_fixed/percentile/otsu/adaptive/f1_threshold`,
+  `select_threshold`, `apply_threshold`, `batch_select_thresholds`
+- **`tests/test_matching_spectral_matcher.py`** — 37 тестов для `matching/spectral_matcher.py`:
+  `SpectralMatchResult`, `magnitude_spectrum`, `log_magnitude`, `spectrum_correlation`,
+  `phase_correlation`, `match_spectra`, `batch_spectral_match`
+- **`tests/test_matching_edge_comparator.py`** — 48 тестов для `matching/edge_comparator.py`:
+  `EdgeCompConfig`, `EdgeSample`, `EdgeCompResult`, `extract_edge_sample`,
+  `compare_edge_pair`, `batch_compare_edges`
+- **`tests/test_matching_global_matcher.py`** — 55 тестов для `matching/global_matcher.py`:
+  `GlobalMatchConfig`, `GlobalMatch`, `GlobalMatchResult`, `aggregate_pair_scores`,
+  `rank_candidates`, `global_match`, `filter_matches`, `merge_match_results`
+- **`tests/test_matching_patch_validator.py`** — 40 тестов для `matching/patch_validator.py`:
+  `PatchValidConfig`, `PatchScore`, `PatchValidResult`, `compute_patch_score`,
+  `validate_patch_pair`, `batch_validate_patches`, `filter_valid_pairs`
+- **`tests/test_matching_graph_match.py`** — 46 тестов для `matching/graph_match.py`:
+  `FragmentGraph`, `build_fragment_graph`, `mst_ordering`, `spectral_ordering`,
+  `random_walk_similarity`, `degree_centrality`, `analyze_graph`
+- **`tests/test_matching_matcher_registry.py`** — 29 тестов для `matching/matcher_registry.py`:
+  `MATCHER_REGISTRY`, `register`, `register_fn`, `get_matcher`, `list_matchers`,
+  `compute_scores`, `weighted_combine`
+
+### Тестирование (Phase 8 итог)
+
+- Добавлено 8 базовых тест-файлов (+329 тестов)
+- Итого: **42 934 тестов**, все проходят (0 провалено, 0 skipped, 0 warnings)
+- Тестовых файлов: 835
+
+---
+
 ### Добавлено (Фаза 6 — Финальная полировка до стабильного релиза)
 
 - **`VerificationReport.as_dict()`** — сериализует отчёт в `dict` (JSON-совместимый)
