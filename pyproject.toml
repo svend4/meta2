@@ -4,7 +4,7 @@ build-backend = "setuptools.backends.legacy:build"
 
 [project]
 name            = "puzzle-reconstruction"
-version         = "0.4.0b1"
+version         = "1.0.0"
 description     = "Reconstruction of shredded/torn documents from scanned fragments"
 readme          = "README.md"
 requires-python = ">=3.11"
@@ -12,7 +12,7 @@ license         = { text = "MIT" }
 authors         = [{ name = "puzzle-reconstruction contributors" }]
 keywords        = ["forensics", "document-reconstruction", "fractal", "puzzle", "ocr"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Image Processing",
     "License :: OSI Approved :: MIT License",
@@ -103,6 +103,104 @@ known-first-party = ["puzzle_reconstruction", "tools"]
 python_version          = "3.11"
 warn_unused_configs     = true
 warn_return_any         = false
-ignore_missing_imports  = true   # numpy, cv2 stubs могут отсутствовать
+ignore_missing_imports  = true   # numpy, cv2, scipy stubs могут отсутствовать
 check_untyped_defs      = true
 disallow_untyped_defs   = false  # постепенный переход: не блокируем, только предупреждаем
+warn_unreachable        = true   # Нереachable-код → предупреждение
+no_implicit_optional    = true   # None-параметры требуют Optional[T]
+
+# ── Строгая типизация для ядра (models, config, pipeline, suite) ──────────
+[[tool.mypy.overrides]]
+module = [
+    "puzzle_reconstruction.models",
+    "puzzle_reconstruction.config",
+    "puzzle_reconstruction.pipeline",
+    "puzzle_reconstruction.clustering",
+    "puzzle_reconstruction.export",
+]
+disallow_untyped_defs = true
+warn_return_any       = true
+
+# ── Строгая типизация для verification/ ────────────────────────────────────
+[[tool.mypy.overrides]]
+module = [
+    "puzzle_reconstruction.verification.suite",
+    "puzzle_reconstruction.verification.assembly_scorer",
+    "puzzle_reconstruction.verification.completeness_checker",
+    "puzzle_reconstruction.verification.confidence_scorer",
+    "puzzle_reconstruction.verification.consistency_checker",
+    "puzzle_reconstruction.verification.seam_analyzer",
+    "puzzle_reconstruction.verification.boundary_validator",
+    "puzzle_reconstruction.verification.fragment_validator",
+    "puzzle_reconstruction.verification.layout_checker",
+    "puzzle_reconstruction.verification.layout_scorer",
+    "puzzle_reconstruction.verification.layout_verifier",
+    "puzzle_reconstruction.verification.metrics",
+    "puzzle_reconstruction.verification.overlap_checker",
+    "puzzle_reconstruction.verification.overlap_validator",
+    "puzzle_reconstruction.verification.placement_validator",
+    "puzzle_reconstruction.verification.quality_reporter",
+    "puzzle_reconstruction.verification.score_reporter",
+    "puzzle_reconstruction.verification.spatial_validator",
+    "puzzle_reconstruction.verification.text_coherence",
+    "puzzle_reconstruction.verification.edge_validator",
+    "puzzle_reconstruction.verification.report",
+]
+disallow_untyped_defs = true
+
+# ── Строгая типизация для assembly/ (алгоритмы сборки) ────────────────────
+[[tool.mypy.overrides]]
+module = [
+    "puzzle_reconstruction.assembly.greedy",
+    "puzzle_reconstruction.assembly.annealing",
+    "puzzle_reconstruction.assembly.beam_search",
+    "puzzle_reconstruction.assembly.gamma_optimizer",
+    "puzzle_reconstruction.assembly.genetic",
+    "puzzle_reconstruction.assembly.ant_colony",
+    "puzzle_reconstruction.assembly.mcts",
+    "puzzle_reconstruction.assembly.exhaustive",
+    "puzzle_reconstruction.assembly.parallel",
+    "puzzle_reconstruction.assembly.assembly_state",
+]
+disallow_untyped_defs = true
+
+# ── Строгая типизация для matching/ ────────────────────────────────────────
+[[tool.mypy.overrides]]
+module = [
+    "puzzle_reconstruction.matching.dtw",
+    "puzzle_reconstruction.matching.pairwise",
+    "puzzle_reconstruction.matching.compat_matrix",
+    "puzzle_reconstruction.matching.matcher_registry",
+]
+disallow_untyped_defs = true
+
+# ── Строгая типизация для algorithms/tangram/ и algorithms/fractal/ ────────
+[[tool.mypy.overrides]]
+module = [
+    "puzzle_reconstruction.algorithms.tangram.hull",
+    "puzzle_reconstruction.algorithms.tangram.classifier",
+    "puzzle_reconstruction.algorithms.tangram.inscriber",
+    "puzzle_reconstruction.algorithms.fractal.box_counting",
+    "puzzle_reconstruction.algorithms.fractal.divider",
+    "puzzle_reconstruction.algorithms.fractal.css",
+    "puzzle_reconstruction.algorithms.fractal.ifs",
+    "puzzle_reconstruction.algorithms.synthesis",
+]
+disallow_untyped_defs = true
+
+# ── Расслабленные правила для utils/ (постепенная миграция) ────────────────
+[[tool.mypy.overrides]]
+module = "puzzle_reconstruction.utils.*"
+disallow_untyped_defs = false
+check_untyped_defs    = true
+
+# ── Расслабленные правила для preprocessing/ (большой модуль) ─────────────
+[[tool.mypy.overrides]]
+module = "puzzle_reconstruction.preprocessing.*"
+disallow_untyped_defs = false
+check_untyped_defs    = true
+
+# ── Инструменты CLI ────────────────────────────────────────────────────────
+[[tool.mypy.overrides]]
+module = "tools.*"
+disallow_untyped_defs = false

@@ -153,6 +153,21 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cache-dir", default=None,
                         help="Директория для кэша EdgeSignatures между запусками "
                              "(ускоряет повторные прогоны на том же наборе фрагментов)")
+
+    # Верификация (расширенная)
+    parser.add_argument("--validators", default=None,
+                        help="Список валидаторов через запятую "
+                             "(напр. boundary,metrics,placement) "
+                             "или 'all' для запуска всех 21. "
+                             "Перекрывает verification.validators из конфига.")
+    parser.add_argument("--export-report", default=None, metavar="PATH",
+                        help="Экспортировать отчёт верификации в файл. "
+                             "Формат определяется расширением: "
+                             ".json — структурированный JSON, "
+                             ".md / .txt — Markdown, "
+                             ".html — HTML-таблица.")
+    parser.add_argument("--list-validators", action="store_true",
+                        help="Показать список всех 21 доступных валидатора и выйти.")
     return parser
 
 
@@ -427,6 +442,40 @@ def _export_comparison(report: dict, path: str | Path, log) -> None:
         log.warning(f"  Не удалось сохранить comparison.json: {exc}")
 
 
+def _export_verification_report(v_report, path: str | Path, log) -> None:
+    """Экспортирует VerificationReport в JSON / Markdown / HTML.
+
+    Формат определяется расширением файла:
+        .json        — структурированный JSON
+        .md / .txt   — Markdown (таблица + итог)
+        .html        — HTML-страница с таблицей
+
+    Делегирует форматирование методам VerificationReport:
+        as_dict() / to_json() / to_markdown() / to_html()
+    """
+    path = Path(path)
+    ext  = path.suffix.lower()
+
+    try:
+        if ext == ".json":
+            path.write_text(v_report.to_json(), encoding="utf-8")
+
+        elif ext in (".md", ".txt"):
+            path.write_text(v_report.to_markdown(), encoding="utf-8")
+
+        elif ext == ".html":
+            path.write_text(v_report.to_html(), encoding="utf-8")
+
+        else:
+            # Неизвестное расширение — сохраняем как Markdown
+            _export_verification_report(v_report, path.with_suffix(".md"), log)
+            return
+
+        log.info(f"  Отчёт верификации экспортирован: {path}")
+    except Exception as exc:
+        log.warning(f"  Не удалось экспортировать отчёт верификации: {exc}")
+
+
 def _run_batch(input_list_file: str, args: argparse.Namespace, log) -> None:
     """
     Пакетная обработка (Фаза 6): читает список директорий из файла и
@@ -601,13 +650,29 @@ def run(args: argparse.Namespace) -> None:
         else:
             log.info("  OCR отключён")
 
-        # Расширенная верификация (VerificationSuite — спящие модули)
+        # Расширенная верификация (VerificationSuite — 21 валидатор)
+        cli_validators = getattr(args, "validators", None)
+        if cli_validators is not None:
+            from puzzle_reconstruction.verification.suite import (
+                VerificationSuite, all_validator_names
+            )
+            if cli_validators.strip().lower() == "all":
+                validators_list = all_validator_names()
+            else:
+                validators_list = [v.strip() for v in cli_validators.split(",")
+                                   if v.strip()]
+            cfg.verification.validators = validators_list
+
         if cfg.verification.validators:
             from puzzle_reconstruction.verification.suite import VerificationSuite
             suite = VerificationSuite(validators=cfg.verification.validators)
             v_report = suite.run(assembly)
             log.info(v_report.summary())
             log.info(f"  Suite score: {v_report.final_score:.1%}")
+
+            export_path = getattr(args, "export_report", None)
+            if export_path:
+                _export_verification_report(v_report, export_path, log)
 
     # ── Research Mode (Фаза 7) ────────────────────────────────────────────
     if cfg.research.enabled and cfg.assembly.method in ("all", "auto"):
@@ -663,8 +728,22 @@ def _quick_preview(canvas: np.ndarray, assembly) -> None:
 
 
 def main():
+    # --list-validators не требует --input, поэтому обрабатываем до parse_args
+    if "--list-validators" in sys.argv:
+        from puzzle_reconstruction.verification.suite import all_validator_names
+        names = all_validator_names()
+        print(f"Доступные валидаторы ({len(names)} штук):")
+        for i, name in enumerate(names, 1):
+            print(f"  {i:2d}. {name}")
+        print()
+        print("Использование:")
+        print("  --validators all              # запустить все 21")
+        print("  --validators boundary,metrics # запустить подмножество")
+        return
+
     parser = build_parser()
     args   = parser.parse_args()
+
     # Нормализуем имена атрибутов (argparse конвертирует дефисы в подчёркивания)
     if not hasattr(args, "input"):
         args.input = None

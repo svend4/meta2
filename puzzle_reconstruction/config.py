@@ -98,9 +98,14 @@ class VerificationConfig:
     ocr_lang:    str   = "rus+eng"
     export_pdf:  bool  = False
     validators:  List[str] = field(default_factory=list)
-    # Доступные валидаторы:
-    #   "assembly_score", "layout", "completeness", "seam", "overlap",
-    #   "text_coherence", "confidence", "consistency", "edge_quality"
+    # Доступные валидаторы (21 модуль, 20 регистрируются в реестре):
+    #   Базовые 9:
+    #     "assembly_score", "layout", "completeness", "seam", "overlap",
+    #     "text_coherence", "confidence", "consistency", "edge_quality"
+    #   Расширенные 12 (Фаза 2 активации):
+    #     "boundary", "layout_verify", "overlap_validate", "spatial",
+    #     "placement", "layout_score", "fragment_valid", "quality_report",
+    #     "score_report", "full_report", "metrics", "overlap_area"
     # Пустой список → только OCR (поведение по умолчанию)
 
 
