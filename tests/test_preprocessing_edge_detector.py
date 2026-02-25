@@ -119,7 +119,6 @@ class TestDetectEdges:
         result = detect_edges(img, method="sobel")
         assert result.method == "sobel"
 
-    @pytest.mark.xfail(strict=False, reason="cv2.Laplacian float32→CV_64F unsupported on some OpenCV builds")
     def test_method_laplacian(self):
         img = make_gradient()
         result = detect_edges(img, method="laplacian")
@@ -240,41 +239,30 @@ class TestSobelEdges:
 
 # ─── laplacian_edges ──────────────────────────────────────────────────────────
 
-LAPLACIAN_XFAIL = pytest.mark.xfail(
-    strict=False,
-    reason="cv2.Laplacian float32→CV_64F unsupported on some OpenCV builds",
-)
-
-
 class TestLaplacianEdges:
-    @LAPLACIAN_XFAIL
     def test_returns_result(self):
         img = make_gradient()
         result = laplacian_edges(img)
         assert isinstance(result, EdgeDetectionResult)
         assert result.method == "laplacian"
 
-    @LAPLACIAN_XFAIL
     def test_params_stored(self):
         img = make_gradient()
         result = laplacian_edges(img, sigma=2.0, threshold=20.0)
         assert result.params["sigma"] == pytest.approx(2.0)
         assert result.params["threshold"] == pytest.approx(20.0)
 
-    @LAPLACIAN_XFAIL
     def test_edge_map_binary(self):
         img = make_gradient()
         result = laplacian_edges(img)
         unique_vals = set(np.unique(result.edge_map))
         assert unique_vals.issubset({0, 255})
 
-    @LAPLACIAN_XFAIL
     def test_shape_preserved(self):
         img = make_gradient(h=35, w=55)
         result = laplacian_edges(img)
         assert result.edge_map.shape == (35, 55)
 
-    @LAPLACIAN_XFAIL
     def test_bgr_input(self):
         img = make_bgr()
         result = laplacian_edges(img)

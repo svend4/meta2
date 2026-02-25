@@ -1,9 +1,9 @@
 # STATUS.md — Текущий статус реализации `puzzle_reconstruction`
 
-> Дата: 2026-02-25 (обновлено — v1.0.0 Stable: /api/validators, README верификация, тест-коррекции)
+> Дата: 2026-02-25 (обновлено — v1.0.0 Stable: снятие xfail-маркеров с Laplacian-тестов)
 > Ветка: `claude/puzzle-text-docs-3tcRj`
 > Версия проекта: **1.0.0** (Production/Stable)
-> Последний коммит: `aec8b77` — feat: /api/validators endpoint, README verification docs, CHANGELOG fix
+> Последний коммит: `(pending)` — fix: remove xfail markers from laplacian_edges tests (9 now passing)
 
 ---
 
