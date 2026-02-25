@@ -153,6 +153,19 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--cache-dir", default=None,
                         help="Директория для кэша EdgeSignatures между запусками "
                              "(ускоряет повторные прогоны на том же наборе фрагментов)")
+
+    # Верификация (расширенная)
+    parser.add_argument("--validators", default=None,
+                        help="Список валидаторов через запятую "
+                             "(напр. boundary,metrics,placement) "
+                             "или 'all' для запуска всех 21. "
+                             "Перекрывает verification.validators из конфига.")
+    parser.add_argument("--export-report", default=None, metavar="PATH",
+                        help="Экспортировать отчёт верификации в файл. "
+                             "Формат определяется расширением: "
+                             ".json — структурированный JSON, "
+                             ".md / .txt — Markdown, "
+                             ".html — HTML-таблица.")
     return parser
 
 
@@ -427,6 +440,96 @@ def _export_comparison(report: dict, path: str | Path, log) -> None:
         log.warning(f"  Не удалось сохранить comparison.json: {exc}")
 
 
+def _export_verification_report(v_report, path: str | Path, log) -> None:
+    """Экспортирует VerificationReport в JSON / Markdown / HTML.
+
+    Формат определяется расширением файла:
+        .json        — структурированный JSON
+        .md / .txt   — Markdown (таблица + итог)
+        .html        — HTML-страница с таблицей
+    """
+    from puzzle_reconstruction.verification.suite import VerificationReport
+    path = Path(path)
+    ext  = path.suffix.lower()
+
+    try:
+        if ext == ".json":
+            data = {
+                "final_score": v_report.final_score,
+                "validators": [
+                    {
+                        "name":    r.name,
+                        "score":   r.score,
+                        "details": r.details,
+                        "error":   r.error,
+                        "success": r.success,
+                    }
+                    for r in v_report.results
+                ],
+            }
+            path.write_text(
+                json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+
+        elif ext in (".md", ".txt"):
+            lines = [
+                "# Отчёт верификации сборки",
+                "",
+                f"**Итоговый балл:** `{v_report.final_score:.4f}`",
+                "",
+                "| Валидатор | Балл | Детали | Статус |",
+                "|-----------|------|--------|--------|",
+            ]
+            for r in v_report.results:
+                score_str  = f"{r.score:.4f}" if r.success else "—"
+                details    = (r.details or "").replace("|", "\\|")
+                status     = "✓" if r.success else f"✗ {r.error}"
+                lines.append(f"| `{r.name}` | {score_str} | {details} | {status} |")
+            lines += ["", f"*Сгенерировано: puzzle-reconstruction v0.4.0-beta*"]
+            path.write_text("\n".join(lines), encoding="utf-8")
+
+        elif ext == ".html":
+            rows = []
+            for r in v_report.results:
+                score_str = f"{r.score:.4f}" if r.success else "—"
+                status_cls = "ok" if r.success else "err"
+                status_txt = "✓" if r.success else f"✗ {r.error or ''}"
+                rows.append(
+                    f"<tr><td><code>{r.name}</code></td>"
+                    f"<td>{score_str}</td>"
+                    f"<td>{r.details or ''}</td>"
+                    f"<td class='{status_cls}'>{status_txt}</td></tr>"
+                )
+            html = (
+                "<!DOCTYPE html><html lang='ru'><head><meta charset='utf-8'>"
+                "<title>Отчёт верификации</title>"
+                "<style>body{font-family:sans-serif;padding:20px}"
+                "table{border-collapse:collapse;width:100%}"
+                "th,td{border:1px solid #ccc;padding:6px 10px;text-align:left}"
+                "th{background:#f0f0f0}.ok{color:green}.err{color:red}</style>"
+                "</head><body>"
+                "<h1>Отчёт верификации сборки</h1>"
+                f"<p><strong>Итоговый балл:</strong> {v_report.final_score:.4f}</p>"
+                "<table><thead><tr>"
+                "<th>Валидатор</th><th>Балл</th><th>Детали</th><th>Статус</th>"
+                "</tr></thead><tbody>"
+                + "".join(rows)
+                + "</tbody></table>"
+                "<p><em>puzzle-reconstruction v0.4.0-beta</em></p>"
+                "</body></html>"
+            )
+            path.write_text(html, encoding="utf-8")
+
+        else:
+            # Неизвестное расширение — сохраняем как Markdown
+            _export_verification_report(v_report, path.with_suffix(".md"), log)
+            return
+
+        log.info(f"  Отчёт верификации экспортирован: {path}")
+    except Exception as exc:
+        log.warning(f"  Не удалось экспортировать отчёт верификации: {exc}")
+
+
 def _run_batch(input_list_file: str, args: argparse.Namespace, log) -> None:
     """
     Пакетная обработка (Фаза 6): читает список директорий из файла и
@@ -601,13 +704,29 @@ def run(args: argparse.Namespace) -> None:
         else:
             log.info("  OCR отключён")
 
-        # Расширенная верификация (VerificationSuite — спящие модули)
+        # Расширенная верификация (VerificationSuite — 21 валидатор)
+        cli_validators = getattr(args, "validators", None)
+        if cli_validators is not None:
+            from puzzle_reconstruction.verification.suite import (
+                VerificationSuite, all_validator_names
+            )
+            if cli_validators.strip().lower() == "all":
+                validators_list = all_validator_names()
+            else:
+                validators_list = [v.strip() for v in cli_validators.split(",")
+                                   if v.strip()]
+            cfg.verification.validators = validators_list
+
         if cfg.verification.validators:
             from puzzle_reconstruction.verification.suite import VerificationSuite
             suite = VerificationSuite(validators=cfg.verification.validators)
             v_report = suite.run(assembly)
             log.info(v_report.summary())
             log.info(f"  Suite score: {v_report.final_score:.1%}")
+
+            export_path = getattr(args, "export_report", None)
+            if export_path:
+                _export_verification_report(v_report, export_path, log)
 
     # ── Research Mode (Фаза 7) ────────────────────────────────────────────
     if cfg.research.enabled and cfg.assembly.method in ("all", "auto"):
