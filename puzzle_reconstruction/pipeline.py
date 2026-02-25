@@ -340,6 +340,23 @@ class Pipeline:
     def _process_one(self, idx: int, img: np.ndarray) -> Optional[Fragment]:
         """Полная обработка одного изображения → Fragment."""
         try:
+            # 0. Bridge #2: PreprocessingChain (конфигурируемые фильтры)
+            pre_cfg = self.cfg.preprocessing
+            if pre_cfg.chain or pre_cfg.auto_enhance:
+                from .preprocessing.chain import PreprocessingChain
+                chain = PreprocessingChain(
+                    filters=list(pre_cfg.chain),
+                    quality_threshold=pre_cfg.quality_threshold,
+                    auto_enhance=pre_cfg.auto_enhance,
+                )
+                img = chain.apply(img)
+                if img is None:
+                    self.log.debug(
+                        "    #%d: отклонён PreprocessingChain (качество < %.2f)",
+                        idx, pre_cfg.quality_threshold,
+                    )
+                    return None
+
             # 1. Нормализация цвета (CLAHE + white balance)
             if self.cfg.segmentation.method != "grabcut":  # GrabCut чувствителен к цвету
                 img = normalize_color(img)
