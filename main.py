@@ -169,6 +169,23 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--list-validators", action="store_true",
                         help="Показать список всех 21 доступных валидатора и выйти.")
 
+    # Export — export.py (render_canvas, save_pdf, heatmap, mosaic)
+    parser.add_argument("--pdf", default=None, metavar="PATH",
+                        help="Сохранить результат в PDF (через export.save_pdf). "
+                             "Если PATH пустой — сохраняет рядом с --output.")
+    parser.add_argument("--heatmap", default=None, metavar="PATH",
+                        help="Сохранить тепловую карту уверенности в PNG-файл.")
+    parser.add_argument("--mosaic", default=None, metavar="PATH",
+                        help="Сохранить мозаику всех фрагментов в PNG-файл.")
+
+    # Clustering — clustering.py (multi-document scenario)
+    parser.add_argument("--cluster", action="store_true", default=False,
+                        help="Запустить кластеризацию фрагментов перед сборкой. "
+                             "Полезно при наличии фрагментов из нескольких документов.")
+    parser.add_argument("--n-docs", type=int, default=None, metavar="N",
+                        help="Ожидаемое число документов для --cluster. "
+                             "None = определить автоматически (до 8).")
+
     # Bridge #2 — PreprocessingChain
     parser.add_argument("--preprocessing-chain", default=None, metavar="FILTERS",
                         help="Цепочка фильтров предобработки через запятую. "
@@ -873,6 +890,36 @@ def run(args: argparse.Namespace) -> None:
         log.error("Ни один фрагмент не обработан. Выход.")
         sys.exit(1)
 
+    # ── Кластеризация (clustering.py) ─────────────────────────────────────
+    if getattr(args, "cluster", False):
+        with stage("Кластеризация фрагментов", log), timer.measure("кластеризация"):
+            try:
+                from puzzle_reconstruction.clustering import (
+                    cluster_fragments, split_by_cluster
+                )
+                n_docs = getattr(args, "n_docs", None)
+                result = cluster_fragments(processed, k=n_docs)
+                log.info(
+                    f"  Кластеров: {result.n_clusters}  "
+                    f"(метод={result.method}  "
+                    f"silhouette={result.silhouette:.3f})"
+                )
+                clusters = split_by_cluster(processed, result)
+                log.info(
+                    f"  Размеры кластеров: "
+                    + ", ".join(f"#{i}:{len(c)}" for i, c in clusters.items())
+                )
+                # Продолжаем с наибольшим кластером
+                largest = max(clusters, key=lambda k: len(clusters[k]))
+                if len(clusters) > 1:
+                    log.info(
+                        f"  Используем кластер #{largest} "
+                        f"({len(clusters[largest])} фрагментов)"
+                    )
+                    processed = clusters[largest]
+            except Exception as exc:
+                log.warning(f"  Кластеризация недоступна: {exc}")
+
     # ── Этап 3: Матрица совместимости ─────────────────────────────────────
     with stage("Матрица совместимости", log), timer.measure("сопоставление"):
         compat_matrix, entries = build_compat_matrix(
@@ -945,12 +992,57 @@ def run(args: argparse.Namespace) -> None:
 
     # ── Этап 6: Экспорт ───────────────────────────────────────────────────
     with stage("Экспорт", log), timer.measure("экспорт"):
-        canvas = render_assembly_image(assembly)
+        # Основной рендер: сначала пробуем export.render_canvas (лучший
+        # рендерер), при неудаче — fallback на render_assembly_image (OCR).
+        canvas = None
+        try:
+            from puzzle_reconstruction.export import render_canvas as _render_canvas
+            canvas = _render_canvas(assembly)
+        except Exception:
+            pass
+        if canvas is None:
+            canvas = render_assembly_image(assembly)
+
         if canvas is not None:
             cv2.imwrite(str(output_path), canvas)
             log.info(f"  Сохранено: {output_path}")
         else:
             log.warning("  Не удалось создать изображение результата")
+
+        # PDF экспорт (опционально)
+        pdf_path = getattr(args, "pdf", None)
+        if pdf_path is not None:
+            pdf_file = pdf_path if pdf_path else str(output_path.with_suffix(".pdf"))
+            try:
+                from puzzle_reconstruction.export import save_pdf
+                save_pdf(assembly, canvas or np.zeros((100, 100, 3), dtype=np.uint8),
+                         pdf_file)
+                log.info(f"  PDF сохранён: {pdf_file}")
+            except Exception as exc:
+                log.debug(f"  export.save_pdf ошибка: {exc}")
+
+        # Тепловая карта (опционально)
+        heatmap_path = getattr(args, "heatmap", None)
+        if heatmap_path and canvas is not None:
+            try:
+                from puzzle_reconstruction.export import render_heatmap
+                from puzzle_reconstruction.export import save_png
+                heatmap = render_heatmap(assembly, canvas.shape)
+                save_png(heatmap, heatmap_path)
+                log.info(f"  Тепловая карта: {heatmap_path}")
+            except Exception as exc:
+                log.debug(f"  export.render_heatmap ошибка: {exc}")
+
+        # Мозаика фрагментов (опционально)
+        mosaic_path = getattr(args, "mosaic", None)
+        if mosaic_path:
+            try:
+                from puzzle_reconstruction.export import render_mosaic, save_png
+                mosaic = render_mosaic(assembly)
+                save_png(mosaic, mosaic_path)
+                log.info(f"  Мозаика: {mosaic_path}")
+            except Exception as exc:
+                log.debug(f"  export.render_mosaic ошибка: {exc}")
 
     # ── Итог ──────────────────────────────────────────────────────────────
     log.info("\n" + timer.report())
