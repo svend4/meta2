@@ -8,10 +8,13 @@
 Эндпоинты:
     GET  /health                   — состояние сервера
     GET  /config                   — текущая конфигурация
+    GET  /api/methods              — список методов сборки
+    GET  /api/validators           — список валидаторов VerificationSuite (21 шт.)
     POST /api/reconstruct          — загрузить фрагменты → JSON с результатом
     POST /api/cluster              — определить принадлежность к документам
     GET  /api/report/<job_id>      — получить отчёт по завершённому заданию
     GET  /api/report/<job_id>/html — HTML-версия отчёта
+    GET  /spec                     — OpenAPI 3.0 JSON-спецификация
 
 Использование:
     pip install flask
@@ -69,7 +72,7 @@ _START_TIME = time.perf_counter()
 
 # ─── /health ──────────────────────────────────────────────────────────────
 
-_VERSION = "0.4.0-beta"
+_VERSION = "1.0.0"
 
 
 @app.get("/health")
@@ -138,6 +141,27 @@ def openapi_spec():
                     },
                 }
             },
+            "/api/validators": {
+                "get": {
+                    "summary": "Список доступных валидаторов VerificationSuite",
+                    "operationId": "listValidators",
+                    "responses": {
+                        "200": {
+                            "description": "21 валидатор с группировкой original/extended",
+                            "content": {"application/json": {"schema": {
+                                "type": "object",
+                                "properties": {
+                                    "total":      {"type": "integer", "example": 21},
+                                    "validators": {"type": "array", "items": {"type": "string"}},
+                                    "groups":     {"type": "object"},
+                                    "usage":      {"type": "object"},
+                                },
+                            }}},
+                        },
+                        "500": {"description": "Внутренняя ошибка"},
+                    },
+                }
+            },
             "/api/reconstruct": {
                 "post": {
                     "summary": "Реконструировать документ из фрагментов",
@@ -147,11 +171,12 @@ def openapi_spec():
                         "content": {"multipart/form-data": {"schema": {
                             "type": "object",
                             "properties": {
-                                "files":     {"type": "array", "items": {"type": "string", "format": "binary"}, "description": "PNG/JPEG изображения фрагментов"},
-                                "method":    {"type": "string", "enum": ["greedy", "sa", "beam", "gamma", "genetic", "exhaustive", "ant_colony", "mcts", "auto", "all"], "default": "beam"},
-                                "alpha":     {"type": "number", "minimum": 0, "maximum": 1, "description": "Вес алгоритма Танграм"},
-                                "n_sides":   {"type": "integer", "minimum": 2, "description": "Ожидаемое число краёв на фрагмент"},
-                                "threshold": {"type": "number", "minimum": 0, "maximum": 1, "description": "Минимальная оценка совместимости"},
+                                "files":      {"type": "array", "items": {"type": "string", "format": "binary"}, "description": "PNG/JPEG изображения фрагментов"},
+                                "method":     {"type": "string", "enum": ["greedy", "sa", "beam", "gamma", "genetic", "exhaustive", "ant_colony", "mcts", "auto", "all"], "default": "beam"},
+                                "alpha":      {"type": "number", "minimum": 0, "maximum": 1, "description": "Вес алгоритма Танграм"},
+                                "n_sides":    {"type": "integer", "minimum": 2, "description": "Ожидаемое число краёв на фрагмент"},
+                                "threshold":  {"type": "number", "minimum": 0, "maximum": 1, "description": "Минимальная оценка совместимости"},
+                                "validators": {"type": "string", "description": "'all' или список через запятую. Активирует VerificationSuite — поле 'verification' появится в ответе."},
                             },
                             "required": ["files"],
                         }}},
@@ -258,6 +283,37 @@ def list_methods():
     })
 
 
+# ─── /api/validators ──────────────────────────────────────────────────────
+
+@app.get("/api/validators")
+def list_validators():
+    """Список всех 21 доступных валидаторов VerificationSuite."""
+    try:
+        from puzzle_reconstruction.verification.suite import (
+            all_validator_names, _build_validator_registry,
+        )
+        names = all_validator_names()
+        # Разбиваем на оригинальные 9 и новые 12
+        original_9 = ["assembly_score", "layout", "completeness", "seam",
+                       "overlap", "text_coherence", "confidence",
+                       "consistency", "edge_quality"]
+        return jsonify({
+            "total":      len(names),
+            "validators": names,
+            "groups": {
+                "original": [n for n in names if n in original_9],
+                "extended": [n for n in names if n not in original_9],
+            },
+            "usage": {
+                "cli_all":    "--validators all",
+                "cli_subset": "--validators boundary,metrics,placement",
+                "api_all":    "POST /api/reconstruct + form field: validators=all",
+            },
+        })
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
 # ─── /config ──────────────────────────────────────────────────────────────
 
 @app.get("/config")
@@ -299,6 +355,17 @@ def reconstruct():
     )
     cfg.verification.run_ocr = False   # OCR отключён по умолчанию для скорости
 
+    # Параметр validators: "all" или список через запятую
+    validators_param = request.form.get("validators", None)
+    if validators_param:
+        from puzzle_reconstruction.verification.suite import all_validator_names
+        if validators_param.strip().lower() == "all":
+            cfg.verification.validators = all_validator_names()
+        else:
+            cfg.verification.validators = [
+                v.strip() for v in validators_param.split(",") if v.strip()
+            ]
+
     # ── Декодируем изображения ────────────────────────────────────────────
     images = []
     for f in files:
@@ -335,16 +402,22 @@ def reconstruct():
             "elapsed":   elapsed,
         }
 
-    return jsonify({
-        "job_id":     job_id,
-        "n_input":    result.n_input,
-        "n_placed":   result.n_placed,
-        "score":      float(assembly.total_score),
-        "ocr":        float(assembly.ocr_score),
+    response = {
+        "job_id":      job_id,
+        "n_input":     result.n_input,
+        "n_placed":    result.n_placed,
+        "score":       float(assembly.total_score),
+        "ocr":         float(assembly.ocr_score),
         "elapsed_sec": round(elapsed, 3),
-        "method":     cfg.assembly.method,
-        "placements": placements_dict,
-    })
+        "method":      cfg.assembly.method,
+        "placements":  placements_dict,
+    }
+
+    # Если VerificationSuite был запущен — включаем отчёт
+    if result.verification_report is not None:
+        response["verification"] = result.verification_report.as_dict()
+
+    return jsonify(response)
 
 
 # ─── POST /api/cluster ────────────────────────────────────────────────────
@@ -480,6 +553,7 @@ def main():
 ║     GET  /config          — конфигурация         ║
 ║     GET  /spec            — OpenAPI 3.0 JSON     ║
 ║     GET  /api/methods     — список методов       ║
+║     GET  /api/validators  — список валидаторов   ║
 ║     POST /api/reconstruct — реконструкция        ║
 ║     POST /api/cluster     — кластеризация        ║
 ║     GET  /api/report/<id> — JSON-отчёт           ║
