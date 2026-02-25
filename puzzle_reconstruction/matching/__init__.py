@@ -481,4 +481,21 @@ __all__ = [
     "descriptor_similarity",
     "batch_describe_curves",
     "find_best_match",
+    # Bridge #9 — реестр 20 sleeping matching-модулей
+    "build_matcher_registry",
+    "list_matchers",
+    "get_matcher",
+    "get_matcher_category",
+    "MATCHER_CATEGORIES",
+    "MATCHER_REGISTRY",
 ]
+
+# Bridge #9 exports
+from .bridge import (  # noqa: E402
+    build_matcher_registry,
+    list_matchers,
+    get_matcher,
+    get_matcher_category,
+    MATCHER_CATEGORIES,
+    MATCHER_REGISTRY,
+)

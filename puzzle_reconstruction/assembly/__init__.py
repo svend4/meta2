@@ -502,4 +502,21 @@ __all__ = [
     "top_k_placed",
     "bottom_k_placed",
     "batch_score_assemblies",
+    # Bridge #10 — реестр 16 sleeping assembly-модулей
+    "build_assembly_registry",
+    "list_assembly_fns",
+    "get_assembly_fn",
+    "get_assembly_category",
+    "ASSEMBLY_CATEGORIES",
+    "ASSEMBLY_REGISTRY",
 ]
+
+# Bridge #10 exports
+from .bridge import (  # noqa: E402
+    build_assembly_registry,
+    list_assembly_fns,
+    get_assembly_fn,
+    get_assembly_category,
+    ASSEMBLY_CATEGORIES,
+    ASSEMBLY_REGISTRY,
+)

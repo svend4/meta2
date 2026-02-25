@@ -634,6 +634,9 @@ class Pipeline:
         # Bridge №8: scoring pipeline (filter_pairs → fuse_rankings)
         entries = self._run_scoring_bridge(matrix, entries, fragments)
 
+        # Bridge #9: matching diagnostics (seam / boundary / spectral scores)
+        self._run_matching_bridge_diag(entries, fragments)
+
         return matrix, entries
 
     def _run_scoring_bridge(
@@ -709,6 +712,30 @@ class Pipeline:
 
         return entries
 
+    def _run_matching_bridge_diag(
+        self,
+        entries: list,
+        fragments: List["Fragment"],
+    ) -> None:
+        """
+        Bridge #9: диагностический прогон sleeping matching-модулей.
+
+        Логирует доступность модулей (seam_score, dtw_distance, spectral_match).
+        Не изменяет entries — только собирает статистику для отладки.
+        """
+        if not entries:
+            return
+        try:
+            from .matching.bridge import list_matchers
+            available = list_matchers()
+            if available:
+                self.log.debug(
+                    "  Bridge #9 matching: %d функций доступно (%s …)",
+                    len(available), ", ".join(available[:3]),
+                )
+        except Exception as exc:
+            self.log.debug("  Bridge #9 matching: %s", exc)
+
     # ── Этап 3: Сборка ───────────────────────────────────────────────────
 
     def assemble(self, fragments: List[Fragment], entries: list) -> Assembly:
@@ -767,6 +794,9 @@ class Pipeline:
 
         # Bridge №5: assembly-level постобработка
         asm = self._run_assembly_algorithms(asm, fragments)
+
+        # Bridge #10: assembly helpers (gap analysis / score tracking)
+        self._run_assembly_bridge_diag(asm, fragments)
 
         return asm
 
@@ -861,6 +891,41 @@ class Pipeline:
                 self.log.debug("  Bridge №5 assembly/%s failed: %s", name, exc)
 
         return asm
+
+    def _run_assembly_bridge_diag(
+        self,
+        asm: "Assembly",
+        fragments: List["Fragment"],
+    ) -> None:
+        """
+        Bridge #10: диагностический прогон sleeping assembly-модулей.
+
+        Запускает analyze_all_gaps (если placements доступны) и логирует
+        доступность остальных функций реестра.
+        """
+        try:
+            from .assembly.bridge import list_assembly_fns, get_assembly_fn
+            available = list_assembly_fns()
+            if available:
+                self.log.debug(
+                    "  Bridge #10 assembly: %d функций доступно (%s …)",
+                    len(available), ", ".join(available[:3]),
+                )
+            # Диагностический прогон: analyze_all_gaps
+            analyze_fn = get_assembly_fn("analyze_all_gaps")
+            if analyze_fn is not None:
+                placements = getattr(asm, "placements", None)
+                if placements:
+                    try:
+                        gaps = analyze_fn(placements)
+                        self.log.debug(
+                            "  Bridge #10 analyze_all_gaps: %d зазоров",
+                            len(gaps) if hasattr(gaps, "__len__") else 1,
+                        )
+                    except Exception as exc:
+                        self.log.debug("  Bridge #10 analyze_all_gaps: %s", exc)
+        except Exception as exc:
+            self.log.debug("  Bridge #10 assembly: %s", exc)
 
     @staticmethod
     def _auto_methods(n_fragments: int) -> list:

@@ -178,6 +178,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--mosaic", default=None, metavar="PATH",
                         help="Сохранить мозаику всех фрагментов в PNG-файл.")
 
+    parser.add_argument("--metadata", default=None, metavar="PATH",
+                        help="Сохранить метаданные реконструкции в файл (JSON/CSV). "
+                             "Формат определяется расширением: .json или .csv.")
+
     # Clustering — clustering.py (multi-document scenario)
     parser.add_argument("--cluster", action="store_true", default=False,
                         help="Запустить кластеризацию фрагментов перед сборкой. "
@@ -238,6 +242,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--list-tools", action="store_true",
                         help="Показать список инструментов Bridge #7 и выйти.")
+    # Bridge #9 — Matching
+    parser.add_argument("--list-matchers", action="store_true",
+                        help="Показать список функций Bridge #9 (20 matching-функций) и выйти.")
+    # Bridge #10 — Assembly helpers
+    parser.add_argument("--list-assembly-fns", action="store_true",
+                        help="Показать список функций Bridge #10 (assembly helpers) и выйти.")
     # Дополнительные параметры для инструментов
     parser.add_argument("--n-fragments", type=int, default=8,
                         help="Число фрагментов для --tool profile / benchmark.")
@@ -1044,6 +1054,43 @@ def run(args: argparse.Namespace) -> None:
             except Exception as exc:
                 log.debug(f"  export.render_mosaic ошибка: {exc}")
 
+        # Метаданные реконструкции — io.metadata_writer (опционально)
+        metadata_path = getattr(args, "metadata", None)
+        if metadata_path:
+            try:
+                from puzzle_reconstruction.io.metadata_writer import (
+                    MetadataRecord, MetadataCollection, write_json, write_csv,
+                )
+                records = []
+                frags_list = (assembly.fragments or processed) if "processed" in dir() else []
+                for frag in frags_list:
+                    pos = (0, 0)
+                    if frag.position is not None:
+                        import numpy as _np
+                        arr = _np.asarray(frag.position).ravel()
+                        if len(arr) >= 2:
+                            pos = (int(arr[0]), int(arr[1]))
+                    records.append(MetadataRecord(
+                        fragment_id=frag.fragment_id,
+                        position=pos,
+                        score=float(assembly.total_score),
+                    ))
+                collection = MetadataCollection(
+                    records=records,
+                    meta={
+                        "method":      cfg.assembly.method,
+                        "total_score": assembly.total_score,
+                        "ocr_score":   assembly.ocr_score,
+                        "n_fragments": len(records),
+                    },
+                )
+                suffix = Path(metadata_path).suffix.lower()
+                content = write_csv(collection) if suffix == ".csv" else write_json(collection)
+                Path(metadata_path).write_text(content, encoding="utf-8")
+                log.info(f"  Метаданные: {metadata_path}")
+            except Exception as exc:
+                log.debug(f"  metadata_writer ошибка: {exc}")
+
     # ── Итог ──────────────────────────────────────────────────────────────
     log.info("\n" + timer.report())
     log.info(f"\nРезультат:")
@@ -1254,6 +1301,38 @@ def main():
         print("  python main.py --tool benchmark --methods beam,sa --n-pieces 4")
         print("  python main.py --tool tear --input doc.png --n-pieces 6 --output frags/")
         print("  python main.py --tool serve --port 5000")
+        return
+
+    if "--list-matchers" in sys.argv:
+        from puzzle_reconstruction.matching.bridge import (
+            list_matchers, MATCHER_CATEGORIES
+        )
+        print("Доступные функции Bridge #9 (matching):")
+        for cat, names in MATCHER_CATEGORIES.items():
+            avail = list_matchers(category=cat)
+            print(f"\n  [{cat}] ({len(avail)} из {len(names)}):")
+            for name in avail:
+                print(f"    {name}")
+        print()
+        print("Использование:")
+        print("  from puzzle_reconstruction.matching.bridge import get_matcher")
+        print("  fn = get_matcher('dtw_distance')")
+        return
+
+    if "--list-assembly-fns" in sys.argv:
+        from puzzle_reconstruction.assembly.bridge import (
+            list_assembly_fns, ASSEMBLY_CATEGORIES
+        )
+        print("Доступные функции Bridge #10 (assembly helpers):")
+        for cat, names in ASSEMBLY_CATEGORIES.items():
+            avail = list_assembly_fns(category=cat)
+            print(f"\n  [{cat}] ({len(avail)} из {len(names)}):")
+            for name in avail:
+                print(f"    {name}")
+        print()
+        print("Использование:")
+        print("  from puzzle_reconstruction.assembly.bridge import get_assembly_fn")
+        print("  fn = get_assembly_fn('analyze_all_gaps')")
         return
 
     # Bridge #7 — запуск инструмента до parse_args (--input не требуется)
