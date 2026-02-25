@@ -80,6 +80,11 @@ class MethodResult:
     def score(self) -> float:
         return self.assembly.total_score if self.assembly else 0.0
 
+    @property
+    def method(self) -> str:
+        """Псевдоним для name (обратная совместимость)."""
+        return self.name
+
     def __repr__(self) -> str:
         status = "OK" if self.success else ("TIMEOUT" if self.timed_out else "ERR")
         return (f"MethodResult(name={self.name!r}, status={status}, "

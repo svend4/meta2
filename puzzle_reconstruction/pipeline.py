@@ -30,7 +30,7 @@ from __future__ import annotations
 import time
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -53,6 +53,11 @@ from .assembly.parallel import (
 from .verification.ocr import verify_full_assembly
 from .utils.logger import get_logger, PipelineTimer
 from .utils.event_bus import EventBus, make_event_bus
+from .scoring.score_normalizer import normalize_score_matrix
+from .scoring.threshold_selector import select_threshold, ThresholdConfig
+from .scoring.consistency_checker import run_consistency_check, ConsistencyReport
+from .io.image_loader import load_from_directory
+from .io.result_exporter import export_result, ExportConfig, AssemblyResult
 
 
 class PipelineResult:
@@ -62,13 +67,15 @@ class PipelineResult:
     """
 
     def __init__(self, assembly: Assembly, timer: PipelineTimer,
-                 cfg: Config, n_input: int):
-        self.assembly  = assembly
-        self.timer     = timer
-        self.cfg       = cfg
-        self.n_input   = n_input
-        self.n_placed  = len(assembly.placements)
-        self.timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+                 cfg: Config, n_input: int,
+                 consistency_report: Optional[ConsistencyReport] = None):
+        self.assembly            = assembly
+        self.timer               = timer
+        self.cfg                 = cfg
+        self.n_input             = n_input
+        self.n_placed            = len(assembly.placements)
+        self.timestamp           = time.strftime("%Y-%m-%d %H:%M:%S")
+        self.consistency_report  = consistency_report
 
     def summary(self) -> str:
         lines = [
@@ -78,10 +85,62 @@ class PipelineResult:
             f"  Score (уверенность сборки): {self.assembly.total_score:.1%}",
             f"  OCR-связность:       {self.assembly.ocr_score:.1%}",
             f"  Метод:               {self.cfg.assembly.method}",
-            "",
-            self.timer.report(),
         ]
+        if self.consistency_report is not None:
+            cr = self.consistency_report
+            status = "OK" if cr.is_consistent else f"{cr.n_errors} ошибок"
+            lines.append(f"  Согласованность:     {status}  "
+                          f"({cr.n_warnings} предупреждений)")
+        lines += ["", self.timer.report()]
         return "\n".join(lines)
+
+    def export(self, fmt: str = "json",
+               output_path: Optional[str] = None) -> Optional[str]:
+        """Экспортировать результат сборки через puzzle_reconstruction.io.
+
+        Args:
+            fmt:         Формат ('json', 'csv', 'text', 'summary', 'image').
+            output_path: Путь к файлу (None → только в памяти).
+
+        Returns:
+            Строку (JSON/CSV/текст) или None для формата 'image'.
+        """
+        asm   = self.assembly
+        frags = asm.fragments or []
+
+        positions: List[Tuple[int, int]] = []
+        sizes: List[Tuple[int, int]]     = []
+        for frag in frags:
+            pos = (0, 0)
+            if frag.position is not None:
+                arr = np.asarray(frag.position).ravel()
+                if len(arr) >= 2:
+                    pos = (int(arr[0]), int(arr[1]))
+            positions.append(pos)
+            h, w = frag.image.shape[:2] if frag.image is not None else (1, 1)
+            sizes.append((w, h))
+
+        canvas_w = max(
+            (p[0] + s[0] for p, s in zip(positions, sizes)), default=1
+        )
+        canvas_h = max(
+            (p[1] + s[1] for p, s in zip(positions, sizes)), default=1
+        )
+
+        ar = AssemblyResult(
+            fragment_ids=[f.fragment_id for f in frags],
+            positions=positions,
+            sizes=sizes,
+            canvas_w=max(canvas_w, 1),
+            canvas_h=max(canvas_h, 1),
+            metadata={
+                "total_score": asm.total_score,
+                "ocr_score":   asm.ocr_score,
+                "method":      asm.method,
+                "timestamp":   self.timestamp,
+            },
+        )
+        return export_result(ar, ExportConfig(fmt=fmt, output_path=output_path))
 
 
 # ─── Главный класс ────────────────────────────────────────────────────────
@@ -118,16 +177,21 @@ class Pipeline:
 
     # ── Полный прогон ────────────────────────────────────────────────────
 
-    def run(self, images: List[np.ndarray]) -> PipelineResult:
+    def run(self, images: Union[List[np.ndarray], str]) -> PipelineResult:
         """
         Запускает полный пайплайн от сырых изображений до верифицированной сборки.
 
         Args:
-            images: Список BGR изображений фрагментов.
+            images: Список BGR изображений фрагментов **или** путь к директории
+                    с изображениями (будет загружена через puzzle_reconstruction.io).
 
         Returns:
-            PipelineResult с готовой сборкой.
+            PipelineResult с готовой сборкой и отчётом согласованности.
         """
+        if isinstance(images, str):
+            loaded = load_from_directory(images)
+            images = [li.data for li in loaded]
+
         n_input = len(images)
         self.log.info(f"Старт пайплайна: {n_input} фрагментов, "
                        f"метод={self.cfg.assembly.method}")
@@ -148,11 +212,17 @@ class Pipeline:
         with self._timer.measure("сборка"):
             assembly = self.assemble(fragments, entries)
         assembly.compat_matrix = matrix
+        if assembly.fragments is None:
+            assembly.fragments = fragments
 
         with self._timer.measure("верификация"):
             assembly.ocr_score = self.verify(assembly)
 
-        result = PipelineResult(assembly, self._timer, self.cfg, n_input)
+        with self._timer.measure("согласованность"):
+            consistency_report = self._consistency_check(assembly, fragments)
+
+        result = PipelineResult(assembly, self._timer, self.cfg, n_input,
+                                consistency_report=consistency_report)
         self.log.info(f"Готово. Score={assembly.total_score:.1%}  "
                        f"OCR={assembly.ocr_score:.1%}")
         return result
@@ -257,8 +327,11 @@ class Pipeline:
         """
         Строит матрицу совместимости краёв.
 
+        Нормализует матрицу оценок через scoring.score_normalizer и
+        вычисляет адаптивный порог методом Отсу через scoring.threshold_selector.
+
         Returns:
-            (compat_matrix, sorted_entries)
+            (normalized_compat_matrix, filtered_entries)
         """
         n_edges = sum(len(f.edges) for f in fragments)
         self.log.info(f"  Матрица совместимости: {n_edges} краёв, "
@@ -267,6 +340,24 @@ class Pipeline:
             fragments, threshold=self.cfg.matching.threshold
         )
         self.log.info(f"  Найдено {len(entries)} пар выше порога")
+
+        # Нормализация матрицы оценок
+        norm_result = normalize_score_matrix(matrix)
+        matrix = norm_result.data
+
+        # Адаптивный порог на основе распределения оценок (метод Отсу)
+        if entries:
+            entry_scores = np.array([e.score for e in entries])
+            thr_result = select_threshold(
+                entry_scores, ThresholdConfig(method="otsu")
+            )
+            adaptive_thr = thr_result.threshold
+            entries = [e for e in entries if e.score >= adaptive_thr]
+            self.log.info(
+                f"  Адаптивный порог Отсу: {adaptive_thr:.4f}  "
+                f"→ {len(entries)} пар"
+            )
+
         return matrix, entries
 
     # ── Этап 3: Сборка ───────────────────────────────────────────────────
@@ -356,6 +447,54 @@ class Pipeline:
         except Exception as e:
             self.log.debug(f"  OCR ошибка: {e}")
             return 0.0
+
+    # ── Согласованность ──────────────────────────────────────────────────
+
+    def _consistency_check(
+        self,
+        assembly: Assembly,
+        fragments: List[Fragment],
+    ) -> Optional[ConsistencyReport]:
+        """Проверяет согласованность сборки через scoring.consistency_checker."""
+        try:
+            placed_frags = assembly.fragments or fragments
+            frag_ids     = [f.fragment_id for f in placed_frags]
+            expected_ids = [f.fragment_id for f in fragments]
+
+            positions: List[Tuple[int, int]] = []
+            sizes: List[Tuple[int, int]]     = []
+            for frag in placed_frags:
+                pos = (0, 0)
+                if frag.position is not None:
+                    arr = np.asarray(frag.position).ravel()
+                    if len(arr) >= 2:
+                        pos = (int(arr[0]), int(arr[1]))
+                positions.append(pos)
+                h, w = frag.image.shape[:2] if frag.image is not None else (1, 1)
+                sizes.append((w, h))
+
+            canvas_w = max(
+                (p[0] + s[0] for p, s in zip(positions, sizes)), default=1
+            )
+            canvas_h = max(
+                (p[1] + s[1] for p, s in zip(positions, sizes)), default=1
+            )
+
+            report = run_consistency_check(
+                fragment_ids=frag_ids,
+                expected_ids=expected_ids,
+                positions=positions,
+                sizes=sizes,
+                canvas_w=max(canvas_w, 1),
+                canvas_h=max(canvas_h, 1),
+            )
+            status = "OK" if report.is_consistent else f"{report.n_errors} ошибок"
+            self.log.info(f"  Согласованность: {status}  "
+                           f"({report.n_warnings} предупреждений)")
+            return report
+        except Exception as e:
+            self.log.debug(f"  Consistency check ошибка: {e}")
+            return None
 
     # ── Утилиты ──────────────────────────────────────────────────────────
 

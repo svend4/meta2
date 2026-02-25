@@ -124,7 +124,6 @@ def build_consensus(assemblies:     List[Assembly],
         consensus_entries = _filter_entries_by_consensus(
             entries, pair_votes, n_methods, threshold,
         )
-        from .compat_matrix import _sort_entries  # type: ignore[attr-defined]
         try:
             sorted_entries = sorted(consensus_entries,
                                      key=lambda e: e.score, reverse=True)
@@ -153,6 +152,10 @@ def assembly_to_pairs(assembly: Assembly,
     Два фрагмента считаются соседними если расстояние между их позициями
     меньше *adjacency_threshold* пикселей.
 
+    Поддерживает два формата placements:
+    - Dict[int, Tuple[np.ndarray, float]]  — {fid: (pos, angle)}
+    - List[Placement]                       — список объектов Placement
+
     Args:
         assembly:             Сборка с placements.
         adjacency_threshold:  Максимальное расстояние (пиксели).
@@ -160,14 +163,28 @@ def assembly_to_pairs(assembly: Assembly,
     Returns:
         Множество frozenset{fid_i, fid_j}.
     """
-    pairs:  Set[Pair] = set()
-    placed  = list(assembly.placements.items())  # [(fid, (pos, angle)), ...]
-    n       = len(placed)
+    pairs: Set[Pair] = set()
+    placements = assembly.placements
 
+    # Нормализуем в список [(fid, position_array)]
+    items: list = []
+    if isinstance(placements, dict):
+        for fid, val in placements.items():
+            pos = val[0] if isinstance(val, (tuple, list)) else val
+            items.append((int(fid), np.asarray(pos, dtype=float)))
+    elif isinstance(placements, list):
+        for p in placements:
+            if hasattr(p, "fragment_id") and hasattr(p, "position"):
+                pos = np.asarray(p.position, dtype=float)
+                items.append((int(p.fragment_id), pos))
+    else:
+        return pairs
+
+    n = len(items)
     for i in range(n):
-        fid_i, (pos_i, _) = placed[i]
+        fid_i, pos_i = items[i]
         for j in range(i + 1, n):
-            fid_j, (pos_j, _) = placed[j]
+            fid_j, pos_j = items[j]
             dist = float(np.linalg.norm(pos_i - pos_j))
             if dist < adjacency_threshold:
                 pairs.add(frozenset({fid_i, fid_j}))
