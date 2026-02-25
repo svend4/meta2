@@ -207,7 +207,7 @@ class TestAssemble:
         cfg = _make_cfg("greedy")
         mock_asm = MagicMock()
         with patch(_RUN_SELECTED, return_value=_mock_run_selected(mock_asm)) as mock:
-            result = assemble([], [], cfg, MagicMock())
+            result, _ = assemble([], [], cfg, MagicMock())
         mock.assert_called_once()
         assert result is mock_asm
 
@@ -215,7 +215,7 @@ class TestAssemble:
         cfg = _make_cfg("beam")
         mock_asm = MagicMock()
         with patch(_RUN_SELECTED, return_value=_mock_run_selected(mock_asm)) as mock:
-            result = assemble([], [], cfg, MagicMock())
+            result, _ = assemble([], [], cfg, MagicMock())
         mock.assert_called_once()
         assert result is mock_asm
 
@@ -223,7 +223,7 @@ class TestAssemble:
         cfg = _make_cfg("sa")
         mock_asm = MagicMock()
         with patch(_RUN_SELECTED, return_value=_mock_run_selected(mock_asm)) as mock:
-            result = assemble([], [], cfg, MagicMock())
+            result, _ = assemble([], [], cfg, MagicMock())
         mock.assert_called_once()
         assert result is mock_asm
 
@@ -231,7 +231,7 @@ class TestAssemble:
         cfg = _make_cfg("gamma")
         mock_asm = MagicMock()
         with patch(_RUN_SELECTED, return_value=_mock_run_selected(mock_asm)) as mock:
-            result = assemble([], [], cfg, MagicMock())
+            result, _ = assemble([], [], cfg, MagicMock())
         mock.assert_called_once()
         assert result is mock_asm
 

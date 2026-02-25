@@ -142,28 +142,28 @@ class TestAssembleExtra:
         cfg = _make_cfg("greedy")
         mock_asm = MagicMock()
         with patch(_RUN_SELECTED, return_value=_mock_run_selected(mock_asm)):
-            result = assemble([], [], cfg, MagicMock())
+            result, _ = assemble([], [], cfg, MagicMock())
         assert result is mock_asm
 
     def test_beam_result_returned(self):
         cfg = _make_cfg("beam")
         mock_asm = MagicMock()
         with patch(_RUN_SELECTED, return_value=_mock_run_selected(mock_asm)):
-            result = assemble([], [], cfg, MagicMock())
+            result, _ = assemble([], [], cfg, MagicMock())
         assert result is mock_asm
 
     def test_sa_result_returned(self):
         cfg = _make_cfg("sa")
         mock_asm = MagicMock()
         with patch(_RUN_SELECTED, return_value=_mock_run_selected(mock_asm)):
-            result = assemble([], [], cfg, MagicMock())
+            result, _ = assemble([], [], cfg, MagicMock())
         assert result is mock_asm
 
     def test_gamma_result_returned(self):
         cfg = _make_cfg("gamma")
         mock_asm = MagicMock()
         with patch(_RUN_SELECTED, return_value=_mock_run_selected(mock_asm)):
-            result = assemble([], [], cfg, MagicMock())
+            result, _ = assemble([], [], cfg, MagicMock())
         assert result is mock_asm
 
     def test_beam_called_once_only(self):

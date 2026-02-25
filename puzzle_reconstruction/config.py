@@ -105,6 +105,21 @@ class VerificationConfig:
 
 
 @dataclass
+class ResearchConfig:
+    """Конфигурация исследовательского режима (Фаза 7).
+
+    Активируется флагом --research (или method=all с research=True).
+    """
+    enabled:              bool  = False
+    consensus:            bool  = True    # Строить консенсусную сборку из всех методов
+    consensus_threshold:  float = 0.5     # Доля методов, которые должны согласиться
+    score_evolution:      bool  = False   # Трекинг эволюции score (MetricTracker)
+    export_comparison:    bool  = True    # Экспортировать comparison.json
+    comparison_file:      str   = "comparison.json"  # Путь к файлу сравнения
+    ablation:             bool  = False   # Ablation study по матчерам
+
+
+@dataclass
 class Config:
     """Корневой конфиг — объединяет все секции."""
     segmentation:   SegmentationConfig   = field(default_factory=SegmentationConfig)
@@ -114,6 +129,7 @@ class Config:
     assembly:       AssemblyConfig       = field(default_factory=AssemblyConfig)
     preprocessing:  PreprocessingConfig  = field(default_factory=PreprocessingConfig)
     verification:   VerificationConfig   = field(default_factory=VerificationConfig)
+    research:       ResearchConfig       = field(default_factory=ResearchConfig)
 
     # ── Сериализация ────────────────────────────────────────────────────────
 
@@ -134,6 +150,7 @@ class Config:
             assembly      = AssemblyConfig(**d.get("assembly", {})),
             preprocessing = PreprocessingConfig(**d.get("preprocessing", {})),
             verification  = VerificationConfig(**d.get("verification", {})),
+            research      = ResearchConfig(**d.get("research", {})),
         )
 
     @classmethod
@@ -169,20 +186,24 @@ class Config:
             cfg.apply_overrides(alpha=0.7, method="sa", sa_iter=3000)
         """
         mapping = {
-            "alpha":           ("synthesis",    "alpha"),
-            "n_sides":         ("synthesis",    "n_sides"),
-            "seg_method":      ("segmentation", "method"),
-            "threshold":       ("matching",     "threshold"),
-            "method":          ("assembly",     "method"),
-            "beam_width":      ("assembly",     "beam_width"),
-            "sa_iter":         ("assembly",     "sa_iter"),
-            "seed":            ("assembly",     "seed"),
-            "genetic_pop":     ("assembly",     "genetic_pop"),
-            "genetic_gen":     ("assembly",     "genetic_gen"),
-            "aco_ants":        ("assembly",     "aco_ants"),
-            "aco_iter":        ("assembly",     "aco_iter"),
-            "mcts_sim":        ("assembly",     "mcts_sim"),
-            "auto_timeout":    ("assembly",     "auto_timeout"),
+            "alpha":              ("synthesis",    "alpha"),
+            "n_sides":            ("synthesis",    "n_sides"),
+            "seg_method":         ("segmentation", "method"),
+            "threshold":          ("matching",     "threshold"),
+            "method":             ("assembly",     "method"),
+            "beam_width":         ("assembly",     "beam_width"),
+            "sa_iter":            ("assembly",     "sa_iter"),
+            "seed":               ("assembly",     "seed"),
+            "genetic_pop":        ("assembly",     "genetic_pop"),
+            "genetic_gen":        ("assembly",     "genetic_gen"),
+            "aco_ants":           ("assembly",     "aco_ants"),
+            "aco_iter":           ("assembly",     "aco_iter"),
+            "mcts_sim":           ("assembly",     "mcts_sim"),
+            "auto_timeout":       ("assembly",     "auto_timeout"),
+            "research":           ("research",     "enabled"),
+            "consensus":          ("research",     "consensus"),
+            "export_comparison":  ("research",     "export_comparison"),
+            "comparison_file":    ("research",     "comparison_file"),
         }
         for key, value in kwargs.items():
             if value is None:
