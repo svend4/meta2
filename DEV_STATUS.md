@@ -1,10 +1,10 @@
 # Текущий статус разработки — puzzle-reconstruction (meta2)
 
-> Дата формирования отчёта: 2026-02-25 (v0.4.0-beta)
-> Предыдущие версии: 2026-02-23, 2026-02-24, 2026-02-25 (v0.3.0-alpha)
-> Версия: **0.4.0-beta**
-> Текущая ветка: `claude/puzzle-text-docs-3tcRj`
-> Все 7 фаз INTEGRATION_ROADMAP выполнены. Beta-инфраструктура готова.
+> Дата формирования отчёта: 2026-02-25 (обновлено)
+> Предыдущие версии: 2026-02-23, 2026-02-24
+> Версия: **0.3.0** (Alpha)
+> Текущая ветка: `claude/document-dev-status-boEv0`
+> Ветка `origin/main`: опережает текущую на ~80 коммитов (iter-170 → iter-249 + PR #4–#10)
 
 ---
 
@@ -19,11 +19,12 @@
 | **Язык** | Python 3.11+ |
 | **Лицензия** | MIT |
 | **Первый коммит** | 2026-02-20 |
-| **Последний коммит** | 2026-02-25 (`0b6a789` — docs: sync all uppercase docs) |
-| **Всего коммитов** | 263 (iter-1 → iter-249 + PR + документация) |
-| **Контрибьюторы** | 2 (Claude: ~258 коммитов, svend4: ~5 коммитов) |
-| **Ветка** | `claude/puzzle-text-docs-3tcRj` |
-| **Merged PR** | 10+ (PR #1–#10 из веток claude/*) |
+**Последний коммит (текущая ветка)** | 2026-02-25 |
+| **Последний коммит (main)** | 2026-02-24 (PR #10 merged) |
+| **Всего коммитов (main)** | ~170 (iter-83 → iter-249 + 10 merge PR) |
+| **Контрибьюторы** | 2 (Claude: ~165 коммитов, svend4: ~5 коммитов) |
+| **Ветки** | `master`, `claude/document-dev-status-boEv0` (текущая), `origin/main` |
+| **Merged PR** | 10 (PR #1–#10 из веток claude/*) |
 
 **Назначение**: автоматическая реконструкция (сборка) разорванных, разрезанных
 газет, книг и документов из отсканированных фрагментов. Два ключевых алгоритма —
@@ -33,34 +34,47 @@
 
 ---
 
-## 1a. Итог интеграции — все 7 фаз выполнены (2026-02-25)
+## 1a. Расхождение веток — критическая информация (2026-02-25)
 
-Все компоненты проекта активированы и подключены к конвейеру.
+Ветка `origin/main` опережает текущую на ~80 коммитов и содержит существенные
+изменения, **отсутствующие** на текущей ветке `claude/document-dev-status-boEv0`.
 
-### Что было сделано
+### Сравнительная таблица
 
-**Мост №1 — Assembly Registry (коммит `6c98327`):**
-- `AssemblyConfig.method`: все 10 значений (greedy, sa, beam, gamma, genetic, exhaustive, ant_colony, mcts, auto, all)
-- `main.py:assemble()` делегирует в `parallel.py:run_all_methods()`/`run_selected()`
-- `--method auto` и `--method all` работают, `--research` добавляет сравнительную таблицу
+| Метрика | Текущая ветка | `origin/main` |
+|---|---|---|
+| Production .py файлов | 296 | 318 (+22) |
+| Utils-модулей | 103 | 131 (+28) |
+| Тестовых файлов | 506 | 824 (+318) |
+| Assembly methods в CLI | **4** (greedy, sa, beam, gamma) | **10** (+ genetic, exhaustive, ant_colony, mcts, auto, all) |
+| Matching | 4 матчера, жёсткие веса | Конфигурируемые через `MatchingConfig` |
+| `models.py` | Нет `Edge`/`Placement` | Есть `Edge`, `Placement` (4 ImportError исправлены) |
+| `matcher_registry.py` | Не существует | Создан (декоратор @register) |
+| Документы | `DEV_STATUS.md` | + `INTEGRATION_ROADMAP.md`, `REPORT.md` |
 
-**Мост №3 — Matcher Registry:**
-- `matching/matcher_registry.py`: `MATCHER_REGISTRY`, `@register`, `get_matcher()`, `list_matchers()`
-- `MatchingConfig`: `active_matchers`, `matcher_weights`, `combine_method` — конфигурируемые
-- `pairwise.py` принимает `cfg: Optional[MatchingConfig]`, backward-compatible
+### Что реализовано на `main` (коммиты после PR #3):
 
-**Мост №2 — PreprocessingChain:**
-- `preprocessing/chain.py`: конфигурируемая цепочка фильтров
-- 38 модулей активируются через `PreprocessingConfig.chain`
+**1. Мост №1 — Assembly Registry (PR #10, коммит `6c98327`):**
+- `AssemblyConfig.method` расширен: `Literal["greedy","sa","beam","gamma","genetic","exhaustive","ant_colony","mcts","auto","all"]`
+- Добавлены: `genetic_pop=50`, `genetic_gen=100`, `aco_ants=20`, `aco_iter=100`, `mcts_sim=200`, `exhaustive_max_n=9`, `auto_timeout=60.0`
+- `main.py:assemble()` переписан — делегирует в `parallel.py:run_all_methods()`/`run_selected()`
+- `--method auto` выбирает методы по числу фрагментов
+- `--method all` запускает все 8 и выводит `summary_table()`
 
-**Мост №4 — VerificationSuite:**
-- `verification/suite.py`: 21 верификатор, управляемые через `VerificationConfig`
+**2. Мост №3 — Matcher Registry (частично):**
+- `matching/matcher_registry.py` создан: `MATCHER_REGISTRY`, `@register`, `get_matcher()`, `list_matchers()`
+- `MatchingConfig` расширен: `active_matchers`, `matcher_weights`, `combine_method`
+- `pairwise.py` обновлён: принимает `cfg: Optional[MatchingConfig]`, backward-compatible
+- Спящие матчеры **не зарегистрированы** через @register
 
-**Тесты (финальный статус):**
-- 42 219 тестов, 42 208 passed (99.97%), **0 failures**
-- 3 RuntimeWarning/DeprecationWarning устранены (gamma_optimizer, graph_match, classifier)
-- 2 дополнительных предупреждения устранены: RankWarning в `box_counting.py`, RuntimeWarning в `edge_scorer.py`
-- **Итог: 0 warnings, 0 failures**
+**3. Модели данных (коммит `c3c44c3`):**
+- Добавлен `Edge(edge_id, contour, text_hint)` — исправляет 4 ImportError
+- Добавлен `Placement(fragment_id, position, rotation)`
+- `Assembly.placements` стал `Any` (совместим с Dict и List[Placement])
+
+**4. Тесты (iter-170 → iter-249):**
+- +318 тестовых файлов (`*_extra.py`)
+- +28 utils-модулей (используются как зависимости тестов)
 
 ---
 
@@ -80,9 +94,9 @@
 | **Корневые** (config, models, pipeline, clustering, export) | 5 | ~1 700 | ~15 | ~40 |
 | **Точка входа** `main.py` | 1 | 320 | 0 | 6 |
 | **CLI-утилиты** `tools/` | 6 | ~1 640 | 2 | ~40 |
-| **ИТОГО production** | **305** | **~93 279** | **~578+** | **~2 629+** |
-| **Тесты** `tests/` | 822 | ~267 359 | — | ~42 219 |
-| **ИТОГО** | **1127** | **~360 638** | — | — |
+| **ИТОГО production** | **296** | **~91 180** | **~578** | **~2 629** |
+| **Тесты** `tests/` | 506 | ~167 800 | — | ~25 855 |
+| **ИТОГО** | **802** | **~258 980** | — | — |
 
 ---
 
@@ -405,31 +419,14 @@ Pipeline реализован как класс `Pipeline` в `pipeline.py` (333
 
 | Параметр | Тип | По умолчанию | Описание |
 |----------|-----|:------------:|----------|
-| `--input` | str | (обяз.) | Директория со сканами |
-| `--input-list` | str | — | Файл-список директорий (пакетная обработка) |
-| `--output` | str | result.png | Путь к выходному файлу |
-| `--config` | str | — | JSON/YAML файл конфигурации |
-| `--method` | str | `beam` | greedy/sa/beam/gamma/genetic/exhaustive/ant_colony/mcts/auto/all |
+| `--input` | str | (обязательный) | Директория со сканами |
+| `--output` | str | (обязательный) | Путь к выходному файлу |
 | `--alpha` | float | 0.5 | Вес танграма vs фрактала (0..1) |
 | `--n-sides` | int | 4 | Ожидаемое число краёв |
 | `--seg-method` | str | `otsu` | otsu / adaptive / grabcut |
 | `--threshold` | float | 0.3 | Минимальная совместимость |
-| `--beam-width` | int | 10 | Ширина луча |
 | `--sa-iter` | int | 5000 | Итерации SA |
-| `--mcts-sim` | int | 200 | Симуляции MCTS |
-| `--genetic-pop` | int | 50 | Размер популяции GA |
-| `--genetic-gen` | int | 100 | Поколений GA |
-| `--aco-ants` | int | 20 | Агенты ACO |
-| `--aco-iter` | int | 100 | Итерации ACO |
-| `--auto-timeout` | float | 60.0 | Таймаут авто-выбора (сек) |
 | `--visualize` | flag | — | OpenCV preview |
-| `--interactive` | flag | — | Интерактивный просмотрщик |
-| `--research` | flag | — | Режим сравнения + consensus + отчёт |
-| `--no-consensus` | flag | — | Отключить консенсус в research mode |
-| `--export-json` | str | — | JSON-отчёт сравнения методов |
-| `--cache-dir` | str | — | Директория кэша дескрипторов |
-| `--verbose` | flag | — | Подробный лог |
-| `--log-file` | str | — | Файл лога |
 
 ### 5.2 Инструменты (`tools/`, 6 файлов, ~1 640 строк)
 
@@ -491,37 +488,38 @@ Pipeline реализован как класс `Pipeline` в `pipeline.py` (333
 
 ## 9. Тестирование — подробно
 
-### 9.1 Результаты запуска тестов (2026-02-25, финальный)
+### 9.1 Результаты запуска тестов (2026-02-25, текущая ветка)
 
 ```
-Собрано тестов:      42 219
-Ошибки сбора:             0
-Пройдено:            42 208  (99.97%)
-Провалено:                0  (0%)
-Пропущено:                2  (<0.01%)
-Неожиданно пройдено:      9  (xpassed)
-Предупреждений:           3  (NumPy stddev в тестовых данных — не код)
-Время выполнения:    174 с (2 мин 54 с)
+Собрано тестов:      25 905
+Ошибки сбора:            4 файла (ImportError: Edge, Placement)
+Пройдено:            25 766  (99.46%)
+Провалено:              129  (0.50%)
+Пропущено:                6  (0.02%)
+Expected failures:        6
+Предупреждений:          18
+Время выполнения:    138.10 с (2 мин 18 с)
 ```
 
-Все 4 ImportError (Edge/Placement), 133 провала, 18 предупреждений — устранены.
+**Примечание:** 4 ImportError (Edge/Placement) исправлены на `origin/main`,
+но **не на текущей ветке** (см. §1a).
 
-### 9.2 Категоризация 822 тестовых файлов
+### 9.2 Категоризация 506 тестовых файлов
 
 | Категория | Тестовых файлов | Покрываемый модуль |
 |-----------|----------------:|-------------------|
-| `algorithms/` | 84 | Все дескрипторы, tangram, fractal |
-| `assembly/` | 47 | Все 8 алгоритмов + утилиты |
-| `matching/` | 48 | DTW, color, SIFT, ICP, consensus, ... |
-| `preprocessing/` | 54 | Сегментация, контуры, денойз, ... |
-| `scoring/` | 24 | Все 13 scoring-модулей |
-| `verification/` | 28 | OCR, boundary, completeness, confidence |
-| `utils/` | 169 | Геометрия, кэш, метрики, events, ... |
-| `io/` | 5 | Загрузка, экспорт, метаданные |
-| Кросс-модульные | — | config, models, main, pipeline, export, ... |
+| `algorithms/` | 72 | Все дескрипторы, tangram, fractal |
+| `assembly/` | 26 | Все 8 алгоритмов + утилиты |
+| `matching/` | 39 | DTW, color, SIFT, ICP, consensus, ... |
+| `preprocessing/` | 22 | Сегментация, контуры, денойз, ... |
+| `scoring/` | 13 | Все 13 scoring-модулей |
+| `verification/` | 8 | OCR, boundary, completeness, confidence |
+| `utils/` | 48 | Геометрия, кэш, метрики, events, ... |
+| `io/` | 4 | Загрузка, экспорт, метаданные |
+| Кросс-модульные | 272 | config, models, main, pipeline, export, ... |
 | **Интеграционные** | 2 | `test_integration.py`, `test_pipeline.py` |
 
-Из 822 тестовых файлов **488 — `_extra` варианты** (дополнительные edge-case тесты).
+Из 504 тестовых файлов **167 — `_extra` варианты** (дополнительные edge-case тесты).
 
 ### 9.3 Организация тестов
 
@@ -530,21 +528,29 @@ Pipeline реализован как класс `Pipeline` в `pipeline.py` (333
 - **Assertions**: `pytest.approx()`, `np.testing.assert_allclose()`, `isinstance`, `.shape`, `.dtype`
 - **Нет внешних тестовых данных** — всё генерируется в коде
 
-### 9.4 Устранённые ошибки импорта
+### 9.4 Ошибки импорта (4 файла)
 
-Все 4 ошибки импорта (`Edge`/`Placement`) исправлены добавлением моделей в `models.py` (коммит `c3c44c3`).
+| Файл | Ошибка | Причина |
+|------|--------|---------|
+| `test_confidence_scorer.py` | `ImportError: cannot import name 'Edge'` | `Edge` не существует в `models.py` (есть `EdgeSignature`) |
+| `test_graph_match.py` | `ImportError: cannot import name 'Edge'` | То же |
+| `test_layout_verifier.py` | `ImportError: cannot import name 'Placement'` | `Placement` не существует в `models.py` |
+| `test_parallel.py` | `ImportError: cannot import name 'Edge'` | То же |
 
-### 9.5 Провалившихся тестов: 0
+**Причина**: тесты написаны под планировавшийся API (`Edge`, `Placement`), который не был реализован.
 
-Все категории устранены:
+### 9.5 Категории 129 провальных тестов
 
-| Категория | Было | Стало |
-|-----------|-----:|------:|
-| ImportError (Edge/Placement) | 4 файла | ✅ 0 |
-| Устаревший API тестов | ~127 | ✅ 0 |
-| RuntimeWarning (divide by zero) | 1 модуль | ✅ 0 |
-| RuntimeWarning (invalid in divide) | 1 модуль | ✅ 0 |
-| DeprecationWarning (np.cross) | 1 модуль | ✅ 0 |
+| Категория | Тестов | Примеры |
+|-----------|-------:|---------|
+| Точность float-алгоритмов | ~40 | RDP epsilon=0, DTW triangle inequality, Chamfer ≤ Hausdorff |
+| Цвет/гистограммы | ~20 | Histogram sums, gamma direction, strip histograms |
+| Edge detection | ~15 | Laplacian output shape/dtype |
+| Синтез EdgeSignature | ~15 | build_edge_signatures возвращает пустой/неверный формат |
+| Scoring/filtering | ~15 | Z-score edge cases, confidence pair filtering |
+| Геометрия/маски | ~10 | Erosion white mask, segmentation detection |
+| Граф-алгоритмы | ~5 | Dijkstra, shortest path, node degrees |
+| Прочие | ~9 | Signal phase shift, visualizer clipping |
 
 ### 9.6 Интеграционные тесты
 
@@ -764,7 +770,7 @@ Pipeline реализован как класс `Pipeline` в `pipeline.py` (333
 - **8 методов сборки**: от Greedy O(E) до Exhaustive O(N!), включая метаэвристики (SA, Genetic, ACO, MCTS)
 - **13 методов сопоставления**: DTW, SIFT, ICP, Color, Texture, Spectral, Graph, Shape Context, Consensus
 - **Обширная предобработка**: 39 модулей, 6 методов бинаризации, 4 денойзера, частотная фильтрация, коррекция перспективы
-- **Тестовое покрытие**: 42 219 тестов, 99.97% pass rate (0 failures), отношение тест/код = 2.87:1
+- **Тестовое покрытие**: 25 855 тестов, 99.5% pass rate, отношение тест/код = 1.84:1
 - **0 маркеров TODO/FIXME** в production-коде
 - **Полная документация**: 802 строки техдока с формулами и pseudocode
 - **REST API**: 6 endpoints с thread-safe job storage
@@ -776,13 +782,11 @@ Pipeline реализован как класс `Pipeline` в `pipeline.py` (333
 
 | Аспект | Текущее состояние | Серьёзность | Рекомендация |
 |--------|-------------------|:-----------:|--------------|
-| ~~4 теста не импортируются~~ | ✅ Исправлено (коммит `c3c44c3`) | — | — |
-| ~~129/133 тестов падают~~ | ✅ Исправлено, 0 failures | — | — |
-| ~~Жёсткие веса матчеров~~ | ✅ Конфигурируемые через `MatchingConfig` | — | — |
-| ~~4/8 алгоритмов в CLI~~ | ✅ 8/8 + auto + all | — | — |
+| **4 теста не импортируются** | Ссылки на несуществующие `Edge`/`Placement` | Низкая | Исправить импорты или удалить тесты |
+| **129 тестов падают** | 0.5% от 25 855; в основном edge cases float-точности | Низкая | Ослабить tolerances или исправить алгоритмы |
 | **Lint не блокирует CI** | `continue-on-error: true` | Средняя | Исправить ruff warnings, убрать continue-on-error |
 | **Интеграция нестабильна** | `continue-on-error: true` | Средняя | Стабилизировать и сделать блокирующей |
-| **mypy частичный** | Только 3 файла из 305 | Средняя | Расширить постепенно на все модули |
+| **mypy частичный** | Только 3 файла из 296 | Средняя | Расширить постепенно на все модули |
 | **Нет git tags** | Нет формальных релизов | Средняя | Создать v0.3.0 tag |
 | **Нет CHANGELOG** | История только в git log | Низкая | Завести CHANGELOG.md |
 | **Нет Docker** | Нет контейнеризации | Высокая | Добавить Dockerfile для деплоя |
@@ -793,37 +797,48 @@ Pipeline реализован как класс `Pipeline` в `pipeline.py` (333
 
 ### 17.3 Итоговая оценка (обновлено 2026-02-25)
 
-#### Финальный статус (`claude/puzzle-text-docs-3tcRj`, 2026-02-25):
+#### На текущей ветке (`claude/document-dev-status-boEv0`):
 
 ```
-Стадия:            Alpha (0.3.0) → Beta ready (0.4.0)
+Стадия:            Alpha (0.3.0)
 
 Реализация ядра:   ██████████ 100%  — 2 алгоритма описания + 8 методов сборки + 13 matchers
-Подключение к CLI: ██████████ 100%  — 10/10 (8 + auto + all + research + batch)
-Matching:          ██████████ 100%  — конфигурируемые веса через matcher_registry
-Preprocessing:     ██████████ 100%  — 38/38 через PreprocessingChain
-Verification:      ██████████ 100%  — 21/21 через VerificationSuite
-Тестирование:      ██████████ 100%  — 42 208/42 219 pass (99.97%), 0 failures
-Документация:      ██████████ 100%  — README, PUZZLE_RECONSTRUCTION, INTEGRATION_ROADMAP,
-                                      REPORT, STATUS, DEV_STATUS — все актуализированы
+Подключение к CLI: ████░░░░░░  40%  — 4/8 алгоритмов в CLI, нет auto/all
+Matching:          ████░░░░░░  40%  — 4/13+ матчеров подключены, жёсткие веса
+Preprocessing:     ██░░░░░░░░  10%  — 4/39 модулей подключены к pipeline
+Verification:      █░░░░░░░░░   5%  — 1/22 (только OCR)
+Тестирование:      █████████░  95%  — 25 766/25 905 pass (99.5%), 4 ImportError
+Документация:      ████████░░  80%  — техдок + README + DEV_STATUS
 CI/CD:             ██████░░░░  60%  — настроен, lint/integration не блокируют
-Инструментарий:    ██████████ 100%  — 7 CLI + REST API + research mode + batch mode
+Инструментарий:    █████████░  90%  — 7 CLI + REST API + benchmark + profiler
 Деплой:            ██░░░░░░░░  20%  — нет Docker
 ```
 
-**Общая стадия**: Проект перешёл в **Beta (v0.4.0)**.
-Все ~48 200 LOC «спящего» кода активированы через архитектурные реестры.
-305 модулей. 93 279 строк. 42 208 тестов. 0 сбоев. 0 предупреждений.
+#### На ветке `origin/main` (опережает на ~80 коммитов):
 
-Beta-инфраструктура реализована:
-1. ✅ Dockerfile + docker-compose.yml — готов к контейнерному развёртыванию
-2. ✅ git tag `v0.3.0` создан (финальная Alpha)
-3. ✅ CI lint и integration тесты — blocking-режим
-4. ✅ mypy coverage расширен (pipeline, config, models, clustering, export, algorithms-core)
-5. ✅ Makefile — удобные команды для разработчика
-6. ✅ CHANGELOG.md — история всех релизов
-7. ✅ OpenAPI /spec endpoint в tools/server.py
-8. ✅ shapely, networkx, matplotlib — в pyproject.toml[optional-dependencies]
+```
+Подключение к CLI: ██████████ 100%  — 10/10 (8 алгоритмов + auto + all) — Мост №1 построен
+Matching:          ██████░░░░  55%  — конфигурируемые веса, matcher_registry создан
+Модели данных:     ██████████ 100%  — Edge + Placement добавлены (4 ImportError исправлены)
+Тестовых файлов:   824 (+318 vs текущая)
+```
+
+**Общая стадия**: Проект находится в стадии **поздней Alpha**. Алгоритмическое ядро
+полностью реализовано и верифицировано запуском. ~48 200 LOC «спящего» кода
+реализовано и протестировано, но не подключено к pipeline через `main.py`
+(см. §22 — спящий код и три моста).
+
+Ветка `origin/main` существенно опережает текущую ветку: Мост №1 (Assembly Registry)
+уже построен, matcher_registry создан, 4 ImportError исправлены (см. §1a).
+
+Для перехода в **Beta** необходимо:
+1. **Мерж `origin/main`** в текущую ветку — получить Мост №1, Edge/Placement, matcher_registry
+2. Исправить 18 реальных багов в production-коде (§22.5)
+3. Исправить 111 ошибок в тестах (§22.5)
+4. Подключить спящие матчеры через @register (Мост №3 — завершить, §22.2)
+5. Создать PreprocessingChain (Мост №2, §22.3)
+6. Сделать lint и integration тесты блокирующими в CI
+7. Добавить Docker и создать git tag v0.3.0
 
 ---
 
