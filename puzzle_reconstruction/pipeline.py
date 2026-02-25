@@ -631,7 +631,110 @@ class Pipeline:
         # Bridge №5: pair-level алгоритмы
         entries = self._run_pair_algorithms(entries, fragments)
 
+        # Bridge №8: scoring pipeline (filter_pairs → fuse_rankings)
+        entries = self._run_scoring_bridge(matrix, entries, fragments)
+
+        # Bridge #9: matching diagnostics (seam / boundary / spectral scores)
+        self._run_matching_bridge_diag(entries, fragments)
+
         return matrix, entries
+
+    def _run_scoring_bridge(
+        self,
+        matrix: np.ndarray,
+        entries: list,
+        fragments: List["Fragment"],
+    ) -> list:
+        """
+        Bridge №8: запускает scoring pipeline для улучшения качества пар.
+
+        Этапы (все опциональны, выполняются только если модуль доступен):
+          1. filter_pairs  — отфильтровывает слабые пары по порогу.
+          2. fuse_rankings — сливает оценки из разных источников (RRF/Borda).
+
+        Активируется автоматически при наличии scoring/bridge.py;
+        не требует явной настройки в конфиге.
+
+        Returns:
+            Список пар (возможно, сокращённый после фильтрации).
+        """
+        if not entries:
+            return entries
+
+        # ── filter_pairs ──────────────────────────────────────────────────
+        try:
+            from .scoring.bridge import get_scorer
+            filter_fn = get_scorer("filter_pairs")
+            if filter_fn is not None:
+                from .scoring.pair_filter import CandidatePair, FilterConfig
+                candidates = []
+                for e in entries:
+                    fid_i = getattr(getattr(e, "edge_i", None), "fragment_id", 0)
+                    fid_j = getattr(getattr(e, "edge_j", None), "fragment_id", 0)
+                    candidates.append(CandidatePair(
+                        pair=(fid_i, fid_j),
+                        score=float(getattr(e, "score", 0.0)),
+                        inliers=0,
+                    ))
+                filtered_cands, report = filter_fn(
+                    candidates, FilterConfig(min_score=0.05, top_k=len(candidates))
+                )
+                # Сохраняем только те entries, которые прошли фильтр
+                keep = {(c.pair[0], c.pair[1]) for c in filtered_cands}
+                before = len(entries)
+                entries = [
+                    e for e in entries
+                    if (
+                        getattr(getattr(e, "edge_i", None), "fragment_id", -1),
+                        getattr(getattr(e, "edge_j", None), "fragment_id", -2),
+                    ) in keep
+                ]
+                if len(entries) != before:
+                    self.log.info(
+                        "  Bridge №8 filter_pairs: %d → %d пар",
+                        before, len(entries),
+                    )
+        except Exception as exc:
+            self.log.debug("  Bridge №8 filter_pairs: %s", exc)
+
+        # ── fuse_rankings (диагностический прогон) ─────────────────────────
+        try:
+            from .scoring.bridge import get_scorer
+            fuse_fn = get_scorer("fuse_rankings")
+            if fuse_fn is not None and entries:
+                scores = np.array([float(getattr(e, "score", 0.0)) for e in entries])
+                fused = fuse_fn({"primary": scores, "secondary": scores})
+                self.log.debug(
+                    "  Bridge №8 fuse_rankings: fused=%d values", len(fused)
+                )
+        except Exception as exc:
+            self.log.debug("  Bridge №8 fuse_rankings: %s", exc)
+
+        return entries
+
+    def _run_matching_bridge_diag(
+        self,
+        entries: list,
+        fragments: List["Fragment"],
+    ) -> None:
+        """
+        Bridge #9: диагностический прогон sleeping matching-модулей.
+
+        Логирует доступность модулей (seam_score, dtw_distance, spectral_match).
+        Не изменяет entries — только собирает статистику для отладки.
+        """
+        if not entries:
+            return
+        try:
+            from .matching.bridge import list_matchers
+            available = list_matchers()
+            if available:
+                self.log.debug(
+                    "  Bridge #9 matching: %d функций доступно (%s …)",
+                    len(available), ", ".join(available[:3]),
+                )
+        except Exception as exc:
+            self.log.debug("  Bridge #9 matching: %s", exc)
 
     # ── Этап 3: Сборка ───────────────────────────────────────────────────
 
@@ -691,6 +794,9 @@ class Pipeline:
 
         # Bridge №5: assembly-level постобработка
         asm = self._run_assembly_algorithms(asm, fragments)
+
+        # Bridge #10: assembly helpers (gap analysis / score tracking)
+        self._run_assembly_bridge_diag(asm, fragments)
 
         return asm
 
@@ -785,6 +891,41 @@ class Pipeline:
                 self.log.debug("  Bridge №5 assembly/%s failed: %s", name, exc)
 
         return asm
+
+    def _run_assembly_bridge_diag(
+        self,
+        asm: "Assembly",
+        fragments: List["Fragment"],
+    ) -> None:
+        """
+        Bridge #10: диагностический прогон sleeping assembly-модулей.
+
+        Запускает analyze_all_gaps (если placements доступны) и логирует
+        доступность остальных функций реестра.
+        """
+        try:
+            from .assembly.bridge import list_assembly_fns, get_assembly_fn
+            available = list_assembly_fns()
+            if available:
+                self.log.debug(
+                    "  Bridge #10 assembly: %d функций доступно (%s …)",
+                    len(available), ", ".join(available[:3]),
+                )
+            # Диагностический прогон: analyze_all_gaps
+            analyze_fn = get_assembly_fn("analyze_all_gaps")
+            if analyze_fn is not None:
+                placements = getattr(asm, "placements", None)
+                if placements:
+                    try:
+                        gaps = analyze_fn(placements)
+                        self.log.debug(
+                            "  Bridge #10 analyze_all_gaps: %d зазоров",
+                            len(gaps) if hasattr(gaps, "__len__") else 1,
+                        )
+                    except Exception as exc:
+                        self.log.debug("  Bridge #10 analyze_all_gaps: %s", exc)
+        except Exception as exc:
+            self.log.debug("  Bridge #10 assembly: %s", exc)
 
     @staticmethod
     def _auto_methods(n_fragments: int) -> list:

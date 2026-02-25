@@ -301,3 +301,13 @@ __all__ = [
     "rank_by_evidence",
     "batch_aggregate",
 ]
+
+# Bridge №8: реестр sleeping scoring-модулей
+from .bridge import (
+    build_scoring_registry,
+    list_scorers,
+    get_scorer,
+    get_scorer_category,
+    SCORING_CATEGORIES,
+    SCORING_REGISTRY,
+)

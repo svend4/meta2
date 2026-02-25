@@ -13,11 +13,6 @@ from puzzle_reconstruction.preprocessing.edge_detector import (
     sobel_edges,
 )
 
-LAPLACIAN_XFAIL = pytest.mark.xfail(
-    strict=False,
-    reason="cv2.Laplacian float32→CV_64F unsupported on some OpenCV builds",
-)
-
 
 # ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -223,20 +218,17 @@ class TestSobelEdgesExtra:
 # ─── TestLaplacianEdgesExtra ──────────────────────────────────────────────────
 
 class TestLaplacianEdgesExtra:
-    @LAPLACIAN_XFAIL
     def test_non_square(self):
         img = _gradient(h=40, w=80)
         r = laplacian_edges(img)
         assert r.edge_map.shape == (40, 80)
 
-    @LAPLACIAN_XFAIL
     def test_various_sigmas(self):
         for sigma in (0.5, 1.0, 2.0):
             img = _gradient()
             r = laplacian_edges(img, sigma=sigma)
             assert isinstance(r, EdgeDetectionResult)
 
-    @LAPLACIAN_XFAIL
     def test_method_is_laplacian(self):
         img = _gradient()
         r = laplacian_edges(img)

@@ -9,6 +9,16 @@
 
 ## [1.0.0] — 2026-02-25
 
+### Исправлено (финальная полировка — xfail-маркеры)
+
+- **`tests/test_preprocessing_edge_detector.py`** — удалены маркеры `@pytest.mark.xfail`
+  и `LAPLACIAN_XFAIL` с 6 тестов `TestLaplacianEdges` + `TestDetectEdges::test_method_laplacian`:
+  `cv2.Laplacian float32→CV_64F` работает корректно на текущей версии OpenCV; тесты
+  стабильно проходят.
+- **`tests/test_preprocessing_edge_detector_extra.py`** — удалены маркеры `LAPLACIAN_XFAIL`
+  с 3 тестов `TestLaplacianEdgesExtra` по той же причине.
+- Итог: **0 xpassed**, 9 тестов переведены из статуса XPASS → PASSED.
+
 ### Добавлено (после релиза v1.0.0 — REST API и документация)
 
 - **`GET /api/validators` (tools/server.py)** — новый REST-эндпоинт: возвращает список всех 21

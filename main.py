@@ -169,6 +169,27 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--list-validators", action="store_true",
                         help="Показать список всех 21 доступных валидатора и выйти.")
 
+    # Export — export.py (render_canvas, save_pdf, heatmap, mosaic)
+    parser.add_argument("--pdf", default=None, metavar="PATH",
+                        help="Сохранить результат в PDF (через export.save_pdf). "
+                             "Если PATH пустой — сохраняет рядом с --output.")
+    parser.add_argument("--heatmap", default=None, metavar="PATH",
+                        help="Сохранить тепловую карту уверенности в PNG-файл.")
+    parser.add_argument("--mosaic", default=None, metavar="PATH",
+                        help="Сохранить мозаику всех фрагментов в PNG-файл.")
+
+    parser.add_argument("--metadata", default=None, metavar="PATH",
+                        help="Сохранить метаданные реконструкции в файл (JSON/CSV). "
+                             "Формат определяется расширением: .json или .csv.")
+
+    # Clustering — clustering.py (multi-document scenario)
+    parser.add_argument("--cluster", action="store_true", default=False,
+                        help="Запустить кластеризацию фрагментов перед сборкой. "
+                             "Полезно при наличии фрагментов из нескольких документов.")
+    parser.add_argument("--n-docs", type=int, default=None, metavar="N",
+                        help="Ожидаемое число документов для --cluster. "
+                             "None = определить автоматически (до 8).")
+
     # Bridge #2 — PreprocessingChain
     parser.add_argument("--preprocessing-chain", default=None, metavar="FILTERS",
                         help="Цепочка фильтров предобработки через запятую. "
@@ -209,6 +230,37 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Bridge #6: путь для экспорта журнала событий (JSONL).")
     parser.add_argument("--list-utils", action="store_true",
                         help="Показать список утилит Bridge #6 (124 утилиты) и выйти.")
+    # Bridge #7 — Tools
+    parser.add_argument(
+        "--tool",
+        choices=["benchmark", "evaluate", "mix", "profile", "serve", "tear"],
+        default=None, metavar="TOOL",
+        help=("Bridge #7: запустить автономный инструмент. "
+              "Инструменты: benchmark, evaluate, mix, profile, serve, tear. "
+              "Дополнительные параметры: --n-fragments, --n-pieces, --methods, "
+              "--n-trials, --port, --host."),
+    )
+    parser.add_argument("--list-tools", action="store_true",
+                        help="Показать список инструментов Bridge #7 и выйти.")
+    # Bridge #9 — Matching
+    parser.add_argument("--list-matchers", action="store_true",
+                        help="Показать список функций Bridge #9 (20 matching-функций) и выйти.")
+    # Bridge #10 — Assembly helpers
+    parser.add_argument("--list-assembly-fns", action="store_true",
+                        help="Показать список функций Bridge #10 (assembly helpers) и выйти.")
+    # Дополнительные параметры для инструментов
+    parser.add_argument("--n-fragments", type=int, default=8,
+                        help="Число фрагментов для --tool profile / benchmark.")
+    parser.add_argument("--n-pieces", type=int, default=6,
+                        help="Число частей для --tool tear / mix / evaluate.")
+    parser.add_argument("--n-trials", type=int, default=3,
+                        help="Число повторений для --tool benchmark / evaluate.")
+    parser.add_argument("--methods", default="beam,sa", metavar="METHODS",
+                        help="Методы сборки через запятую для --tool benchmark/evaluate.")
+    parser.add_argument("--host", default="0.0.0.0",
+                        help="Хост для --tool serve.")
+    parser.add_argument("--port", type=int, default=5000,
+                        help="Порт для --tool serve.")
     return parser
 
 
@@ -848,6 +900,36 @@ def run(args: argparse.Namespace) -> None:
         log.error("Ни один фрагмент не обработан. Выход.")
         sys.exit(1)
 
+    # ── Кластеризация (clustering.py) ─────────────────────────────────────
+    if getattr(args, "cluster", False):
+        with stage("Кластеризация фрагментов", log), timer.measure("кластеризация"):
+            try:
+                from puzzle_reconstruction.clustering import (
+                    cluster_fragments, split_by_cluster
+                )
+                n_docs = getattr(args, "n_docs", None)
+                result = cluster_fragments(processed, k=n_docs)
+                log.info(
+                    f"  Кластеров: {result.n_clusters}  "
+                    f"(метод={result.method}  "
+                    f"silhouette={result.silhouette:.3f})"
+                )
+                clusters = split_by_cluster(processed, result)
+                log.info(
+                    f"  Размеры кластеров: "
+                    + ", ".join(f"#{i}:{len(c)}" for i, c in clusters.items())
+                )
+                # Продолжаем с наибольшим кластером
+                largest = max(clusters, key=lambda k: len(clusters[k]))
+                if len(clusters) > 1:
+                    log.info(
+                        f"  Используем кластер #{largest} "
+                        f"({len(clusters[largest])} фрагментов)"
+                    )
+                    processed = clusters[largest]
+            except Exception as exc:
+                log.warning(f"  Кластеризация недоступна: {exc}")
+
     # ── Этап 3: Матрица совместимости ─────────────────────────────────────
     with stage("Матрица совместимости", log), timer.measure("сопоставление"):
         compat_matrix, entries = build_compat_matrix(
@@ -920,12 +1002,94 @@ def run(args: argparse.Namespace) -> None:
 
     # ── Этап 6: Экспорт ───────────────────────────────────────────────────
     with stage("Экспорт", log), timer.measure("экспорт"):
-        canvas = render_assembly_image(assembly)
+        # Основной рендер: сначала пробуем export.render_canvas (лучший
+        # рендерер), при неудаче — fallback на render_assembly_image (OCR).
+        canvas = None
+        try:
+            from puzzle_reconstruction.export import render_canvas as _render_canvas
+            canvas = _render_canvas(assembly)
+        except Exception:
+            pass
+        if canvas is None:
+            canvas = render_assembly_image(assembly)
+
         if canvas is not None:
             cv2.imwrite(str(output_path), canvas)
             log.info(f"  Сохранено: {output_path}")
         else:
             log.warning("  Не удалось создать изображение результата")
+
+        # PDF экспорт (опционально)
+        pdf_path = getattr(args, "pdf", None)
+        if pdf_path is not None:
+            pdf_file = pdf_path if pdf_path else str(output_path.with_suffix(".pdf"))
+            try:
+                from puzzle_reconstruction.export import save_pdf
+                save_pdf(assembly, canvas or np.zeros((100, 100, 3), dtype=np.uint8),
+                         pdf_file)
+                log.info(f"  PDF сохранён: {pdf_file}")
+            except Exception as exc:
+                log.debug(f"  export.save_pdf ошибка: {exc}")
+
+        # Тепловая карта (опционально)
+        heatmap_path = getattr(args, "heatmap", None)
+        if heatmap_path and canvas is not None:
+            try:
+                from puzzle_reconstruction.export import render_heatmap
+                from puzzle_reconstruction.export import save_png
+                heatmap = render_heatmap(assembly, canvas.shape)
+                save_png(heatmap, heatmap_path)
+                log.info(f"  Тепловая карта: {heatmap_path}")
+            except Exception as exc:
+                log.debug(f"  export.render_heatmap ошибка: {exc}")
+
+        # Мозаика фрагментов (опционально)
+        mosaic_path = getattr(args, "mosaic", None)
+        if mosaic_path:
+            try:
+                from puzzle_reconstruction.export import render_mosaic, save_png
+                mosaic = render_mosaic(assembly)
+                save_png(mosaic, mosaic_path)
+                log.info(f"  Мозаика: {mosaic_path}")
+            except Exception as exc:
+                log.debug(f"  export.render_mosaic ошибка: {exc}")
+
+        # Метаданные реконструкции — io.metadata_writer (опционально)
+        metadata_path = getattr(args, "metadata", None)
+        if metadata_path:
+            try:
+                from puzzle_reconstruction.io.metadata_writer import (
+                    MetadataRecord, MetadataCollection, write_json, write_csv,
+                )
+                records = []
+                frags_list = (assembly.fragments or processed) if "processed" in dir() else []
+                for frag in frags_list:
+                    pos = (0, 0)
+                    if frag.position is not None:
+                        import numpy as _np
+                        arr = _np.asarray(frag.position).ravel()
+                        if len(arr) >= 2:
+                            pos = (int(arr[0]), int(arr[1]))
+                    records.append(MetadataRecord(
+                        fragment_id=frag.fragment_id,
+                        position=pos,
+                        score=float(assembly.total_score),
+                    ))
+                collection = MetadataCollection(
+                    records=records,
+                    meta={
+                        "method":      cfg.assembly.method,
+                        "total_score": assembly.total_score,
+                        "ocr_score":   assembly.ocr_score,
+                        "n_fragments": len(records),
+                    },
+                )
+                suffix = Path(metadata_path).suffix.lower()
+                content = write_csv(collection) if suffix == ".csv" else write_json(collection)
+                Path(metadata_path).write_text(content, encoding="utf-8")
+                log.info(f"  Метаданные: {metadata_path}")
+            except Exception as exc:
+                log.debug(f"  metadata_writer ошибка: {exc}")
 
     # ── Итог ──────────────────────────────────────────────────────────────
     log.info("\n" + timer.report())
@@ -953,6 +1117,114 @@ def _quick_preview(canvas: np.ndarray, assembly) -> None:
     while cv2.waitKey(100) & 0xFF not in (ord('q'), ord('Q'), 27):
         pass
     cv2.destroyAllWindows()
+
+
+def _run_tool_from_args(args) -> None:
+    """
+    Bridge #7: запускает автономный инструмент по args.tool.
+
+    Поддерживаемые инструменты:
+        profile    — run_profile(n_fragments, verbose=True)
+        benchmark  — run_benchmark(n_pieces_list, methods, n_trials)
+        evaluate   — run_evaluation(methods, n_pieces_list, n_trials, ...)
+        mix        — mix_from_generated(n_docs, n_pieces, output_dir)
+        tear       — tear_document(image, n_pieces, noise_level) → сохраняет в --output
+        serve      — Flask REST API (host, port)
+    """
+    from tools.registry import get_tool
+    log = get_logger("tools")
+
+    name = args.tool
+    info = get_tool(name)
+    if info is None:
+        print(f"Ошибка: инструмент {name!r} не найден.")
+        sys.exit(1)
+
+    fn = info.load()
+    if fn is None:
+        print(f"Ошибка: инструмент {name!r} недоступен "
+              f"(отсутствует зависимость). "
+              f"Проверьте вывод --list-tools.")
+        sys.exit(1)
+
+    methods_list = [m.strip() for m in getattr(args, "methods", "beam,sa").split(",")
+                    if m.strip()]
+
+    if name == "profile":
+        n_frags = getattr(args, "n_fragments", 8)
+        log.info(f"[tools] profile: n_fragments={n_frags}")
+        result = fn(n_fragments=n_frags, verbose=True)
+        print(f"\nПрофиль завершён. Итого этапов: {len(result.stages)}")
+
+    elif name == "benchmark":
+        n_pieces = getattr(args, "n_pieces", 6)
+        n_trials = getattr(args, "n_trials", 3)
+        out      = getattr(args, "output", None)
+        log.info(f"[tools] benchmark: pieces={n_pieces} methods={methods_list}")
+        fn(
+            n_pieces_list=[n_pieces],
+            methods=methods_list,
+            n_trials=n_trials,
+            output_path=out,
+        )
+
+    elif name == "evaluate":
+        n_pieces = getattr(args, "n_pieces", 6)
+        n_trials = getattr(args, "n_trials", 3)
+        out_dir  = Path(getattr(args, "output", "evaluation_results"))
+        log.info(f"[tools] evaluate: methods={methods_list} pieces={n_pieces}")
+        fn(
+            methods=methods_list,
+            n_pieces_list=[n_pieces],
+            n_trials=n_trials,
+            noise=0.5,
+            output_dir=out_dir,
+            save_html=True,
+            save_md=True,
+        )
+        log.info(f"[tools] evaluate: результаты в {out_dir}")
+
+    elif name == "mix":
+        n_pieces = getattr(args, "n_pieces", 6)
+        out_dir  = Path(getattr(args, "output", "mixed_fragments"))
+        log.info(f"[tools] mix: n_docs=2 n_pieces={n_pieces}")
+        fn(
+            n_docs=2,
+            n_pieces=n_pieces,
+            output_dir=out_dir,
+        )
+        log.info(f"[tools] mix: фрагменты сохранены в {out_dir}")
+
+    elif name == "tear":
+        input_path = getattr(args, "input", None) or getattr(args, "output", None)
+        out_dir    = Path(getattr(args, "output", "torn_fragments"))
+        n_pieces   = getattr(args, "n_pieces", 6)
+        if input_path and Path(input_path).is_file():
+            img = cv2.imread(str(input_path))
+            if img is None:
+                print(f"Ошибка: не удалось загрузить изображение {input_path}")
+                sys.exit(1)
+        else:
+            # Генерируем тестовый документ
+            from tools.tear_generator import generate_test_document
+            img = generate_test_document()
+            log.info("[tools] tear: синтетический документ сгенерирован")
+        pieces = fn(image=img, n_pieces=n_pieces)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        for i, piece in enumerate(pieces):
+            path = out_dir / f"fragment_{i:03d}.png"
+            cv2.imwrite(str(path), piece)
+        log.info(f"[tools] tear: {len(pieces)} фрагментов → {out_dir}")
+
+    elif name == "serve":
+        host = getattr(args, "host", "0.0.0.0")
+        port = getattr(args, "port", 5000)
+        log.info(f"[tools] serve: http://{host}:{port}")
+        fn(host=host, port=port, debug=False)
+
+    else:
+        print(f"Инструмент {name!r}: обработчик не реализован.")
+        sys.exit(1)
 
 
 def main():
@@ -1010,6 +1282,73 @@ def main():
         print("Использование:")
         print("  --utils-event-log --utils-progress --utils-profiler")
         print("  --utils-image-stats --utils-export-log events.jsonl")
+        return
+
+    if "--list-tools" in sys.argv:
+        from tools.registry import list_tools
+        tools = list_tools()
+        print(f"Доступные инструменты Bridge #7 ({len(tools)} штук):\n")
+        for name, info in tools.items():
+            fn    = info.load()
+            avail = "доступен" if fn else "недоступен (зависимость отсутствует)"
+            print(f"  {name:14s} [{avail}]")
+            print(f"               {info.description}")
+            if info.params:
+                print(f"               Параметры: {', '.join(info.params)}")
+            print()
+        print("Использование:")
+        print("  python main.py --tool profile --n-fragments 8")
+        print("  python main.py --tool benchmark --methods beam,sa --n-pieces 4")
+        print("  python main.py --tool tear --input doc.png --n-pieces 6 --output frags/")
+        print("  python main.py --tool serve --port 5000")
+        return
+
+    if "--list-matchers" in sys.argv:
+        from puzzle_reconstruction.matching.bridge import (
+            list_matchers, MATCHER_CATEGORIES
+        )
+        print("Доступные функции Bridge #9 (matching):")
+        for cat, names in MATCHER_CATEGORIES.items():
+            avail = list_matchers(category=cat)
+            print(f"\n  [{cat}] ({len(avail)} из {len(names)}):")
+            for name in avail:
+                print(f"    {name}")
+        print()
+        print("Использование:")
+        print("  from puzzle_reconstruction.matching.bridge import get_matcher")
+        print("  fn = get_matcher('dtw_distance')")
+        return
+
+    if "--list-assembly-fns" in sys.argv:
+        from puzzle_reconstruction.assembly.bridge import (
+            list_assembly_fns, ASSEMBLY_CATEGORIES
+        )
+        print("Доступные функции Bridge #10 (assembly helpers):")
+        for cat, names in ASSEMBLY_CATEGORIES.items():
+            avail = list_assembly_fns(category=cat)
+            print(f"\n  [{cat}] ({len(avail)} из {len(names)}):")
+            for name in avail:
+                print(f"    {name}")
+        print()
+        print("Использование:")
+        print("  from puzzle_reconstruction.assembly.bridge import get_assembly_fn")
+        print("  fn = get_assembly_fn('analyze_all_gaps')")
+        return
+
+    # Bridge #7 — запуск инструмента до parse_args (--input не требуется)
+    if "--tool" in sys.argv:
+        _tool_parser = argparse.ArgumentParser(add_help=False)
+        _tool_parser.add_argument("--tool",        default=None)
+        _tool_parser.add_argument("--input", "-i", default=None)
+        _tool_parser.add_argument("--output",      default="output")
+        _tool_parser.add_argument("--n-fragments",  type=int, default=8)
+        _tool_parser.add_argument("--n-pieces",     type=int, default=6)
+        _tool_parser.add_argument("--n-trials",     type=int, default=3)
+        _tool_parser.add_argument("--methods",      default="beam,sa")
+        _tool_parser.add_argument("--host",         default="0.0.0.0")
+        _tool_parser.add_argument("--port",         type=int, default=5000)
+        _tool_args, _ = _tool_parser.parse_known_args()
+        _run_tool_from_args(_tool_args)
         return
 
     parser = build_parser()
