@@ -149,6 +149,23 @@ def load_fragments(input_dir: Path, log) -> list[Fragment]:
 
 def process_fragment(frag: Fragment, cfg: Config, log) -> Fragment:
     """Полная обработка одного фрагмента."""
+    # Предобработка (цепочка фильтров — Мост №2)
+    if not cfg.preprocessing.is_empty() if hasattr(cfg.preprocessing, 'is_empty') else \
+            (cfg.preprocessing.chain or cfg.preprocessing.auto_enhance):
+        from puzzle_reconstruction.preprocessing.chain import PreprocessingChain
+        chain = PreprocessingChain(
+            filters=cfg.preprocessing.chain,
+            quality_threshold=cfg.preprocessing.quality_threshold,
+            auto_enhance=cfg.preprocessing.auto_enhance,
+        )
+        enhanced = chain.apply(frag.image)
+        if enhanced is None:
+            raise ValueError(
+                f"фрагмент #{frag.fragment_id} отклонён по качеству"
+                f" (порог={cfg.preprocessing.quality_threshold})"
+            )
+        frag.image = enhanced
+
     # Сегментация
     frag.mask = segment_fragment(frag.image, method=cfg.segmentation.method,
                                   morph_kernel=cfg.segmentation.morph_kernel)
@@ -328,7 +345,8 @@ def run(args: argparse.Namespace) -> None:
         log.info(f"  Score: {assembly.total_score:.4f}")
 
     # ── Этап 5: Верификация ───────────────────────────────────────────────
-    with stage("OCR-верификация", log), timer.measure("верификация"):
+    with stage("Верификация", log), timer.measure("верификация"):
+        # OCR-верификация
         if cfg.verification.run_ocr:
             assembly.ocr_score = verify_full_assembly(
                 assembly, lang=cfg.verification.ocr_lang
@@ -336,6 +354,14 @@ def run(args: argparse.Namespace) -> None:
             log.info(f"  OCR coherence: {assembly.ocr_score:.1%}")
         else:
             log.info("  OCR отключён")
+
+        # Расширенная верификация (VerificationSuite — спящие модули)
+        if cfg.verification.validators:
+            from puzzle_reconstruction.verification.suite import VerificationSuite
+            suite = VerificationSuite(validators=cfg.verification.validators)
+            v_report = suite.run(assembly)
+            log.info(v_report.summary())
+            log.info(f"  Suite score: {v_report.final_score:.1%}")
 
     # ── Этап 6: Экспорт ───────────────────────────────────────────────────
     with stage("Экспорт", log), timer.measure("экспорт"):

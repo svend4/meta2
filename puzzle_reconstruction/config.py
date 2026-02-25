@@ -81,21 +81,39 @@ class AssemblyConfig:
 
 
 @dataclass
+class PreprocessingConfig:
+    """Конфигурация цепочки предобработки фрагментов (Мост №2)."""
+    chain: List[str] = field(default_factory=list)
+    # Примеры цепочек:
+    #   ["quality_assessor", "denoise", "contrast", "deskew"]   — полная
+    #   ["denoise", "contrast"]                                  — минимальная
+    #   []                                                       — отключена
+    quality_threshold: float = 0.0   # 0.0 = без фильтрации по качеству
+    auto_enhance:      bool  = False  # True → denoise+contrast при пустой цепочке
+
+
+@dataclass
 class VerificationConfig:
     run_ocr:     bool  = True
     ocr_lang:    str   = "rus+eng"
     export_pdf:  bool  = False
+    validators:  List[str] = field(default_factory=list)
+    # Доступные валидаторы:
+    #   "assembly_score", "layout", "completeness", "seam", "overlap",
+    #   "text_coherence", "confidence", "consistency", "edge_quality"
+    # Пустой список → только OCR (поведение по умолчанию)
 
 
 @dataclass
 class Config:
     """Корневой конфиг — объединяет все секции."""
-    segmentation:  SegmentationConfig  = field(default_factory=SegmentationConfig)
-    synthesis:     SynthesisConfig     = field(default_factory=SynthesisConfig)
-    fractal:       FractalConfig       = field(default_factory=FractalConfig)
-    matching:      MatchingConfig      = field(default_factory=MatchingConfig)
-    assembly:      AssemblyConfig      = field(default_factory=AssemblyConfig)
-    verification:  VerificationConfig  = field(default_factory=VerificationConfig)
+    segmentation:   SegmentationConfig   = field(default_factory=SegmentationConfig)
+    synthesis:      SynthesisConfig      = field(default_factory=SynthesisConfig)
+    fractal:        FractalConfig        = field(default_factory=FractalConfig)
+    matching:       MatchingConfig       = field(default_factory=MatchingConfig)
+    assembly:       AssemblyConfig       = field(default_factory=AssemblyConfig)
+    preprocessing:  PreprocessingConfig  = field(default_factory=PreprocessingConfig)
+    verification:   VerificationConfig   = field(default_factory=VerificationConfig)
 
     # ── Сериализация ────────────────────────────────────────────────────────
 
@@ -109,12 +127,13 @@ class Config:
     @classmethod
     def from_dict(cls, d: dict) -> "Config":
         return cls(
-            segmentation = SegmentationConfig(**d.get("segmentation", {})),
-            synthesis    = SynthesisConfig(**d.get("synthesis", {})),
-            fractal      = FractalConfig(**d.get("fractal", {})),
-            matching     = MatchingConfig(**d.get("matching", {})),
-            assembly     = AssemblyConfig(**d.get("assembly", {})),
-            verification = VerificationConfig(**d.get("verification", {})),
+            segmentation  = SegmentationConfig(**d.get("segmentation", {})),
+            synthesis     = SynthesisConfig(**d.get("synthesis", {})),
+            fractal       = FractalConfig(**d.get("fractal", {})),
+            matching      = MatchingConfig(**d.get("matching", {})),
+            assembly      = AssemblyConfig(**d.get("assembly", {})),
+            preprocessing = PreprocessingConfig(**d.get("preprocessing", {})),
+            verification  = VerificationConfig(**d.get("verification", {})),
         )
 
     @classmethod
