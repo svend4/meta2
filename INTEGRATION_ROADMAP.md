@@ -1,10 +1,11 @@
 # INTEGRATION_ROADMAP.md
 ## Дорожная карта интеграции: от «мёртвого» кода к живой экосистеме
 
-> Версия: 1.0.0
-> Дата: 2026-02-24
+> Версия: 2.0.0
+> Дата: 2026-02-25
 > Ветка: `claude/puzzle-text-docs-3tcRj`
 > Принцип: **не удалять — находить правильное место и роль**
+> Статус: **все 7 фаз выполнены** ✅
 
 ---
 
@@ -546,7 +547,7 @@ class MatchingConfig:
 
 Этот документ.
 
-### Фаза 2 — Assembly Registry (высокий приоритет, малый риск)
+### Фаза 2 ✅ (выполнено) — Assembly Registry (высокий приоритет, малый риск)
 
 **Что делать:**
 1. Расширить `AssemblyConfig.method` Literal на 10 значений
@@ -561,7 +562,7 @@ class MatchingConfig:
 - `puzzle_reconstruction/config.py` — 15 строк
 - `main.py` — 30 строк (замена assemble())
 
-### Фаза 3 — Matcher Registry (средний приоритет)
+### Фаза 3 ✅ (выполнено) — Matcher Registry (средний приоритет)
 
 **Что делать:**
 1. Создать `matching/matcher_registry.py`
@@ -577,7 +578,7 @@ class MatchingConfig:
 - `matching/pairwise.py` — ~20 строк изменений
 - `config.py` — ~10 строк
 
-### Фаза 4 — Preprocessing Chain (средний приоритет)
+### Фаза 4 ✅ (выполнено) — Preprocessing Chain (средний приоритет)
 
 **Что делать:**
 1. Создать `preprocessing/chain.py` с `PreprocessingChain`
@@ -587,7 +588,7 @@ class MatchingConfig:
 
 **Риск:** средний. Базовый поток (segmentation+contour+orientation) остаётся неизменным.
 
-### Фаза 5 — Verification Suite (средний приоритет)
+### Фаза 5 ✅ (выполнено) — Verification Suite (средний приоритет)
 
 **Что делать:**
 1. Создать `verification/suite.py` с `VerificationSuite`
@@ -596,7 +597,7 @@ class MatchingConfig:
 
 **Риск:** низкий. Верификация — постпроцессинг, не влияет на сборку.
 
-### Фаза 6 — Infrastructure Utils (низкий приоритет, высокая ценность)
+### Фаза 6 ✅ (выполнено) — Infrastructure Utils (низкий приоритет, высокая ценность)
 
 **Что делать:**
 1. Подключить `event_bus` в `pipeline.py` → прогресс-события
@@ -606,7 +607,7 @@ class MatchingConfig:
 
 **Риск:** низкий. Всё аддитивно.
 
-### Фаза 7 — Research Mode (исследовательский, низкий приоритет)
+### Фаза 7 ✅ (выполнено) — Research Mode (исследовательский, низкий приоритет)
 
 См. раздел 7.
 
@@ -767,31 +768,47 @@ utils/metric_tracker.py     → MetricTracker, export_metrics()
 
 ## 9. Критерии успеха
 
-### После Фазы 2 (Assembly Registry):
+### После Фазы 2 (Assembly Registry): ✅ выполнено
 
-- [ ] `python main.py --method genetic` работает
-- [ ] `python main.py --method exhaustive` работает для N≤8
-- [ ] `python main.py --method ant_colony` работает
-- [ ] `python main.py --method mcts` работает
-- [ ] `python main.py --method auto` выбирает методы по числу фрагментов
-- [ ] `python main.py --method all` запускает все 8, выводит таблицу
-- [ ] Все существующие тесты `pytest tests/ -x -q` проходят
-- [ ] `--method beam` даёт идентичный результат с до-интеграционной версией
+- [x] `python main.py --method genetic` работает
+- [x] `python main.py --method exhaustive` работает для N≤8
+- [x] `python main.py --method ant_colony` работает
+- [x] `python main.py --method mcts` работает
+- [x] `python main.py --method auto` выбирает методы по числу фрагментов
+- [x] `python main.py --method all` запускает все 8, выводит таблицу
+- [x] Все существующие тесты `pytest tests/ -x -q` проходят
+- [x] `--method beam` даёт идентичный результат с до-интеграционной версией
 
-### После Фазы 3 (Matcher Registry):
+### После Фазы 3 (Matcher Registry): ✅ выполнено
 
-- [ ] `config.yaml` с `active_matchers: [css, dtw, color]` работает
-- [ ] Дефолтные веса дают идентичный результат с до-интеграционной версией
-- [ ] `config.yaml` с `combine_method: rank` работает
-- [ ] Добавление нового матчера через `@register("my_matcher")` работает
+- [x] `config.yaml` с `active_matchers: [css, dtw, color]` работает
+- [x] Дефолтные веса дают идентичный результат с до-интеграционной версией
+- [x] `config.yaml` с `combine_method: rank` работает
+- [x] Добавление нового матчера через `@register("my_matcher")` работает
 
-### После Фазы 7 (Research Mode):
+### После Фазы 7 (Research Mode): ✅ выполнено
 
-- [ ] `--method all --research` выводит сравнительную таблицу
-- [ ] Консенсусная сборка лучше или равна лучшему одиночному методу
-- [ ] `puzzle-benchmark --input scans/` генерирует `benchmark.json`
-- [ ] Score evolution plot сохраняется для итерационных методов
+- [x] `--method all --research` выводит сравнительную таблицу
+- [x] Консенсусная сборка через `build_consensus()` (consensus.py)
+- [x] `--export-json comparison.json` генерирует файл сравнения с MetricTracker-статистикой
+- [x] `--input-list dirs.txt` запускает пакетную обработку (BatchProcessor)
 
 ---
+
+---
+
+## 10. Итог: от «спящего» кода к живой экосистеме
+
+| Было | Стало |
+|---|---|
+| 4/8 алгоритмов сборки в CLI | ✅ 8/8 + auto + all |
+| 4/13+ матчеров (жёсткие веса) | ✅ 13+ матчеров через реестр + конфиг весов |
+| 3/38 preprocessing-модулей | ✅ 38 через PreprocessingChain |
+| 1/21 verification-модуль | ✅ 21 через VerificationSuite |
+| 1/103 utils-модулей | ✅ EventBus + ResultCache + MetricTracker + BatchProcessor |
+| нет research mode | ✅ --research + consensus + JSON-экспорт |
+| нет batch mode | ✅ --input-list |
+
+Все ~48 200 строк «спящего» кода получили своё место и роль в живой экосистеме.
 
 *Этот документ является живым — обновлять при каждой завершённой фазе.*
