@@ -1,9 +1,9 @@
 # STATUS.md — Текущий статус реализации `puzzle_reconstruction`
 
-> Дата: 2026-02-25 (обновлено — v1.0.0 Stable: VerificationReport API, Pipeline.verify_suite, --list-validators)
+> Дата: 2026-02-25 (обновлено — v1.0.0 Stable: /api/validators, README верификация, тест-коррекции)
 > Ветка: `claude/puzzle-text-docs-3tcRj`
 > Версия проекта: **1.0.0** (Production/Stable)
-> Последний коммит: `821ccee` — feat(v1.0.0): VerificationReport serialisation, Pipeline.verify_suite, --list-validators
+> Последний коммит: `aec8b77` — feat: /api/validators endpoint, README verification docs, CHANGELOG fix
 
 ---
 
@@ -39,8 +39,8 @@
 | **Строк исходного кода** | 93 279 |
 | **Тестовых файлов** | 827 (↑2 в Phase 6) |
 | **Строк тестового кода** | 268 600+ |
-| **Всего тестов (pytest)** | **42 384+** |
-| **Тестов пройдено** | 42 384 (100%) |
+| **Всего тестов (pytest)** | **42 404+** |
+| **Тестов пройдено** | 42 404 (100%) |
 | **Тестов провалено** | 0 (0%) |
 | **Коммитов** | 270+ |
 | **Активных алгоритмов сборки** | **8 из 8** |
@@ -736,7 +736,7 @@ matching/pairwise.py       ──── жёсткие веса ──▶  match
 - [x] `VerificationReport.as_dict()` / `to_json()` / `to_markdown()` / `to_html()`
 - [x] `Pipeline.verify_suite()` + `PipelineResult.verification_report`
 - [x] E2E-тесты для всего пайплайна (test_integration_v2.py — 20 @integration тестов)
-- [x] Все существующие тесты проходят (42 384 / 0)
+- [x] Все существующие тесты проходят (42 404 / 0)
 
 ---
 
@@ -790,7 +790,7 @@ matching/pairwise.py       ──── жёсткие веса ──▶  match
 - CLI верификации: `--validators all` / подмножество, `--export-report`, `--list-validators`
 - Research Mode (`--method all --research`), Infrastructure Utils, mypy 50+ модулей
 - E2E-тесты: 156 новых тестов (82 + 31 + 20 + 43 + 20 @integration)
-- **42 384 тестов проходят, 0 провалено**
+- **42 404 тестов проходят, 0 провалено**
 
 ---
 
