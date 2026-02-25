@@ -7,6 +7,39 @@
 
 ---
 
+## [1.0.0] — 2026-02-25
+
+### Добавлено (Фаза 6 — Финальная полировка до стабильного релиза)
+
+- **`VerificationReport.as_dict()`** — сериализует отчёт в `dict` (JSON-совместимый)
+- **`VerificationReport.to_json(indent)`** — сериализует в JSON-строку с настраиваемым отступом
+- **`VerificationReport.to_markdown()`** — форматирует отчёт в Markdown-таблицу с заголовком
+- **`VerificationReport.to_html()`** — формирует полноценную HTML-страницу с CSS-таблицей
+- **`Pipeline.verify_suite(assembly, validators)`** — запускает VerificationSuite на сборке,
+  подхватывает `cfg.verification.validators` или все 21 при `validators=None`
+- **`PipelineResult.verification_report`** — поле для хранения `VerificationReport` после прогона
+- **`PipelineResult.summary()`** — показывает строку верификации suite при наличии отчёта
+- **CLI `--list-validators`** — выводит список всех 21 валидаторов и подсказку по использованию,
+  не требует `--input` (обработка до argparse)
+- **`tests/test_verification_report_methods.py`** — 43 теста для новых методов сериализации и
+  Pipeline.verify_suite() / PipelineResult.verification_report
+
+### Улучшено
+
+- **`_export_verification_report()` (main.py)** — делегирует форматирование методам
+  `VerificationReport` вместо дублирования логики
+- **pyproject.toml**: версия → `1.0.0`, classifier → `Development Status :: 5 - Production/Stable`
+- VerificationSuite активирует все 21 валидатор (9 исходных + 12 новых) через `run_all()`
+- Pipeline автоматически вызывает `verify_suite()` если `cfg.verification.validators` не пуст
+
+### Тестирование
+
+- Добавлено 43 новых теста в `test_verification_report_methods.py`
+- Все ранее проходящие тесты продолжают проходить (0 регрессий)
+- Итого: 42 333+ тестов, все проходят
+
+---
+
 ## [0.4.0-beta] — 2026-02-25
 
 ### Добавлено
@@ -115,7 +148,8 @@
 
 ---
 
-[0.4.0-beta]: https://github.com/svend4/meta2/compare/v0.3.0...HEAD
+[1.0.0]:      https://github.com/svend4/meta2/compare/v0.4.0-beta...v1.0.0
+[0.4.0-beta]: https://github.com/svend4/meta2/compare/v0.3.0...v0.4.0-beta
 [0.3.0]:      https://github.com/svend4/meta2/releases/tag/v0.3.0
 [0.2.0]:      https://github.com/svend4/meta2/compare/v0.1.0...v0.2.0
 [0.1.0]:      https://github.com/svend4/meta2/releases/tag/v0.1.0

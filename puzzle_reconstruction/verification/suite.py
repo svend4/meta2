@@ -78,6 +78,82 @@ class VerificationReport:
         lines.append(f"  {'ИТОГО':<18} {self.final_score:.3f}")
         return "\n".join(lines)
 
+    # ── Сериализация ──────────────────────────────────────────────────────
+
+    def as_dict(self) -> dict:
+        """Возвращает отчёт в виде словаря, пригодного для JSON-сериализации."""
+        return {
+            "final_score": self.final_score,
+            "validators": [
+                {
+                    "name":    r.name,
+                    "score":   r.score,
+                    "details": r.details,
+                    "error":   r.error,
+                    "success": r.success,
+                }
+                for r in self.results
+            ],
+        }
+
+    def to_json(self, indent: int = 2) -> str:
+        """Сериализует отчёт в JSON-строку."""
+        import json as _json
+        return _json.dumps(self.as_dict(), ensure_ascii=False, indent=indent)
+
+    def to_markdown(self) -> str:
+        """Форматирует отчёт в Markdown-таблицу."""
+        lines = [
+            "# Отчёт верификации сборки",
+            "",
+            f"**Итоговый балл:** `{self.final_score:.4f}`",
+            "",
+            "| Валидатор | Балл | Детали | Статус |",
+            "|-----------|------|--------|--------|",
+        ]
+        for r in self.results:
+            score_str = f"{r.score:.4f}" if r.success else "—"
+            details   = (r.details or "").replace("|", "\\|")
+            status    = "✓" if r.success else f"✗ {r.error}"
+            lines.append(f"| `{r.name}` | {score_str} | {details} | {status} |")
+        lines += ["", "*Сгенерировано: puzzle-reconstruction v1.0.0*"]
+        return "\n".join(lines)
+
+    def to_html(self) -> str:
+        """Форматирует отчёт в HTML-страницу с таблицей."""
+        rows = []
+        for r in self.results:
+            score_str  = f"{r.score:.4f}" if r.success else "—"
+            status_cls = "ok" if r.success else "err"
+            status_txt = "✓" if r.success else f"✗ {r.error or ''}"
+            rows.append(
+                f"<tr><td><code>{r.name}</code></td>"
+                f"<td>{score_str}</td>"
+                f"<td>{r.details or ''}</td>"
+                f"<td class='{status_cls}'>{status_txt}</td></tr>"
+            )
+        rows_html = "\n".join(rows)
+        return (
+            "<!DOCTYPE html>\n"
+            "<html lang='ru'><head><meta charset='utf-8'>"
+            "<title>Отчёт верификации</title>"
+            "<style>"
+            "body{font-family:sans-serif;padding:20px}"
+            "table{border-collapse:collapse;width:100%}"
+            "th,td{border:1px solid #ccc;padding:6px 10px;text-align:left}"
+            "th{background:#f0f0f0}.ok{color:green}.err{color:red}"
+            "</style></head><body>"
+            "<h1>Отчёт верификации сборки</h1>"
+            f"<p><strong>Итоговый балл:</strong> {self.final_score:.4f}</p>"
+            "<table><thead><tr>"
+            "<th>Валидатор</th><th>Балл</th><th>Детали</th><th>Статус</th>"
+            "</tr></thead><tbody>\n"
+            + rows_html
+            + "\n</tbody></table>"
+            "<p><em>puzzle-reconstruction v1.0.0</em></p>"
+            "</body></html>"
+        )
+
 
 # ─── Вспомогательная функция ──────────────────────────────────────────────────
 

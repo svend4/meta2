@@ -4,7 +4,7 @@ build-backend = "setuptools.backends.legacy:build"
 
 [project]
 name            = "puzzle-reconstruction"
-version         = "0.4.0b1"
+version         = "1.0.0"
 description     = "Reconstruction of shredded/torn documents from scanned fragments"
 readme          = "README.md"
 requires-python = ">=3.11"
@@ -12,7 +12,7 @@ license         = { text = "MIT" }
 authors         = [{ name = "puzzle-reconstruction contributors" }]
 keywords        = ["forensics", "document-reconstruction", "fractal", "puzzle", "ocr"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Image Processing",
     "License :: OSI Approved :: MIT License",

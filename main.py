@@ -166,6 +166,8 @@ def build_parser() -> argparse.ArgumentParser:
                              ".json — структурированный JSON, "
                              ".md / .txt — Markdown, "
                              ".html — HTML-таблица.")
+    parser.add_argument("--list-validators", action="store_true",
+                        help="Показать список всех 21 доступных валидатора и выйти.")
     return parser
 
 
@@ -447,78 +449,22 @@ def _export_verification_report(v_report, path: str | Path, log) -> None:
         .json        — структурированный JSON
         .md / .txt   — Markdown (таблица + итог)
         .html        — HTML-страница с таблицей
+
+    Делегирует форматирование методам VerificationReport:
+        as_dict() / to_json() / to_markdown() / to_html()
     """
-    from puzzle_reconstruction.verification.suite import VerificationReport
     path = Path(path)
     ext  = path.suffix.lower()
 
     try:
         if ext == ".json":
-            data = {
-                "final_score": v_report.final_score,
-                "validators": [
-                    {
-                        "name":    r.name,
-                        "score":   r.score,
-                        "details": r.details,
-                        "error":   r.error,
-                        "success": r.success,
-                    }
-                    for r in v_report.results
-                ],
-            }
-            path.write_text(
-                json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
-            )
+            path.write_text(v_report.to_json(), encoding="utf-8")
 
         elif ext in (".md", ".txt"):
-            lines = [
-                "# Отчёт верификации сборки",
-                "",
-                f"**Итоговый балл:** `{v_report.final_score:.4f}`",
-                "",
-                "| Валидатор | Балл | Детали | Статус |",
-                "|-----------|------|--------|--------|",
-            ]
-            for r in v_report.results:
-                score_str  = f"{r.score:.4f}" if r.success else "—"
-                details    = (r.details or "").replace("|", "\\|")
-                status     = "✓" if r.success else f"✗ {r.error}"
-                lines.append(f"| `{r.name}` | {score_str} | {details} | {status} |")
-            lines += ["", f"*Сгенерировано: puzzle-reconstruction v0.4.0-beta*"]
-            path.write_text("\n".join(lines), encoding="utf-8")
+            path.write_text(v_report.to_markdown(), encoding="utf-8")
 
         elif ext == ".html":
-            rows = []
-            for r in v_report.results:
-                score_str = f"{r.score:.4f}" if r.success else "—"
-                status_cls = "ok" if r.success else "err"
-                status_txt = "✓" if r.success else f"✗ {r.error or ''}"
-                rows.append(
-                    f"<tr><td><code>{r.name}</code></td>"
-                    f"<td>{score_str}</td>"
-                    f"<td>{r.details or ''}</td>"
-                    f"<td class='{status_cls}'>{status_txt}</td></tr>"
-                )
-            html = (
-                "<!DOCTYPE html><html lang='ru'><head><meta charset='utf-8'>"
-                "<title>Отчёт верификации</title>"
-                "<style>body{font-family:sans-serif;padding:20px}"
-                "table{border-collapse:collapse;width:100%}"
-                "th,td{border:1px solid #ccc;padding:6px 10px;text-align:left}"
-                "th{background:#f0f0f0}.ok{color:green}.err{color:red}</style>"
-                "</head><body>"
-                "<h1>Отчёт верификации сборки</h1>"
-                f"<p><strong>Итоговый балл:</strong> {v_report.final_score:.4f}</p>"
-                "<table><thead><tr>"
-                "<th>Валидатор</th><th>Балл</th><th>Детали</th><th>Статус</th>"
-                "</tr></thead><tbody>"
-                + "".join(rows)
-                + "</tbody></table>"
-                "<p><em>puzzle-reconstruction v0.4.0-beta</em></p>"
-                "</body></html>"
-            )
-            path.write_text(html, encoding="utf-8")
+            path.write_text(v_report.to_html(), encoding="utf-8")
 
         else:
             # Неизвестное расширение — сохраняем как Markdown
@@ -782,8 +728,22 @@ def _quick_preview(canvas: np.ndarray, assembly) -> None:
 
 
 def main():
+    # --list-validators не требует --input, поэтому обрабатываем до parse_args
+    if "--list-validators" in sys.argv:
+        from puzzle_reconstruction.verification.suite import all_validator_names
+        names = all_validator_names()
+        print(f"Доступные валидаторы ({len(names)} штук):")
+        for i, name in enumerate(names, 1):
+            print(f"  {i:2d}. {name}")
+        print()
+        print("Использование:")
+        print("  --validators all              # запустить все 21")
+        print("  --validators boundary,metrics # запустить подмножество")
+        return
+
     parser = build_parser()
     args   = parser.parse_args()
+
     # Нормализуем имена атрибутов (argparse конвертирует дефисы в подчёркивания)
     if not hasattr(args, "input"):
         args.input = None

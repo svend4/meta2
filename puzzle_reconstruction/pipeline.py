@@ -68,14 +68,17 @@ class PipelineResult:
 
     def __init__(self, assembly: Assembly, timer: PipelineTimer,
                  cfg: Config, n_input: int,
-                 consistency_report: Optional[ConsistencyReport] = None):
-        self.assembly            = assembly
-        self.timer               = timer
-        self.cfg                 = cfg
-        self.n_input             = n_input
-        self.n_placed            = len(assembly.placements)
-        self.timestamp           = time.strftime("%Y-%m-%d %H:%M:%S")
-        self.consistency_report  = consistency_report
+                 consistency_report: Optional[ConsistencyReport] = None,
+                 verification_report=None):
+        self.assembly              = assembly
+        self.timer                 = timer
+        self.cfg                   = cfg
+        self.n_input               = n_input
+        self.n_placed              = len(assembly.placements)
+        self.timestamp             = time.strftime("%Y-%m-%d %H:%M:%S")
+        self.consistency_report    = consistency_report
+        # VerificationReport из VerificationSuite (если был запущен)
+        self.verification_report   = verification_report
 
     def summary(self) -> str:
         lines = [
@@ -91,6 +94,10 @@ class PipelineResult:
             status = "OK" if cr.is_consistent else f"{cr.n_errors} ошибок"
             lines.append(f"  Согласованность:     {status}  "
                           f"({cr.n_warnings} предупреждений)")
+        if self.verification_report is not None:
+            vr = self.verification_report
+            lines.append(f"  Верификация (suite): {vr.final_score:.1%}  "
+                          f"({len(vr.results)} валидаторов)")
         lines += ["", self.timer.report()]
         return "\n".join(lines)
 
@@ -218,11 +225,20 @@ class Pipeline:
         with self._timer.measure("верификация"):
             assembly.ocr_score = self.verify(assembly)
 
+        # VerificationSuite (21 валидатор) — если включены в конфиге
+        verification_report = None
+        if self.cfg.verification.validators:
+            with self._timer.measure("verification_suite"):
+                verification_report = self.verify_suite(assembly)
+
         with self._timer.measure("согласованность"):
             consistency_report = self._consistency_check(assembly, fragments)
 
-        result = PipelineResult(assembly, self._timer, self.cfg, n_input,
-                                consistency_report=consistency_report)
+        result = PipelineResult(
+            assembly, self._timer, self.cfg, n_input,
+            consistency_report=consistency_report,
+            verification_report=verification_report,
+        )
         self.log.info(f"Готово. Score={assembly.total_score:.1%}  "
                        f"OCR={assembly.ocr_score:.1%}")
         return result
@@ -447,6 +463,41 @@ class Pipeline:
         except Exception as e:
             self.log.debug(f"  OCR ошибка: {e}")
             return 0.0
+
+    def verify_suite(self, assembly: Assembly,
+                     validators: Optional[List[str]] = None):
+        """
+        Запускает VerificationSuite и возвращает VerificationReport.
+
+        Args:
+            assembly:   Собранный документ.
+            validators: Список имён валидаторов. None → берёт из
+                        cfg.verification.validators; если тот тоже пуст —
+                        запускает все 21 валидатора (run_all).
+
+        Returns:
+            VerificationReport с результатами всех запрошенных валидаторов.
+        """
+        try:
+            from .verification.suite import VerificationSuite, all_validator_names
+
+            names = validators or self.cfg.verification.validators or None
+            if names:
+                suite  = VerificationSuite(validators=names)
+                report = suite.run(assembly)
+            else:
+                suite  = VerificationSuite()
+                report = suite.run_all(assembly)
+
+            self.log.info(
+                f"  VerificationSuite: {len(report.results)} валидаторов  "
+                f"score={report.final_score:.1%}"
+            )
+            return report
+        except Exception as exc:
+            self.log.debug(f"  VerificationSuite ошибка: {exc}")
+            from .verification.suite import VerificationReport
+            return VerificationReport(results=[], final_score=0.0)
 
     # ── Согласованность ──────────────────────────────────────────────────
 
