@@ -228,6 +228,46 @@ class Pipeline:
         except Exception:
             pass  # event_bus опционален
 
+        # Bridge №6: инфраструктурные утилиты из utils/
+        self._event_log = None
+        self._util_progress = None
+        self._util_profiler = None
+        util_cfg = self.cfg.utils
+        if util_cfg.event_log:
+            try:
+                from .utils.event_log import make_event_log
+                self._event_log = make_event_log(namespace="pipeline")
+            except Exception:
+                pass
+        if util_cfg.progress:
+            try:
+                from .utils.progress_tracker import make_tracker
+                self._util_progress = make_tracker(
+                    name="pipeline",
+                    steps=["препроцессинг", "сопоставление", "сборка",
+                           "верификация", "согласованность"],
+                )
+            except Exception:
+                pass
+        if util_cfg.profiler:
+            try:
+                from .utils.profiler import PipelineProfiler
+                self._util_profiler = PipelineProfiler()
+                self.log.debug("Bridge №6: PipelineProfiler активирован")
+            except Exception:
+                pass
+        n_util = sum([
+            util_cfg.event_log, util_cfg.progress,
+            util_cfg.profiler, util_cfg.image_stats,
+        ])
+        if n_util:
+            self.log.info(
+                "Bridge №6 (utils): event_log=%s, progress=%s, "
+                "profiler=%s, image_stats=%s",
+                util_cfg.event_log, util_cfg.progress,
+                util_cfg.profiler, util_cfg.image_stats,
+            )
+
     # ── Полный прогон ────────────────────────────────────────────────────
 
     def run(self, images: Union[List[np.ndarray], str]) -> PipelineResult:
@@ -248,25 +288,34 @@ class Pipeline:
         n_input = len(images)
         self.log.info(f"Старт пайплайна: {n_input} фрагментов, "
                        f"метод={self.cfg.assembly.method}")
+        self._log_util_event("pipeline.start", {"n_input": n_input,
+                                                 "method": self.cfg.assembly.method})
 
         with self._timer.measure("препроцессинг"):
             fragments = self.preprocess(images)
 
         if not fragments:
             self.log.error("Ни один фрагмент не прошёл препроцессинг")
+            self._log_util_event("pipeline.error", {"reason": "no_fragments"})
             return PipelineResult(
                 Assembly(fragments=[], placements={}, compat_matrix=np.array([])),
                 self._timer, self.cfg, n_input,
             )
 
+        self._log_util_event("preprocess.done", {"n_fragments": len(fragments)})
+
         with self._timer.measure("сопоставление"):
             matrix, entries = self.match(fragments)
+
+        self._log_util_event("match.done", {"n_entries": len(entries)})
 
         with self._timer.measure("сборка"):
             assembly = self.assemble(fragments, entries)
         assembly.compat_matrix = matrix
         if assembly.fragments is None:
             assembly.fragments = fragments
+
+        self._log_util_event("assemble.done", {"score": assembly.total_score})
 
         with self._timer.measure("верификация"):
             assembly.ocr_score = self.verify(assembly)
@@ -287,6 +336,11 @@ class Pipeline:
         )
         self.log.info(f"Готово. Score={assembly.total_score:.1%}  "
                        f"OCR={assembly.ocr_score:.1%}")
+        self._log_util_event("pipeline.done", {
+            "score": assembly.total_score,
+            "ocr_score": assembly.ocr_score,
+        })
+        self._export_event_log()
         return result
 
     # ── Этап 1: Препроцессинг ────────────────────────────────────────────
@@ -396,6 +450,18 @@ class Pipeline:
 
             # 8. Bridge №5: опциональные fragment-level алгоритмы
             self._run_fragment_algorithms(idx, frag)
+
+            # 9. Bridge №6: image_stats (опционально)
+            if self.cfg.utils.image_stats:
+                try:
+                    from .utils.image_stats import compute_image_stats
+                    stats = compute_image_stats(img)
+                    self.log.debug(
+                        "    #%d: image_stats entropy=%.3f sharpness=%.3f",
+                        idx, stats.entropy, stats.sharpness,
+                    )
+                except Exception:
+                    pass
 
             return frag
 
@@ -852,3 +918,28 @@ class Pipeline:
                 log_event(self._bus, event, data)
             except Exception:
                 pass
+
+    def _log_util_event(self, name: str, meta: Optional[dict] = None) -> None:
+        """Записывает событие в Bridge №6 EventLog (если активирован)."""
+        if self._event_log is not None:
+            try:
+                from .utils.event_log import log_event as el_log
+                el_log(self._event_log, name, meta=meta)
+            except Exception:
+                pass
+
+    def _export_event_log(self) -> None:
+        """Экспортирует EventLog в файл (если cfg.utils.export_log задан)."""
+        path = self.cfg.utils.export_log
+        if not path or self._event_log is None:
+            return
+        try:
+            import json
+            from .utils.event_log import export_event_log
+            records = export_event_log(self._event_log)
+            with open(path, "w", encoding="utf-8") as f:
+                for rec in records:
+                    f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+            self.log.info("Bridge №6: журнал событий сохранён → %s", path)
+        except Exception as exc:
+            self.log.debug("Bridge №6: export_event_log ошибка: %s", exc)

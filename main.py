@@ -196,6 +196,19 @@ def build_parser() -> argparse.ArgumentParser:
                              "(--list-algorithms для полного списка)")
     parser.add_argument("--list-algorithms", action="store_true",
                         help="Показать список всех 34 алгоритмов Bridge #5 и выйти.")
+    # Bridge #6 — Utils
+    parser.add_argument("--utils-profiler", action="store_true", default=False,
+                        help="Bridge #6: активировать PipelineProfiler для шагов пайплайна.")
+    parser.add_argument("--utils-event-log", action="store_true", default=False,
+                        help="Bridge #6: включить журнал событий пайплайна (EventLog).")
+    parser.add_argument("--utils-progress", action="store_true", default=False,
+                        help="Bridge #6: включить ProgressTracker для отслеживания прогресса.")
+    parser.add_argument("--utils-image-stats", action="store_true", default=False,
+                        help="Bridge #6: вычислять image_stats для каждого фрагмента.")
+    parser.add_argument("--utils-export-log", default="", metavar="PATH",
+                        help="Bridge #6: путь для экспорта журнала событий (JSONL).")
+    parser.add_argument("--list-utils", action="store_true",
+                        help="Показать список утилит Bridge #6 (124 утилиты) и выйти.")
     return parser
 
 
@@ -766,6 +779,18 @@ def run(args: argparse.Namespace) -> None:
         except Exception as exc:
             log.debug(f"Bridge #5 init error: {exc}")
 
+    # Bridge #6 — Utils (CLI → cfg.utils)
+    if getattr(args, "utils_profiler", False):
+        cfg.utils.profiler = True
+    if getattr(args, "utils_event_log", False):
+        cfg.utils.event_log = True
+    if getattr(args, "utils_progress", False):
+        cfg.utils.progress = True
+    if getattr(args, "utils_image_stats", False):
+        cfg.utils.image_stats = True
+    if getattr(args, "utils_export_log", ""):
+        cfg.utils.export_log = args.utils_export_log
+
     input_dir   = Path(args.input)
     output_path = Path(args.output)
 
@@ -969,6 +994,22 @@ def main():
         print()
         print("Использование:")
         print("  --algorithms fragment_classifier,seam_evaluator,path_planner")
+        return
+
+    if "--list-utils" in sys.argv:
+        from puzzle_reconstruction.utils.bridge import (
+            list_utils, UTIL_CATEGORIES
+        )
+        print("Доступные утилиты Bridge #6:")
+        for cat, names in UTIL_CATEGORIES.items():
+            avail = list_utils(category=cat)
+            print(f"\n  [{cat}] ({len(avail)} из {len(names)}):")
+            for name in avail:
+                print(f"    {name}")
+        print()
+        print("Использование:")
+        print("  --utils-event-log --utils-progress --utils-profiler")
+        print("  --utils-image-stats --utils-export-log events.jsonl")
         return
 
     parser = build_parser()

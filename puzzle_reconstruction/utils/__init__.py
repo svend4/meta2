@@ -3275,3 +3275,13 @@ __all__ = [
     "compare_layout_scoring_summaries",
     "batch_summarise_layout_scoring_entries",
 ]
+
+# Bridge №6: реестр утилит (130 sleeping modules)
+from .bridge import (
+    build_util_registry,
+    list_utils,
+    get_util,
+    get_util_category,
+    UTIL_CATEGORIES,
+    UTIL_REGISTRY,
+)

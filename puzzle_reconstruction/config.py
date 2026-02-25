@@ -158,6 +158,41 @@ class AlgorithmsConfig:
 
 
 @dataclass
+class UtilsConfig:
+    """Конфигурация Bridge №6 — инфраструктурные утилиты.
+
+    Управляет подключением sleeping utility modules к пайплайну.
+
+    profiler      — инструментарий профилирования (PipelineProfiler).
+                    True → шаги пайплайна оборачиваются таймером.
+
+    event_log     — журнал событий пайплайна (EventLog).
+                    True → ключевые события записываются в журнал.
+
+    progress      — трекер прогресса (ProgressTracker).
+                    True → отображается прогресс обработки фрагментов.
+
+    image_stats   — статистика изображений (compute_image_stats).
+                    True → статистика вычисляется для каждого фрагмента.
+
+    export_log    — путь для экспорта журнала событий (пустая строка = не экспортировать).
+
+    Пример config.yaml:
+        utils:
+          profiler: true
+          event_log: true
+          progress: true
+          image_stats: false
+          export_log: "pipeline_events.jsonl"
+    """
+    profiler:    bool = False   # True → профилировать шаги пайплайна
+    event_log:   bool = False   # True → журналировать события
+    progress:    bool = False   # True → трекер прогресса фрагментов
+    image_stats: bool = False   # True → статистика изображений на фрагмент
+    export_log:  str  = ""      # Путь для экспорта журнала событий
+
+
+@dataclass
 class Config:
     """Корневой конфиг — объединяет все секции."""
     segmentation:   SegmentationConfig   = field(default_factory=SegmentationConfig)
@@ -169,6 +204,7 @@ class Config:
     verification:   VerificationConfig   = field(default_factory=VerificationConfig)
     research:       ResearchConfig       = field(default_factory=ResearchConfig)
     algorithms:     AlgorithmsConfig     = field(default_factory=AlgorithmsConfig)
+    utils:          UtilsConfig          = field(default_factory=UtilsConfig)
 
     # ── Сериализация ────────────────────────────────────────────────────────
 
@@ -191,6 +227,7 @@ class Config:
             verification  = VerificationConfig(**d.get("verification", {})),
             research      = ResearchConfig(**d.get("research", {})),
             algorithms    = AlgorithmsConfig(**d.get("algorithms", {})),
+            utils         = UtilsConfig(**d.get("utils", {})),
         )
 
     @classmethod
