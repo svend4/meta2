@@ -159,14 +159,10 @@ def _build_validator_registry() -> Dict[str, Callable]:
             placements = asm.placements or []
             n_placed = len(placements)
             n_total = len(asm.fragments) if asm.fragments else n_placed
-            placed_ids = {getattr(p, "fragment_id", i)
-                          for i, p in enumerate(placements)}
-            result = completeness_score(
-                placed_fragment_ids=list(placed_ids),
-                total_fragment_ids=list(range(n_total)),
-            )
-            score = getattr(result, "score", float(n_placed) / max(n_total, 1))
-            return score, f"{n_placed}/{n_total} фрагментов"
+            # completeness_score(n_placed, n_total) → float
+            raw = completeness_score(n_placed=n_placed, n_total=max(n_total, 1))
+            score = getattr(raw, "score", float(raw))
+            return float(score), f"{n_placed}/{n_total} фрагментов"
 
         registry["completeness"] = _completeness
     except Exception:
