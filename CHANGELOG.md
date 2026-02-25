@@ -9,7 +9,7 @@
 
 ## [1.0.0] — 2026-02-25
 
-### Исправлено (финальная полировка — xfail-маркеры)
+### Исправлено (финальная полировка — xfail-маркеры + scikit-learn)
 
 - **`tests/test_preprocessing_edge_detector.py`** — удалены маркеры `@pytest.mark.xfail`
   и `LAPLACIAN_XFAIL` с 6 тестов `TestLaplacianEdges` + `TestDetectEdges::test_method_laplacian`:
@@ -17,7 +17,11 @@
   стабильно проходят.
 - **`tests/test_preprocessing_edge_detector_extra.py`** — удалены маркеры `LAPLACIAN_XFAIL`
   с 3 тестов `TestLaplacianEdgesExtra` по той же причине.
-- Итог: **0 xpassed**, 9 тестов переведены из статуса XPASS → PASSED.
+- **scikit-learn 1.8.0** установлен — разблокированы `tests/test_clustering.py` и
+  `tests/test_clustering_extra.py` (63 теста, ранее пропускались через
+  `pytest.importorskip("sklearn")`); все 63 проходят.
+- Итог: **0 xpassed**, **0 skipped** (файлов), **+63 новых прохождений**;
+  общий счёт вырос **42 404 → 42 476**.
 
 ### Добавлено (после релиза v1.0.0 — REST API и документация)
 
@@ -29,7 +33,7 @@
 
 ### Тестирование (финальный счёт)
 
-- Итого: **42 404 тестов**, все проходят (0 провалено, 2 skipped, 9 xpassed)
+- Итого: **42 476 тестов**, все проходят (0 провалено, 0 skipped, 0 xpassed)
 
 ---
 
