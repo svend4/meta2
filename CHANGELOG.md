@@ -22,6 +22,10 @@
   `pytest.importorskip("sklearn")`); все 63 проходят.
 - Итог: **0 xpassed**, **0 skipped** (файлов), **+63 новых прохождений**;
   общий счёт вырос **42 404 → 42 476**.
+- **`pyproject.toml`** `[tool.pytest.ini_options]`: добавлен
+  `filterwarnings = ["ignore::sklearn.exceptions.ConvergenceWarning"]` —
+  убирает 65 ожидаемых ConvergenceWarning из clustering-тестов
+  (sklearn на синтетических данных с малым числом кластеров); 0 warnings в итоге.
 
 ### Добавлено (после релиза v1.0.0 — REST API и документация)
 
