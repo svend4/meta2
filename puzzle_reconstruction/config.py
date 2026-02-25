@@ -125,6 +125,39 @@ class ResearchConfig:
 
 
 @dataclass
+class AlgorithmsConfig:
+    """Конфигурация Bridge №5 — активация спящих алгоритмов по уровням.
+
+    fragment  — вычисляются один раз на фрагмент в _process_one().
+                Доступные имена (18): boundary_descriptor, color_palette,
+                color_space, contour_smoother, contour_tracker, edge_extractor,
+                edge_profile, fourier_descriptor, fragment_classifier,
+                fragment_quality, gradient_flow, line_detector,
+                region_segmenter, region_splitter, rotation_estimator,
+                shape_context, texture_descriptor, word_segmentation.
+
+    pair      — применяются к парам краёв после Otsu-фильтрации в match().
+                Доступные имена (12): edge_comparator, edge_filter,
+                edge_scorer, fragment_aligner, homography_estimator,
+                overlap_resolver, patch_aligner, patch_matcher,
+                region_scorer, score_aggregator, seam_evaluator, sift_matcher.
+
+    assembly  — постобработка сборки в assemble().
+                Доступные имена (4): descriptor_aggregator,
+                descriptor_combiner, path_planner, position_estimator.
+
+    Пример config.yaml:
+        algorithms:
+          fragment: ["fragment_classifier", "fragment_quality"]
+          pair: ["seam_evaluator", "edge_filter"]
+          assembly: ["path_planner", "position_estimator"]
+    """
+    fragment: List[str] = field(default_factory=list)
+    pair:     List[str] = field(default_factory=list)
+    assembly: List[str] = field(default_factory=list)
+
+
+@dataclass
 class Config:
     """Корневой конфиг — объединяет все секции."""
     segmentation:   SegmentationConfig   = field(default_factory=SegmentationConfig)
@@ -135,6 +168,7 @@ class Config:
     preprocessing:  PreprocessingConfig  = field(default_factory=PreprocessingConfig)
     verification:   VerificationConfig   = field(default_factory=VerificationConfig)
     research:       ResearchConfig       = field(default_factory=ResearchConfig)
+    algorithms:     AlgorithmsConfig     = field(default_factory=AlgorithmsConfig)
 
     # ── Сериализация ────────────────────────────────────────────────────────
 
@@ -156,6 +190,7 @@ class Config:
             preprocessing = PreprocessingConfig(**d.get("preprocessing", {})),
             verification  = VerificationConfig(**d.get("verification", {})),
             research      = ResearchConfig(**d.get("research", {})),
+            algorithms    = AlgorithmsConfig(**d.get("algorithms", {})),
         )
 
     @classmethod
