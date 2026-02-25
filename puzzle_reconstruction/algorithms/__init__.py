@@ -814,4 +814,21 @@ __all__ = [
     "deduplicate_edge_pairs",
     "apply_edge_filter",
     "batch_filter_edges",
+    # Bridge №5
+    "build_algorithm_registry",
+    "list_algorithms",
+    "get_algorithm",
+    "get_category",
+    "ALGORITHM_CATEGORIES",
+    "ALGORITHM_REGISTRY",
 ]
+
+# Bridge №5: реестр алгоритмов
+from .bridge import (
+    build_algorithm_registry,
+    list_algorithms,
+    get_algorithm,
+    get_category,
+    ALGORITHM_CATEGORIES,
+    ALGORITHM_REGISTRY,
+)

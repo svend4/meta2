@@ -26,10 +26,33 @@
     edge_enhance        — усиление краёв
     sharpen             — усиление резкости краёв
     color_normalize     — нормализация цвета
-    illumination        — коррекция освещения
+    illumination        — коррекция освещения (Retinex)
     morph               — морфологические операции
     crop                — автообрезка к содержательной области
     noise_analyze       — анализ шума (диагностика, без изменений)
+    adaptive_threshold  — адаптивная бинаризация (Гауссова)
+    scan_augment        — симуляция артефактов сканирования
+    channel_equalize    — эквализация гистограммы по каналам
+    contour_analyze     — анализ контура (диагностика, без изменений)
+    contrast_enhance    — расширенное улучшение контраста (CLAHE/stretch/gamma)
+    document_clean      — очистка документа (тени, засветки, блобы)
+    edge_detect         — детектирование краёв (Canny/Sobel/Laplacian)
+    freq_analyze        — анализ частотного спектра (диагностика)
+    freq_low_pass       — низкочастотный фильтр (Гауссова размытие в FFT)
+    freq_high_pass      — высокочастотный фильтр (усиление деталей в FFT)
+    freq_band_pass      — полосовой частотный фильтр
+    gradient_analyze    — анализ градиентного поля (диагностика)
+    illumination_norm   — нормализация освещения (mean/std / CLAHE)
+    image_enhance       — комплексное улучшение (резкость + шум + контраст)
+    noise_filter        — медианная фильтрация шума
+    noise_reduce        — автовыбор шумоподавителя по уровню шума
+    smart_denoise       — умное шумоподавление (лёгкий/тяжёлый режим)
+    patch_normalize     — нормализация патча (eqhist/stretch/standardize)
+    patch_sample        — семплирование патчей (диагностика, без изменений)
+    perspective         — коррекция перспективных искажений
+    skew_correct        — коррекция наклона (Hough/projection/FFT)
+    texture_analyze     — анализ текстурных признаков (диагностика)
+    warp_correct        — коррекция аффинных искажений
 """
 from __future__ import annotations
 
@@ -209,6 +232,277 @@ def _build_filter_registry() -> Dict[str, Callable[[np.ndarray], Optional[np.nda
             return img
 
         registry["noise_analyze"] = _noise_analyze
+    except Exception:
+        pass
+
+    # ── adaptive_threshold ────────────────────────────────────────────────────
+    try:
+        from .adaptive_threshold import adaptive_gaussian
+
+        def _adaptive_threshold(img: np.ndarray) -> np.ndarray:
+            return adaptive_gaussian(img)
+
+        registry["adaptive_threshold"] = _adaptive_threshold
+    except Exception:
+        pass
+
+    # ── scan_augment (симуляция артефактов сканирования) ─────────────────────
+    try:
+        from .augment import simulate_scan_noise
+
+        def _scan_augment(img: np.ndarray) -> np.ndarray:
+            return simulate_scan_noise(img)
+
+        registry["scan_augment"] = _scan_augment
+    except Exception:
+        pass
+
+    # ── channel_equalize ──────────────────────────────────────────────────────
+    try:
+        from .channel_splitter import apply_per_channel, equalize_channel
+
+        def _channel_equalize(img: np.ndarray) -> np.ndarray:
+            return apply_per_channel(img, equalize_channel)
+
+        registry["channel_equalize"] = _channel_equalize
+    except Exception:
+        pass
+
+    # ── contour_analyze (диагностика: сегментация → контур → статистики) ─────
+    try:
+        from .contour_processor import process_contour
+
+        def _contour_analyze(img: np.ndarray) -> np.ndarray:
+            try:
+                from .segmentation import segment_fragment
+                from .contour import extract_contour
+                mask = segment_fragment(img)
+                pts = extract_contour(mask)
+                if len(pts) >= 4:
+                    process_contour(pts)
+            except Exception:
+                pass
+            return img
+
+        registry["contour_analyze"] = _contour_analyze
+    except Exception:
+        pass
+
+    # ── contrast_enhance ──────────────────────────────────────────────────────
+    try:
+        from .contrast_enhancer import enhance_contrast as _ce_fn
+
+        def _contrast_enhance(img: np.ndarray) -> Optional[np.ndarray]:
+            return _extract_image(_ce_fn(img))
+
+        registry["contrast_enhance"] = _contrast_enhance
+    except Exception:
+        pass
+
+    # ── document_clean ────────────────────────────────────────────────────────
+    try:
+        from .document_cleaner import auto_clean
+
+        def _document_clean(img: np.ndarray) -> Optional[np.ndarray]:
+            return _extract_image(auto_clean(img))
+
+        registry["document_clean"] = _document_clean
+    except Exception:
+        pass
+
+    # ── edge_detect ───────────────────────────────────────────────────────────
+    try:
+        from .edge_detector import detect_edges
+
+        def _edge_detect(img: np.ndarray) -> np.ndarray:
+            res = detect_edges(img)
+            for attr in ("edges", "edge_map", "image", "result", "img", "output"):
+                val = getattr(res, attr, None)
+                if isinstance(val, np.ndarray):
+                    return val
+            return img
+
+        registry["edge_detect"] = _edge_detect
+    except Exception:
+        pass
+
+    # ── freq_analyze (диагностика: вычисляет спектр, не меняет изображение) ──
+    try:
+        from .frequency_analyzer import extract_freq_descriptor
+
+        def _freq_analyze(img: np.ndarray) -> np.ndarray:
+            extract_freq_descriptor(img)
+            return img
+
+        registry["freq_analyze"] = _freq_analyze
+    except Exception:
+        pass
+
+    # ── freq_low_pass ─────────────────────────────────────────────────────────
+    try:
+        from .frequency_filter import gaussian_low_pass
+
+        def _freq_low_pass(img: np.ndarray) -> np.ndarray:
+            return gaussian_low_pass(img)
+
+        registry["freq_low_pass"] = _freq_low_pass
+    except Exception:
+        pass
+
+    # ── freq_high_pass ────────────────────────────────────────────────────────
+    try:
+        from .frequency_filter import gaussian_high_pass
+
+        def _freq_high_pass(img: np.ndarray) -> np.ndarray:
+            return gaussian_high_pass(img)
+
+        registry["freq_high_pass"] = _freq_high_pass
+    except Exception:
+        pass
+
+    # ── freq_band_pass ────────────────────────────────────────────────────────
+    try:
+        from .frequency_filter import band_pass_filter
+
+        def _freq_band_pass(img: np.ndarray) -> np.ndarray:
+            return band_pass_filter(img)
+
+        registry["freq_band_pass"] = _freq_band_pass
+    except Exception:
+        pass
+
+    # ── gradient_analyze (диагностика: вычисляет градиентный профиль) ────────
+    try:
+        from .gradient_analyzer import extract_gradient_profile
+
+        def _gradient_analyze(img: np.ndarray) -> np.ndarray:
+            extract_gradient_profile(img)
+            return img
+
+        registry["gradient_analyze"] = _gradient_analyze
+    except Exception:
+        pass
+
+    # ── illumination_norm ─────────────────────────────────────────────────────
+    try:
+        from .illumination_normalizer import normalize_illumination as _illum_fn
+
+        def _illumination_norm(img: np.ndarray) -> Optional[np.ndarray]:
+            return _extract_image(_illum_fn(img))
+
+        registry["illumination_norm"] = _illumination_norm
+    except Exception:
+        pass
+
+    # ── image_enhance ─────────────────────────────────────────────────────────
+    try:
+        from .image_enhancer import enhance_image
+
+        def _image_enhance(img: np.ndarray) -> Optional[np.ndarray]:
+            return _extract_image(enhance_image(img))
+
+        registry["image_enhance"] = _image_enhance
+    except Exception:
+        pass
+
+    # ── noise_filter ──────────────────────────────────────────────────────────
+    try:
+        from .noise_filter import median_filter as _nf_median
+
+        def _noise_filter(img: np.ndarray) -> np.ndarray:
+            return _nf_median(img)
+
+        registry["noise_filter"] = _noise_filter
+    except Exception:
+        pass
+
+    # ── noise_reduce ──────────────────────────────────────────────────────────
+    try:
+        from .noise_reducer import auto_reduce
+
+        def _noise_reduce(img: np.ndarray) -> Optional[np.ndarray]:
+            return _extract_image(auto_reduce(img))
+
+        registry["noise_reduce"] = _noise_reduce
+    except Exception:
+        pass
+
+    # ── smart_denoise ─────────────────────────────────────────────────────────
+    try:
+        from .noise_reduction import smart_denoise
+
+        def _smart_denoise(img: np.ndarray) -> Optional[np.ndarray]:
+            return _extract_image(smart_denoise(img))
+
+        registry["smart_denoise"] = _smart_denoise
+    except Exception:
+        pass
+
+    # ── patch_normalize ───────────────────────────────────────────────────────
+    try:
+        from .patch_normalizer import normalize_patch
+
+        def _patch_normalize(img: np.ndarray) -> np.ndarray:
+            return normalize_patch(img)
+
+        registry["patch_normalize"] = _patch_normalize
+    except Exception:
+        pass
+
+    # ── patch_sample (диагностика: семплирует патчи, не меняет изображение) ──
+    try:
+        from .patch_sampler import sample_patches
+
+        def _patch_sample(img: np.ndarray) -> np.ndarray:
+            sample_patches(img)
+            return img
+
+        registry["patch_sample"] = _patch_sample
+    except Exception:
+        pass
+
+    # ── perspective ───────────────────────────────────────────────────────────
+    try:
+        from .perspective import auto_correct_perspective
+
+        def _perspective(img: np.ndarray) -> Optional[np.ndarray]:
+            return _extract_image(auto_correct_perspective(img))
+
+        registry["perspective"] = _perspective
+    except Exception:
+        pass
+
+    # ── skew_correct ──────────────────────────────────────────────────────────
+    try:
+        from .skew_correction import auto_correct_skew
+
+        def _skew_correct(img: np.ndarray) -> Optional[np.ndarray]:
+            return _extract_image(auto_correct_skew(img))
+
+        registry["skew_correct"] = _skew_correct
+    except Exception:
+        pass
+
+    # ── texture_analyze (диагностика: вычисляет текстурные признаки) ─────────
+    try:
+        from .texture_analyzer import extract_texture_features
+
+        def _texture_analyze(img: np.ndarray) -> np.ndarray:
+            extract_texture_features(img)
+            return img
+
+        registry["texture_analyze"] = _texture_analyze
+    except Exception:
+        pass
+
+    # ── warp_correct ──────────────────────────────────────────────────────────
+    try:
+        from .warp_corrector import correct_warp
+
+        def _warp_correct(img: np.ndarray) -> Optional[np.ndarray]:
+            return _extract_image(correct_warp(img))
+
+        registry["warp_correct"] = _warp_correct
     except Exception:
         pass
 

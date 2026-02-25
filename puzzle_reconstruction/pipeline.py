@@ -58,6 +58,12 @@ from .scoring.threshold_selector import select_threshold, ThresholdConfig
 from .scoring.consistency_checker import run_consistency_check, ConsistencyReport
 from .io.image_loader import load_from_directory
 from .io.result_exporter import export_result, ExportConfig, AssemblyResult
+from .algorithms.bridge import (
+    get_algorithm,
+    list_algorithms,
+    get_category,
+    ALGORITHM_CATEGORIES,
+)
 
 
 class PipelineResult:
@@ -170,13 +176,53 @@ class Pipeline:
                  n_workers:    int = 4,
                  on_progress:  Optional[Callable[[str, int, int], None]] = None,
                  log_level:    int = logging.INFO,
-                 log_file:     Optional[str] = None):
+                 log_file:     Optional[str] = None,
+                 algorithms:   Optional[List[str]] = None):
+        """
+        Args:
+            algorithms: Список алгоритмов из Bridge №5 для активации на уровне
+                        фрагмента (fragment-level). None = отключено.
+                        Пример: ["fragment_classifier", "fragment_quality",
+                                 "fourier_descriptor", "shape_context"]
+        """
         self.cfg         = cfg or Config.default()
         self.n_workers   = n_workers
         self.on_progress = on_progress
         self.log         = get_logger("pipeline", level=log_level, log_file=log_file)
         self._timer      = PipelineTimer()
         self._bus: Optional[EventBus] = None
+
+        # Bridge №5: алгоритмы по уровням
+        # Приоритет: явный параметр algorithms= > cfg.algorithms
+        alg_cfg = self.cfg.algorithms
+        if algorithms is not None:
+            # Плоский список → сортируем по категории через get_category()
+            self._fragment_algorithms: List[str] = [
+                n for n in algorithms if get_category(n) == "fragment"
+            ]
+            self._pair_algorithms: List[str] = [
+                n for n in algorithms if get_category(n) == "pair"
+            ]
+            self._assembly_algorithms: List[str] = [
+                n for n in algorithms if get_category(n) == "assembly"
+            ]
+        else:
+            # Читаем из cfg.algorithms (раздельно по уровням)
+            self._fragment_algorithms = list(alg_cfg.fragment)
+            self._pair_algorithms     = list(alg_cfg.pair)
+            self._assembly_algorithms = list(alg_cfg.assembly)
+
+        total = (len(self._fragment_algorithms)
+                 + len(self._pair_algorithms)
+                 + len(self._assembly_algorithms))
+        if total:
+            self.log.info(
+                "Bridge №5 (algorithms): fragment=%d, pair=%d, assembly=%d",
+                len(self._fragment_algorithms),
+                len(self._pair_algorithms),
+                len(self._assembly_algorithms),
+            )
+
         try:
             self._bus = make_event_bus()
         except Exception:
@@ -294,6 +340,23 @@ class Pipeline:
     def _process_one(self, idx: int, img: np.ndarray) -> Optional[Fragment]:
         """Полная обработка одного изображения → Fragment."""
         try:
+            # 0. Bridge #2: PreprocessingChain (конфигурируемые фильтры)
+            pre_cfg = self.cfg.preprocessing
+            if pre_cfg.chain or pre_cfg.auto_enhance:
+                from .preprocessing.chain import PreprocessingChain
+                chain = PreprocessingChain(
+                    filters=list(pre_cfg.chain),
+                    quality_threshold=pre_cfg.quality_threshold,
+                    auto_enhance=pre_cfg.auto_enhance,
+                )
+                img = chain.apply(img)
+                if img is None:
+                    self.log.debug(
+                        "    #%d: отклонён PreprocessingChain (качество < %.2f)",
+                        idx, pre_cfg.quality_threshold,
+                    )
+                    return None
+
             # 1. Нормализация цвета (CLAHE + white balance)
             if self.cfg.segmentation.method != "grabcut":  # GrabCut чувствителен к цвету
                 img = normalize_color(img)
@@ -330,11 +393,136 @@ class Pipeline:
             self.log.debug(f"    #{idx}  краёв={len(frag.edges)}  "
                             f"FD={frag.fractal.fd_box:.3f}  "
                             f"форма={frag.tangram.shape_class.value}")
+
+            # 8. Bridge №5: опциональные fragment-level алгоритмы
+            self._run_fragment_algorithms(idx, frag)
+
             return frag
 
         except Exception as e:
             self.log.debug(f"    #{idx}: {type(e).__name__}: {e}")
             return None
+
+    def _run_fragment_algorithms(self, idx: int, frag: "Fragment") -> None:
+        """
+        Запускает алгоритмы Bridge №5 (fragment-level) для одного фрагмента.
+
+        Каждый алгоритм вызывается с img и/или contour фрагмента.
+        Результаты логируются; фрагмент не изменяется (алгоритмы read-only).
+        """
+        if not self._fragment_algorithms:
+            return
+        for name in self._fragment_algorithms:
+            fn = get_algorithm(name)
+            if fn is None:
+                continue
+            try:
+                if name in ("fragment_classifier", "line_detector",
+                            "word_segmentation", "region_segmenter"):
+                    result = fn(frag.image)
+                elif name in ("fragment_quality",):
+                    result = fn(frag.image, frag.mask)
+                elif name in ("boundary_descriptor", "fourier_descriptor",
+                              "shape_context", "contour_smoother"):
+                    if frag.contour is not None and len(frag.contour) >= 4:
+                        result = fn(frag.contour)
+                    else:
+                        continue
+                elif name in ("contour_tracker", "region_splitter"):
+                    if frag.mask is not None:
+                        result = fn(frag.mask)
+                    else:
+                        continue
+                elif name in ("color_palette", "color_space",
+                              "texture_descriptor", "gradient_flow",
+                              "edge_extractor", "rotation_estimator"):
+                    result = fn(frag.image)
+                else:
+                    result = fn(frag.image)
+                self.log.debug("    #%d  %s → %s", idx, name, type(result).__name__)
+            except Exception as exc:
+                self.log.debug("    #%d  %s failed: %s", idx, name, exc)
+
+    def _run_pair_algorithms(
+        self,
+        entries: list,
+        fragments: List["Fragment"],
+    ) -> list:
+        """
+        Запускает pair-level алгоритмы Bridge №5 после Otsu-фильтрации.
+
+        edge_filter     — дополнительная фильтрация/дедупликация пар
+        score_aggregator — диагностика распределения оценок
+        seam_evaluator  — оценка качества шва для топ-N пар (read-only)
+        sift_matcher    — SIFT-верификация для топ-N пар (read-only)
+        Все остальные: диагностический прогон по подмножеству пар.
+
+        Returns:
+            Список пар (возможно, отфильтрованный edge_filter).
+        """
+        if not self._pair_algorithms or not entries:
+            return entries
+
+        frag_by_id = {f.fragment_id: f for f in fragments}
+
+        for name in self._pair_algorithms:
+            fn = get_algorithm(name)
+            if fn is None:
+                continue
+            try:
+                if name == "edge_filter":
+                    filtered = fn(entries)
+                    if filtered is not None:
+                        entries = filtered
+                        self.log.info(
+                            "  Bridge №5 edge_filter: %d пар", len(entries)
+                        )
+
+                elif name == "score_aggregator":
+                    scores = [e.score for e in entries]
+                    if scores:
+                        fn(scores)
+                        self.log.debug(
+                            "  Bridge №5 score_aggregator: n=%d", len(scores)
+                        )
+
+                elif name in ("seam_evaluator", "edge_scorer"):
+                    # Прогон по топ-50 парам для диагностики / логирования
+                    top = sorted(entries, key=lambda e: e.score, reverse=True)[:50]
+                    for entry in top:
+                        fi = frag_by_id.get(getattr(entry.edge_i, "fragment_id", -1))
+                        fj = frag_by_id.get(getattr(entry.edge_j, "fragment_id", -1))
+                        if fi is None or fj is None:
+                            continue
+                        si = getattr(entry.edge_i, "side", None)
+                        sj = getattr(entry.edge_j, "side", None)
+                        fn(fi.image, si, fj.image, sj)
+
+                elif name in ("sift_matcher", "patch_matcher"):
+                    top = sorted(entries, key=lambda e: e.score, reverse=True)[:20]
+                    for entry in top:
+                        fi = frag_by_id.get(getattr(entry.edge_i, "fragment_id", -1))
+                        fj = frag_by_id.get(getattr(entry.edge_j, "fragment_id", -1))
+                        if fi is None or fj is None:
+                            continue
+                        fn(fi.image, fj.image)
+
+                elif name in ("fragment_aligner", "patch_aligner"):
+                    top = sorted(entries, key=lambda e: e.score, reverse=True)[:10]
+                    for entry in top:
+                        fi = frag_by_id.get(getattr(entry.edge_i, "fragment_id", -1))
+                        fj = frag_by_id.get(getattr(entry.edge_j, "fragment_id", -1))
+                        if fi is None or fj is None:
+                            continue
+                        fn(fi.image, fj.image)
+
+                else:
+                    self.log.debug("  Bridge №5 pair/%s: нет обработчика", name)
+
+            except Exception as exc:
+                self.log.debug("  Bridge №5 pair/%s failed: %s", name, exc)
+
+        return entries
 
     # ── Этап 2: Сопоставление ────────────────────────────────────────────
 
@@ -373,6 +561,9 @@ class Pipeline:
                 f"  Адаптивный порог Отсу: {adaptive_thr:.4f}  "
                 f"→ {len(entries)} пар"
             )
+
+        # Bridge №5: pair-level алгоритмы
+        entries = self._run_pair_algorithms(entries, fragments)
 
         return matrix, entries
 
@@ -431,6 +622,102 @@ class Pipeline:
 
         self.log.info(f"  Score: {asm.total_score:.4f}")
         self._emit("assembly_done", {"score": asm.total_score, "method": method})
+
+        # Bridge №5: assembly-level постобработка
+        asm = self._run_assembly_algorithms(asm, fragments)
+
+        return asm
+
+    def _run_assembly_algorithms(
+        self,
+        asm: "Assembly",
+        fragments: List["Fragment"],
+    ) -> "Assembly":
+        """
+        Запускает assembly-level алгоритмы Bridge №5 после основной сборки.
+
+        path_planner       — вычисляет кратчайший путь по матрице совместимости
+                             (диагностика; логирует стоимость пути)
+        position_estimator — уточняет позиции фрагментов по попарным смещениям
+        overlap_resolver   — разрешает перекрытия между размещёнными фрагментами
+        descriptor_aggregator / descriptor_combiner — агрегация дескрипторов
+                             (диагностика; логирует статистику)
+
+        Returns:
+            Assembly (позиции могут быть обновлены overlap_resolver /
+            position_estimator если они активированы).
+        """
+        if not self._assembly_algorithms:
+            return asm
+
+        for name in self._assembly_algorithms:
+            fn = get_algorithm(name)
+            if fn is None:
+                continue
+            try:
+                if name == "path_planner":
+                    # shortest_path(score_matrix, start, end) — диагностика
+                    if asm.compat_matrix is not None and asm.compat_matrix.size > 1:
+                        n = asm.compat_matrix.shape[0]
+                        result = fn(asm.compat_matrix, 0, n - 1)
+                        self.log.debug(
+                            "  Bridge №5 path_planner: cost=%s",
+                            getattr(result, "cost", result),
+                        )
+
+                elif name == "position_estimator":
+                    # estimate_positions(offset_graph, root) — уточнение позиций
+                    # Строим offset_graph из placements если он dict
+                    placements = asm.placements
+                    if isinstance(placements, dict) and len(placements) >= 2:
+                        ids = list(placements.keys())
+                        offsets = {}
+                        for i, a in enumerate(ids):
+                            for b in ids[i + 1:]:
+                                pa = np.asarray(placements[a]).ravel()[:2]
+                                pb = np.asarray(placements[b]).ravel()[:2]
+                                if len(pa) == 2 and len(pb) == 2:
+                                    offsets[(a, b)] = pb - pa
+                        if offsets:
+                            from .algorithms.position_estimator import build_offset_graph
+                            graph = build_offset_graph(list(offsets.keys()),
+                                                       list(offsets.values()))
+                            refined = fn(graph, ids[0])
+                            self.log.debug(
+                                "  Bridge №5 position_estimator: %d позиций", len(refined)
+                            )
+
+                elif name == "overlap_resolver":
+                    # resolve_all_conflicts(state, contours, ...) — правка перекрытий
+                    contours = {
+                        f.fragment_id: f.contour
+                        for f in fragments
+                        if f.contour is not None
+                    }
+                    if contours:
+                        fn(asm, contours)
+                        self.log.debug("  Bridge №5 overlap_resolver: завершён")
+
+                elif name in ("descriptor_aggregator", "descriptor_combiner"):
+                    # Агрегируем css_vec из EdgeSignature всех фрагментов
+                    vecs = []
+                    for frag in fragments:
+                        for edge in (frag.edges or []):
+                            v = getattr(edge, "css_vec", None)
+                            if v is not None and hasattr(v, "__len__"):
+                                vecs.append(np.asarray(v, dtype=float).ravel())
+                    if vecs:
+                        fn(vecs)
+                        self.log.debug(
+                            "  Bridge №5 %s: обработано %d дескрипторов", name, len(vecs)
+                        )
+
+                else:
+                    self.log.debug("  Bridge №5 assembly/%s: нет обработчика", name)
+
+            except Exception as exc:
+                self.log.debug("  Bridge №5 assembly/%s failed: %s", name, exc)
+
         return asm
 
     @staticmethod

@@ -168,6 +168,34 @@ def build_parser() -> argparse.ArgumentParser:
                              ".html — HTML-таблица.")
     parser.add_argument("--list-validators", action="store_true",
                         help="Показать список всех 21 доступных валидатора и выйти.")
+
+    # Bridge #2 — PreprocessingChain
+    parser.add_argument("--preprocessing-chain", default=None, metavar="FILTERS",
+                        help="Цепочка фильтров предобработки через запятую. "
+                             "Пример: quality_assessor,denoise,contrast,deskew. "
+                             "Доступно 35 фильтров (--list-filters для списка).")
+    parser.add_argument("--quality-threshold", type=float, default=None,
+                        help="Порог качества фрагмента [0..1]. "
+                             "Фрагменты ниже порога отбрасываются. "
+                             "0.0 = без фильтрации (по умолчанию).")
+    parser.add_argument("--auto-enhance", action="store_true",
+                        help="Автоматически добавить denoise+contrast "
+                             "если --preprocessing-chain не задан.")
+    parser.add_argument("--list-filters", action="store_true",
+                        help="Показать список всех доступных фильтров "
+                             "предобработки и выйти.")
+
+    # Bridge #5 — Algorithms
+    parser.add_argument("--algorithms", default=None, metavar="NAMES",
+                        help="Список алгоритмов Bridge #5 через запятую. "
+                             "Автоматически определяет уровень применения: "
+                             "fragment (на каждый фрагмент), "
+                             "pair (после Otsu-фильтрации), "
+                             "assembly (постобработка сборки). "
+                             "Пример: fragment_classifier,seam_evaluator,path_planner. "
+                             "(--list-algorithms для полного списка)")
+    parser.add_argument("--list-algorithms", action="store_true",
+                        help="Показать список всех 34 алгоритмов Bridge #5 и выйти.")
     return parser
 
 
@@ -525,6 +553,142 @@ def _run_batch(input_list_file: str, args: argparse.Namespace, log) -> None:
             log.warning(f"    [{item.index}] {dirs[item.index]}: {item.error}")
 
 
+def _bridge5_fragment(frag, alg_names: list, log) -> None:
+    """Запускает fragment-level алгоритмы Bridge #5 для одного фрагмента."""
+    if not alg_names:
+        return
+    try:
+        from puzzle_reconstruction.algorithms.bridge import get_algorithm, get_category
+    except Exception:
+        return
+    for name in alg_names:
+        if get_category(name) != "fragment":
+            continue
+        fn = get_algorithm(name)
+        if fn is None:
+            continue
+        try:
+            if name in ("fragment_classifier", "line_detector",
+                        "word_segmentation", "region_segmenter"):
+                fn(frag.image)
+            elif name == "fragment_quality":
+                fn(frag.image, frag.mask)
+            elif name in ("boundary_descriptor", "fourier_descriptor",
+                          "shape_context", "contour_smoother"):
+                if frag.contour is not None and len(frag.contour) >= 4:
+                    fn(frag.contour)
+            elif name in ("contour_tracker", "region_splitter"):
+                if frag.mask is not None:
+                    fn(frag.mask)
+            else:
+                fn(frag.image)
+        except Exception as exc:
+            log.debug(f"  Bridge #5 fragment/{name}: {exc}")
+
+
+def _bridge5_pair(entries: list, fragments: list, alg_names: list, log) -> list:
+    """Запускает pair-level алгоритмы Bridge #5 после Otsu-фильтрации."""
+    if not alg_names or not entries:
+        return entries
+    try:
+        from puzzle_reconstruction.algorithms.bridge import get_algorithm, get_category
+    except Exception:
+        return entries
+    frag_by_id = {f.fragment_id: f for f in fragments}
+    for name in alg_names:
+        if get_category(name) != "pair":
+            continue
+        fn = get_algorithm(name)
+        if fn is None:
+            continue
+        try:
+            if name == "edge_filter":
+                filtered = fn(entries)
+                if filtered is not None:
+                    entries = filtered
+                    log.info(f"  Bridge #5 edge_filter: {len(entries)} пар")
+            elif name == "score_aggregator":
+                scores = [e.score for e in entries]
+                if scores:
+                    fn(scores)
+            elif name in ("seam_evaluator", "edge_scorer"):
+                top = sorted(entries, key=lambda e: e.score, reverse=True)[:50]
+                for entry in top:
+                    fi = frag_by_id.get(getattr(entry.edge_i, "fragment_id", -1))
+                    fj = frag_by_id.get(getattr(entry.edge_j, "fragment_id", -1))
+                    if fi and fj:
+                        fn(fi.image, getattr(entry.edge_i, "side", None),
+                           fj.image, getattr(entry.edge_j, "side", None))
+            elif name in ("sift_matcher", "patch_matcher"):
+                top = sorted(entries, key=lambda e: e.score, reverse=True)[:20]
+                for entry in top:
+                    fi = frag_by_id.get(getattr(entry.edge_i, "fragment_id", -1))
+                    fj = frag_by_id.get(getattr(entry.edge_j, "fragment_id", -1))
+                    if fi and fj:
+                        fn(fi.image, fj.image)
+        except Exception as exc:
+            log.debug(f"  Bridge #5 pair/{name}: {exc}")
+    return entries
+
+
+def _bridge5_assembly(assembly, fragments: list, alg_names: list, log) -> None:
+    """Запускает assembly-level алгоритмы Bridge #5 после сборки."""
+    if not alg_names:
+        return
+    try:
+        from puzzle_reconstruction.algorithms.bridge import get_algorithm, get_category
+        import numpy as np
+    except Exception:
+        return
+    for name in alg_names:
+        if get_category(name) != "assembly":
+            continue
+        fn = get_algorithm(name)
+        if fn is None:
+            continue
+        try:
+            if name == "path_planner":
+                if (assembly.compat_matrix is not None
+                        and assembly.compat_matrix.size > 1):
+                    n = assembly.compat_matrix.shape[0]
+                    result = fn(assembly.compat_matrix, 0, n - 1)
+                    log.debug(f"  Bridge #5 path_planner: cost="
+                              f"{getattr(result, 'cost', result)}")
+            elif name == "overlap_resolver":
+                contours = {f.fragment_id: f.contour for f in fragments
+                            if f.contour is not None}
+                if contours:
+                    fn(assembly, contours)
+            elif name == "position_estimator":
+                placements = assembly.placements
+                if isinstance(placements, dict) and len(placements) >= 2:
+                    ids = list(placements.keys())
+                    offsets = {}
+                    for i, a in enumerate(ids):
+                        for b in ids[i + 1:]:
+                            pa = np.asarray(placements[a]).ravel()[:2]
+                            pb = np.asarray(placements[b]).ravel()[:2]
+                            if len(pa) == 2 and len(pb) == 2:
+                                offsets[(a, b)] = pb - pa
+                    if offsets:
+                        from puzzle_reconstruction.algorithms.position_estimator \
+                            import build_offset_graph
+                        graph = build_offset_graph(list(offsets.keys()),
+                                                   list(offsets.values()))
+                        fn(graph, ids[0])
+            elif name in ("descriptor_aggregator", "descriptor_combiner"):
+                vecs = []
+                for frag in fragments:
+                    for edge in (frag.edges or []):
+                        v = getattr(edge, "css_vec", None)
+                        if v is not None:
+                            vecs.append(np.asarray(v, dtype=float).ravel())
+                if vecs:
+                    fn(vecs)
+        except Exception as exc:
+            log.debug(f"  Bridge #5 assembly/{name}: {exc}")
+
+
 def run(args: argparse.Namespace) -> None:
     import logging
     log_level = logging.DEBUG if args.verbose else logging.INFO
@@ -570,6 +734,38 @@ def run(args: argparse.Namespace) -> None:
         cfg.research.comparison_file = args.export_json
         cfg.research.export_comparison = True
 
+    # Bridge #2 — PreprocessingChain (CLI переопределения)
+    if getattr(args, "preprocessing_chain", None):
+        cfg.preprocessing.chain = [
+            f.strip() for f in args.preprocessing_chain.split(",") if f.strip()
+        ]
+    if getattr(args, "quality_threshold", None) is not None:
+        cfg.preprocessing.quality_threshold = args.quality_threshold
+    if getattr(args, "auto_enhance", False):
+        cfg.preprocessing.auto_enhance = True
+
+    # Bridge #5 — Algorithms (CLI → cfg.algorithms)
+    _alg_names: list = []
+    if getattr(args, "algorithms", None):
+        _alg_names = [n.strip() for n in args.algorithms.split(",") if n.strip()]
+        try:
+            from puzzle_reconstruction.algorithms.bridge import get_category
+            cfg.algorithms.fragment = [n for n in _alg_names
+                                       if get_category(n) == "fragment"]
+            cfg.algorithms.pair     = [n for n in _alg_names
+                                       if get_category(n) == "pair"]
+            cfg.algorithms.assembly = [n for n in _alg_names
+                                       if get_category(n) == "assembly"]
+            if cfg.algorithms.fragment or cfg.algorithms.pair or cfg.algorithms.assembly:
+                log.info(
+                    "Bridge #5: fragment=%d, pair=%d, assembly=%d",
+                    len(cfg.algorithms.fragment),
+                    len(cfg.algorithms.pair),
+                    len(cfg.algorithms.assembly),
+                )
+        except Exception as exc:
+            log.debug(f"Bridge #5 init error: {exc}")
+
     input_dir   = Path(args.input)
     output_path = Path(args.output)
 
@@ -606,6 +802,9 @@ def run(args: argparse.Namespace) -> None:
                     frag = process_fragment(frag, cfg, log)
                     _try_save_fragment(descriptor_cache, cache_key, frag)
 
+                # Bridge #5: fragment-level алгоритмы
+                _bridge5_fragment(frag, cfg.algorithms.fragment, log)
+
                 fd = (frag.fractal.fd_box + frag.fractal.fd_divider) / 2
                 log.debug(f"  #{frag.fragment_id:3d}  "
                            f"форма={frag.tangram.shape_class.value:<12}  "
@@ -632,12 +831,16 @@ def run(args: argparse.Namespace) -> None:
         log.info(f"  Пар: {len(entries)}  (порог {cfg.matching.threshold})")
         if entries:
             log.info(f"  Лучшая пара: score={entries[0].score:.4f}")
+        # Bridge #5: pair-level алгоритмы
+        entries = _bridge5_pair(entries, processed, cfg.algorithms.pair, log)
 
     # ── Этап 4: Сборка ────────────────────────────────────────────────────
     with stage("Сборка", log), timer.measure("сборка"):
         assembly, _all_results = assemble(processed, entries, cfg, log)
         assembly.compat_matrix = compat_matrix
         log.info(f"  Score: {assembly.total_score:.4f}")
+        # Bridge #5: assembly-level алгоритмы
+        _bridge5_assembly(assembly, processed, cfg.algorithms.assembly, log)
 
     # ── Этап 5: Верификация ───────────────────────────────────────────────
     with stage("Верификация", log), timer.measure("верификация"):
@@ -739,6 +942,33 @@ def main():
         print("Использование:")
         print("  --validators all              # запустить все 21")
         print("  --validators boundary,metrics # запустить подмножество")
+        return
+
+    if "--list-filters" in sys.argv:
+        from puzzle_reconstruction.preprocessing.chain import list_filters
+        names = list_filters()
+        print(f"Доступные фильтры предобработки ({len(names)} штук):")
+        for i, name in enumerate(names, 1):
+            print(f"  {i:2d}. {name}")
+        print()
+        print("Использование:")
+        print("  --preprocessing-chain denoise,contrast,deskew")
+        print("  --preprocessing-chain quality_assessor,perspective,warp_correct")
+        return
+
+    if "--list-algorithms" in sys.argv:
+        from puzzle_reconstruction.algorithms.bridge import (
+            list_algorithms, ALGORITHM_CATEGORIES
+        )
+        print("Доступные алгоритмы Bridge #5:")
+        for cat, names in ALGORITHM_CATEGORIES.items():
+            avail = list_algorithms(category=cat)
+            print(f"\n  [{cat}] ({len(avail)} из {len(names)}):")
+            for name in avail:
+                print(f"    {name}")
+        print()
+        print("Использование:")
+        print("  --algorithms fragment_classifier,seam_evaluator,path_planner")
         return
 
     parser = build_parser()
