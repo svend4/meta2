@@ -5,6 +5,12 @@ import pytest
 
 pytest.importorskip("sklearn", reason="scikit-learn не установлен")
 
+# ConvergenceWarning ожидаема: синтетические данные тестов намеренно вырождены
+# (одинаковые feature-векторы) для проверки структурных свойств кластеризации.
+pytestmark = pytest.mark.filterwarnings(
+    "ignore::sklearn.exceptions.ConvergenceWarning"
+)
+
 from puzzle_reconstruction.clustering import (
     ClusteringResult,
     _build_feature_matrix,
