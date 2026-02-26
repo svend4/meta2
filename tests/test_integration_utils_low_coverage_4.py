@@ -618,3 +618,305 @@ class TestPairScoreUtils:
         results = batch_summarise_pair_scores(groups)
         assert len(results) == 2
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 3. patch_score_utils
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestPatchScoreUtils:
+
+    def test_config_defaults(self):
+        cfg = PatchScoreConfig()
+        assert cfg.min_score == 0.0
+        assert cfg.max_pairs == 1000
+        assert cfg.method == "total"
+
+    def test_config_invalid_method(self):
+        with pytest.raises(ValueError):
+            PatchScoreConfig(method="unknown")
+
+    def test_config_invalid_min_score(self):
+        with pytest.raises(ValueError):
+            PatchScoreConfig(min_score=-0.1)
+
+    def test_config_invalid_max_pairs(self):
+        with pytest.raises(ValueError):
+            PatchScoreConfig(max_pairs=0)
+
+    def test_make_patch_entry(self):
+        e = make_patch_entry(0, 0, 1, 0, 1, 0.5, 0.3, 0.7, 0.8)
+        assert e.pair == (0, 1)
+        assert e.total_score == pytest.approx(0.8)
+        assert e.is_good is True
+
+    def test_make_patch_entry_poor(self):
+        e = make_patch_entry(0, 0, 1, 0, 1, 0.2, 0.5, 0.3, 0.4)
+        assert e.is_good is False
+
+    def test_make_patch_entry_negative_pair_id(self):
+        with pytest.raises(ValueError):
+            make_patch_entry(-1, 0, 1, 0, 1, 0.5, 0.3, 0.7, 0.8)
+
+    def test_make_patch_entry_invalid_ssd(self):
+        with pytest.raises(ValueError):
+            make_patch_entry(0, 0, 1, 0, 1, 0.5, 1.5, 0.7, 0.8)
+
+    def test_make_patch_entry_invalid_total_score(self):
+        with pytest.raises(ValueError):
+            make_patch_entry(0, 0, 1, 0, 1, 0.5, 0.3, 0.7, 1.5)
+
+    def test_entries_from_patch_matches(self):
+        class PM:
+            idx1=0; idx2=1; side1=0; side2=1
+            ncc=0.5; ssd=0.3; ssim=0.7; total_score=0.8
+
+        entries = entries_from_patch_matches([PM(), PM()])
+        assert len(entries) == 2
+        assert entries[0].rank in (1, 2)
+
+    def test_summarise_patch_scores_empty(self):
+        s = summarise_patch_scores([])
+        assert s.n_total == 0
+        assert s.mean_total == 0.0
+
+    def test_summarise_patch_scores(self):
+        entries = _make_patch_entries(5, good=True)
+        s = summarise_patch_scores(entries)
+        assert s.n_total == 5
+        assert s.n_good > 0
+        assert s.mean_total > 0.0
+
+    def test_summarise_patch_n_good_n_poor(self):
+        good = _make_patch_entries(3, good=True)
+        poor = _make_patch_entries(2, good=False)
+        s = summarise_patch_scores(good + poor)
+        assert s.n_good + s.n_poor == 5
+
+    def test_filter_good_patch_scores(self):
+        entries = _make_patch_entries(5, good=True) + _make_patch_entries(3, good=False)
+        good = filter_good_patch_scores(entries)
+        assert all(e.is_good for e in good)
+
+    def test_filter_poor_patch_scores(self):
+        entries = _make_patch_entries(5, good=True) + _make_patch_entries(3, good=False)
+        poor = filter_poor_patch_scores(entries)
+        assert all(not e.is_good for e in poor)
+
+    def test_filter_patch_by_score_range(self):
+        entries = _make_patch_entries(8)
+        filtered = filter_patch_by_score_range(entries, lo=0.6, hi=0.8)
+        assert all(0.6 <= e.total_score <= 0.8 for e in filtered)
+
+    def test_filter_by_side_pair(self):
+        e1 = make_patch_entry(0, 0, 1, 0, 1, 0.5, 0.3, 0.7, 0.8)
+        e2 = make_patch_entry(1, 0, 1, 2, 3, 0.5, 0.3, 0.7, 0.7)
+        result = filter_by_side_pair([e1, e2], side1=0, side2=1)
+        assert len(result) == 1
+
+    def test_filter_by_ncc_range(self):
+        entries = [make_patch_entry(i, 0, 1, 0, 1, float(i-2)/4, 0.3, 0.7, 0.8)
+                   for i in range(5)]
+        result = filter_by_ncc_range(entries, lo=0.0, hi=0.5)
+        assert all(0.0 <= e.ncc <= 0.5 for e in result)
+
+    def test_top_k_patch_entries(self):
+        entries = _make_patch_entries(8)
+        top = top_k_patch_entries(entries, k=3)
+        assert len(top) == 3
+        assert top[0].total_score >= top[1].total_score
+
+    def test_top_k_patch_entries_zero(self):
+        entries = _make_patch_entries(3)
+        assert top_k_patch_entries(entries, k=0) == []
+
+    def test_best_patch_entry(self):
+        entries = _make_patch_entries(5)
+        best = best_patch_entry(entries)
+        assert best is not None
+        assert best.total_score == max(e.total_score for e in entries)
+
+    def test_best_patch_entry_empty(self):
+        assert best_patch_entry([]) is None
+
+    def test_patch_score_stats_empty(self):
+        s = patch_score_stats([])
+        assert s["n"] == 0
+
+    def test_patch_score_stats(self):
+        entries = _make_patch_entries(5)
+        s = patch_score_stats(entries)
+        assert s["n"] == 5
+        assert s["min"] <= s["max"]
+
+    def test_compare_patch_summaries(self):
+        s1 = summarise_patch_scores(_make_patch_entries(3, good=True))
+        s2 = summarise_patch_scores(_make_patch_entries(3, good=False))
+        d = compare_patch_summaries(s1, s2)
+        assert d["a_better"] is True
+
+    def test_batch_summarise_patch_scores(self):
+        groups = [_make_patch_entries(3), _make_patch_entries(4)]
+        results = batch_summarise_patch_scores(groups)
+        assert len(results) == 2
+        assert results[0].n_total == 3
+        assert results[1].n_total == 4
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 4. patch_utils
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestPatchUtils:
+
+    def test_patch_config_defaults(self):
+        cfg = PatchConfig()
+        assert cfg.patch_h == 32
+        assert cfg.patch_w == 32
+        assert cfg.pad_value == 0
+
+    def test_patch_config_invalid_h(self):
+        with pytest.raises(ValueError):
+            PatchConfig(patch_h=0)
+
+    def test_patch_config_invalid_w(self):
+        with pytest.raises(ValueError):
+            PatchConfig(patch_w=-1)
+
+    def test_patch_config_invalid_pad(self):
+        with pytest.raises(ValueError):
+            PatchConfig(pad_value=300)
+
+    def test_patch_config_invalid_norm_mode(self):
+        with pytest.raises(ValueError):
+            PatchConfig(norm_mode="invalid")
+
+    def test_extract_patch_basic(self):
+        img = RNG.integers(0, 255, (100, 100), dtype=np.uint8)
+        cfg = PatchConfig(patch_h=16, patch_w=16)
+        patch = extract_patch(img, 50, 50, cfg)
+        assert patch.shape == (16, 16)
+
+    def test_extract_patch_color(self):
+        img = RNG.integers(0, 255, (100, 100, 3), dtype=np.uint8)
+        cfg = PatchConfig(patch_h=8, patch_w=8)
+        patch = extract_patch(img, 50, 50, cfg)
+        assert patch.shape == (8, 8, 3)
+
+    def test_extract_patch_near_border(self):
+        img = RNG.integers(0, 255, (50, 50), dtype=np.uint8)
+        cfg = PatchConfig(patch_h=16, patch_w=16, pad_value=128)
+        patch = extract_patch(img, 0, 0, cfg)
+        assert patch.shape == (16, 16)
+
+    def test_extract_patch_with_normalize(self):
+        img = RNG.integers(10, 200, (50, 50), dtype=np.uint8)
+        cfg = PatchConfig(patch_h=8, patch_w=8, normalize=True, norm_mode="minmax")
+        patch = extract_patch(img, 25, 25, cfg)
+        assert float(patch.min()) >= 0.0
+        assert float(patch.max()) <= 1.0
+
+    def test_extract_patch_invalid_ndim(self):
+        img = RNG.integers(0, 255, (10, 10, 3, 2), dtype=np.uint8)
+        with pytest.raises(ValueError):
+            extract_patch(img, 5, 5)
+
+    def test_extract_patches_multiple(self):
+        img = RNG.integers(0, 255, (100, 100), dtype=np.uint8)
+        centers = [(10, 10), (50, 50), (80, 80)]
+        patches = extract_patches(img, centers)
+        assert len(patches) == 3
+
+    def test_normalize_patch_minmax(self):
+        patch = np.array([[0.0, 128.0], [255.0, 64.0]])
+        result = normalize_patch(patch, mode="minmax")
+        assert float(result.min()) == pytest.approx(0.0)
+        assert float(result.max()) == pytest.approx(1.0)
+
+    def test_normalize_patch_zscore(self):
+        patch = RNG.random((8, 8)).astype(np.float32) * 100.0
+        result = normalize_patch(patch, mode="zscore")
+        assert abs(float(result.mean())) < 0.01
+
+    def test_normalize_patch_constant(self):
+        patch = np.ones((4, 4)) * 5.0
+        result = normalize_patch(patch, mode="minmax")
+        assert float(result.max()) == pytest.approx(0.0)
+
+    def test_normalize_patch_invalid_mode(self):
+        with pytest.raises(ValueError):
+            normalize_patch(np.ones((4, 4)), mode="bad")
+
+    def test_patch_ssd_identical(self):
+        p = RNG.random((8, 8)).astype(np.float32)
+        assert patch_ssd(p, p) == pytest.approx(0.0)
+
+    def test_patch_ssd_different(self):
+        a = np.zeros((8, 8), dtype=np.float32)
+        b = np.ones((8, 8), dtype=np.float32)
+        assert patch_ssd(a, b) == pytest.approx(64.0)
+
+    def test_patch_ssd_shape_mismatch(self):
+        with pytest.raises(ValueError):
+            patch_ssd(np.ones((4, 4)), np.ones((4, 5)))
+
+    def test_patch_ncc_identical(self):
+        p = RNG.random((8, 8)).astype(np.float32)
+        ncc = patch_ncc(p, p)
+        assert ncc == pytest.approx(1.0, abs=1e-5)
+
+    def test_patch_ncc_opposite(self):
+        p = RNG.random((8, 8)).astype(np.float32)
+        ncc = patch_ncc(p, -p)
+        assert ncc == pytest.approx(-1.0, abs=1e-5)
+
+    def test_patch_ncc_constant(self):
+        a = np.ones((8, 8), dtype=np.float32)
+        b = RNG.random((8, 8)).astype(np.float32)
+        ncc = patch_ncc(a, b)
+        assert ncc == pytest.approx(0.0)
+
+    def test_patch_ncc_shape_mismatch(self):
+        with pytest.raises(ValueError):
+            patch_ncc(np.ones((4, 4)), np.ones((4, 5)))
+
+    def test_patch_mse_identical(self):
+        p = RNG.random((8, 8)).astype(np.float32)
+        assert patch_mse(p, p) == pytest.approx(0.0)
+
+    def test_patch_mse_shape_mismatch(self):
+        with pytest.raises(ValueError):
+            patch_mse(np.ones((4, 4)), np.ones((5, 4)))
+
+    def test_compare_patches_ncc(self):
+        p = RNG.random((8, 8)).astype(np.float32)
+        val = compare_patches(p, p, method="ncc")
+        assert val == pytest.approx(1.0, abs=1e-5)
+
+    def test_compare_patches_ssd(self):
+        a = np.zeros((4, 4), dtype=np.float32)
+        b = np.ones((4, 4), dtype=np.float32)
+        val = compare_patches(a, b, method="ssd")
+        assert val == pytest.approx(16.0)
+
+    def test_compare_patches_mse(self):
+        a = np.zeros((4, 4), dtype=np.float32)
+        b = np.ones((4, 4), dtype=np.float32)
+        val = compare_patches(a, b, method="mse")
+        assert val == pytest.approx(1.0)
+
+    def test_compare_patches_invalid_method(self):
+        p = np.ones((4, 4))
+        with pytest.raises(ValueError):
+            compare_patches(p, p, method="bad")
+
+    def test_batch_compare_ncc(self):
+        pairs = [(RNG.random((8, 8)), RNG.random((8, 8))) for _ in range(4)]
+        results = batch_compare(pairs, method="ncc")
+        assert len(results) == 4
+        assert all(-1.0 <= r <= 1.0 for r in results)
+
+    def test_batch_compare_invalid_method(self):
+        pairs = [(np.ones((4, 4)), np.ones((4, 4)))]
+        with pytest.raises(ValueError):
+            batch_compare(pairs, method="invalid")
+
