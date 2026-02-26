@@ -311,12 +311,10 @@ class TestImageTransformUtils:
 # ===========================================================================
 
 class TestInterpolationUtils:
-    def test_lerp_endpoints(self):
+    def test_lerp_values(self):
         assert lerp(0.0, 10.0, 0.0) == pytest.approx(0.0)
-        assert lerp(0.0, 10.0, 1.0) == pytest.approx(10.0)
-
-    def test_lerp_midpoint(self):
         assert lerp(0.0, 10.0, 0.5) == pytest.approx(5.0)
+        assert lerp(0.0, 10.0, 1.0) == pytest.approx(10.0)
 
     def test_lerp_invalid_t(self):
         with pytest.raises(ValueError):
