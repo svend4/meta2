@@ -1692,3 +1692,128 @@ class TestPositionTrackingUtils:
         results = batch_summarise_assembly_history(groups)
         assert len(results) == 2
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 10. quality_score_utils
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestQualityScoreUtils:
+
+    def _make_entries(self, n=5, overall_base=0.6):
+        return [
+            make_quality_entry(i, 0.7, 0.6, 0.8, 0.9, overall_base + i * 0.05)
+            for i in range(n)
+        ]
+
+    def test_config_defaults(self):
+        cfg = QualityScoreConfig()
+        assert cfg.min_overall == 0.5
+
+    def test_config_invalid_min_overall(self):
+        with pytest.raises(ValueError):
+            QualityScoreConfig(min_overall=1.5)
+
+    def test_config_invalid_min_blur(self):
+        with pytest.raises(ValueError):
+            QualityScoreConfig(min_blur=-0.1)
+
+    def test_make_quality_entry_acceptable(self):
+        e = make_quality_entry(0, 0.8, 0.7, 0.9, 1.0, 0.75)
+        assert e.is_acceptable is True
+
+    def test_make_quality_entry_rejected(self):
+        cfg = QualityScoreConfig(min_overall=0.8)
+        e = make_quality_entry(0, 0.3, 0.2, 0.4, 0.5, 0.3, cfg=cfg)
+        assert e.is_acceptable is False
+
+    def test_make_quality_entry_repr(self):
+        e = make_quality_entry(0, 0.8, 0.7, 0.9, 1.0, 0.75)
+        assert "QualityScoreEntry" in repr(e)
+
+    def test_entries_from_reports(self):
+        reports = [
+            {"image_id": i, "blur_score": 0.7, "noise_score": 0.6,
+             "contrast_score": 0.8, "completeness": 0.9, "overall": 0.75}
+            for i in range(5)
+        ]
+        entries = entries_from_reports(reports)
+        assert len(entries) == 5
+        assert entries[0].image_id == 0
+
+    def test_entries_from_reports_missing_fields(self):
+        reports = [{"image_id": 0}]
+        entries = entries_from_reports(reports)
+        assert entries[0].overall == 0.0
+
+    def test_summarise_quality_empty(self):
+        s = summarise_quality([])
+        assert s.n_total == 0
+        assert s.mean_overall == 0.0
+
+    def test_summarise_quality(self):
+        entries = self._make_entries(5)
+        s = summarise_quality(entries)
+        assert s.n_total == 5
+        assert s.n_acceptable + s.n_rejected == 5
+
+    def test_summarise_quality_repr(self):
+        s = summarise_quality(self._make_entries(3))
+        assert "QualitySummary" in repr(s)
+
+    def test_filter_acceptable(self):
+        entries = self._make_entries(5)
+        acc = filter_acceptable(entries)
+        assert all(e.is_acceptable for e in acc)
+
+    def test_filter_rejected(self):
+        entries = [make_quality_entry(i, 0.3, 0.2, 0.4, 0.5, 0.2) for i in range(3)]
+        rejected = filter_rejected(entries)
+        assert all(not e.is_acceptable for e in rejected)
+
+    def test_filter_by_overall(self):
+        entries = self._make_entries(5)
+        result = filter_by_overall(entries, min_overall=0.7)
+        assert all(e.overall >= 0.7 for e in result)
+
+    def test_filter_by_blur(self):
+        e1 = make_quality_entry(0, 0.9, 0.6, 0.8, 0.9, 0.75)
+        e2 = make_quality_entry(1, 0.2, 0.6, 0.8, 0.9, 0.75)
+        result = filter_by_blur([e1, e2], min_blur=0.5)
+        assert len(result) == 1
+
+    def test_top_k_quality_entries(self):
+        entries = self._make_entries(6)
+        top = top_k_quality_entries(entries, k=3)
+        assert len(top) == 3
+        assert top[0].overall >= top[1].overall
+
+    def test_top_k_quality_entries_zero(self):
+        entries = self._make_entries(3)
+        result = top_k_quality_entries(entries, k=0)
+        assert result == []
+
+    def test_quality_score_stats_empty(self):
+        s = quality_score_stats([])
+        assert s["count"] == 0
+
+    def test_quality_score_stats(self):
+        entries = self._make_entries(5)
+        s = quality_score_stats(entries)
+        assert s["count"] == 5
+        assert s["min"] <= s["max"]
+
+    def test_compare_quality(self):
+        e1 = self._make_entries(4, overall_base=0.8)
+        e2 = self._make_entries(4, overall_base=0.4)
+        s1 = summarise_quality(e1)
+        s2 = summarise_quality(e2)
+        d = compare_quality(s1, s2)
+        assert d["mean_overall_delta"] > 0
+
+    def test_batch_summarise_quality(self):
+        reports1 = [{"image_id": i, "overall": 0.7} for i in range(3)]
+        reports2 = [{"image_id": i, "overall": 0.4} for i in range(4)]
+        results = batch_summarise_quality([reports1, reports2])
+        assert len(results) == 2
+        assert results[0].n_total == 3
+
