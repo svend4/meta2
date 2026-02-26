@@ -1,6 +1,6 @@
 # Текущий статус разработки — puzzle-reconstruction (meta2)
 
-> Дата формирования отчёта: 2026-02-26 (обновлено — v1.0.0 Stable, Phase 9: +6 250 тестов, 49 377 тестов)
+> Дата формирования отчёта: 2026-02-26 (обновлено — v1.0.0 Stable, +76 property-tests для geometry, 54 392 тестов)
 > Предыдущие версии: 2026-02-23, 2026-02-24, 2026-02-25
 > Версия: **1.0.0** (Production/Stable, тег `v1.0.0`)
 > Текущая ветка: `claude/puzzle-text-docs-3tcRj`
@@ -101,8 +101,8 @@
 |---|---|
 | Production .py файлов | **305** |
 | Utils-модулей | **131** |
-| Тестовых файлов | **1 017** (↑176: +91 utils + +30 новых модулей + +23 _extra дополнения) |
-| Всего тестов | **49 377** (↑6 403: +utils batch 1-9 + +assembly/verification + +_extra тесты) |
+| Тестовых файлов | **1 018** (↑177: +91 utils + +30 новых модулей + +23 _extra + +1 properties_geometry) |
+| Всего тестов | **54 392** (↑11 418: +utils batch 1-9 + +assembly/verification + +_extra + +integration + +properties_geometry) |
 | Assembly methods в CLI | **10** (greedy, sa, beam, gamma, genetic, exhaustive, ant_colony, mcts, auto, all) |
 | Активных матчеров | **13+** (через `matcher_registry`) |
 | Активных preprocessing-модулей | **38 из 38** (через PreprocessingChain) |
