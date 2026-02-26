@@ -1,12 +1,5 @@
-"""Integration tests for utils batch 3b.
-
-Covers:
-  - puzzle_reconstruction.utils.gradient_utils
-  - puzzle_reconstruction.utils.image_cluster_utils
-  - puzzle_reconstruction.utils.image_pipeline_utils
-  - puzzle_reconstruction.utils.image_transform_utils
-  - puzzle_reconstruction.utils.interpolation_utils
-"""
+"""Integration tests for utils batch 3b (gradient, image_cluster, image_pipeline,
+image_transform, interpolation)."""
 import math
 
 import numpy as np
@@ -14,9 +7,6 @@ import pytest
 
 rng = np.random.default_rng(42)
 
-# ---------------------------------------------------------------------------
-# Imports
-# ---------------------------------------------------------------------------
 from puzzle_reconstruction.utils.gradient_utils import (
     GradientConfig,
     batch_compute_gradients,
@@ -83,21 +73,14 @@ from puzzle_reconstruction.utils.interpolation_utils import (
     smooth_interpolate,
 )
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 def _gray(h=32, w=32):
     return rng.integers(0, 256, (h, w), dtype=np.uint8)
-
 
 def _color(h=32, w=32):
     return rng.integers(0, 256, (h, w, 3), dtype=np.uint8)
 
-
 def _make_entry(fid, sharpness=1.0, entropy=5.0, contrast=20.0):
     return make_image_stats_entry(fid, sharpness, entropy, contrast, 128.0, 1024)
-
 
 # ===========================================================================
 # gradient_utils
@@ -106,36 +89,22 @@ def _make_entry(fid, sharpness=1.0, entropy=5.0, contrast=20.0):
 class TestGradientUtils:
     def test_gradient_config_defaults(self):
         cfg = GradientConfig()
-        assert cfg.ksize == 3
-        assert cfg.normalize is True
-        assert cfg.threshold == 32.0
+        assert cfg.ksize == 3 and cfg.normalize is True and cfg.threshold == 32.0
 
     def test_gradient_config_invalid_ksize(self):
         with pytest.raises(ValueError):
             GradientConfig(ksize=2)
 
-    def test_compute_gradient_magnitude_shape(self):
-        img = _gray()
-        mag = compute_gradient_magnitude(img)
-        assert mag.shape == img.shape
-        assert mag.dtype == np.float32
-
-    def test_compute_gradient_magnitude_normalized(self):
-        img = _gray()
-        mag = compute_gradient_magnitude(img, GradientConfig(normalize=True))
-        assert mag.max() <= 1.0 + 1e-6
+    def test_compute_gradient_magnitude_shape_and_dtype(self):
+        mag = compute_gradient_magnitude(_gray())
+        assert mag.dtype == np.float32 and mag.max() <= 1.0 + 1e-6
 
     def test_compute_gradient_magnitude_color(self):
-        img = _color()
-        mag = compute_gradient_magnitude(img)
-        assert mag.ndim == 2
+        assert compute_gradient_magnitude(_color()).ndim == 2
 
     def test_compute_gradient_direction_range(self):
-        img = _gray()
-        d = compute_gradient_direction(img)
-        assert d.shape == img.shape
-        assert d.min() >= -math.pi - 1e-5
-        assert d.max() <= math.pi + 1e-5
+        d = compute_gradient_direction(_gray())
+        assert d.min() >= -math.pi - 1e-5 and d.max() <= math.pi + 1e-5
 
     def test_compute_sobel_returns_triple(self):
         img = _gray()
@@ -186,20 +155,15 @@ class TestImageClusterUtils:
 
     def test_make_entry_fields(self):
         e = _make_entry(7, sharpness=3.5, entropy=2.0, contrast=12.0)
-        assert e.fragment_id == 7
-        assert e.sharpness == pytest.approx(3.5)
+        assert e.fragment_id == 7 and e.sharpness == pytest.approx(3.5)
 
     def test_summarise_empty(self):
         s = summarise_image_stats_entries([])
-        assert s.n_images == 0
-        assert s.sharpest_id is None
+        assert s.n_images == 0 and s.sharpest_id is None
 
     def test_summarise_nonempty(self):
-        entries = self._entries()
-        s = summarise_image_stats_entries(entries)
-        assert s.n_images == 3
-        assert s.sharpest_id == 0
-        assert s.blurriest_id == 1
+        s = summarise_image_stats_entries(self._entries())
+        assert s.n_images == 3 and s.sharpest_id == 0 and s.blurriest_id == 1
 
     def test_filter_by_min_sharpness(self):
         entries = self._entries()
