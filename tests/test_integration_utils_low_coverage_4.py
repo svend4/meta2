@@ -1537,3 +1537,158 @@ class TestPolygonOpsUtils:
         with pytest.raises(ValueError):
             batch_polygon_overlap(p1s, p2s)
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 9. position_tracking_utils
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestPositionTrackingUtils:
+
+    def _make_records(self, n=5, method="ransac"):
+        return [
+            make_position_quality_record(i, 10, 8, 0.85, 0.7 + i * 0.02, method)
+            for i in range(n)
+        ]
+
+    def test_make_position_quality_record(self):
+        r = make_position_quality_record(0, 10, 8, 0.9, 0.8, "ransac")
+        assert r.run_id == 0
+        assert r.n_fragments == 10
+        assert r.method == "ransac"
+
+    def test_placement_rate(self):
+        r = make_position_quality_record(0, 10, 8, 0.9, 0.8, "ransac")
+        assert r.placement_rate == pytest.approx(0.8)
+
+    def test_placement_rate_zero_fragments(self):
+        r = make_position_quality_record(0, 0, 0, 0.9, 0.8, "ransac")
+        assert r.placement_rate == 0.0
+
+    def test_position_quality_record_with_params(self):
+        r = make_position_quality_record(0, 10, 8, 0.9, 0.8, "ransac", threshold=5.0)
+        assert r.params["threshold"] == 5.0
+
+    def test_summarise_position_quality_empty(self):
+        s = summarise_position_quality([])
+        assert s.n_runs == 0
+        assert s.best_run_id is None
+
+    def test_summarise_position_quality(self):
+        records = self._make_records(5)
+        s = summarise_position_quality(records)
+        assert s.n_runs == 5
+        assert s.total_fragments == 50
+        assert s.best_run_id is not None
+        assert s.worst_run_id is not None
+
+    def test_summarise_position_quality_best_worst(self):
+        records = self._make_records(5)
+        s = summarise_position_quality(records)
+        # best has highest coverage
+        coverages = {r.run_id: r.canvas_coverage for r in records}
+        assert coverages[s.best_run_id] >= coverages[s.worst_run_id]
+
+    def test_filter_by_placement_rate(self):
+        records = self._make_records(5)
+        result = filter_by_placement_rate(records, min_rate=0.8)
+        assert all(r.placement_rate >= 0.8 for r in result)
+
+    def test_filter_by_method(self):
+        r1s = self._make_records(3, method="ransac")
+        r2s = self._make_records(2, method="icp")
+        result = filter_by_method(r1s + r2s, method="ransac")
+        assert len(result) == 3
+
+    def test_top_k_position_records(self):
+        records = self._make_records(6)
+        top = top_k_position_records(records, k=3)
+        assert len(top) == 3
+        assert top[0].canvas_coverage >= top[1].canvas_coverage
+
+    def test_best_position_record(self):
+        records = self._make_records(5)
+        best = best_position_record(records)
+        assert best is not None
+
+    def test_best_position_record_empty(self):
+        assert best_position_record([]) is None
+
+    def test_position_quality_stats_empty(self):
+        s = position_quality_stats([])
+        assert s["count"] == 0
+
+    def test_position_quality_stats(self):
+        records = self._make_records(5)
+        s = position_quality_stats(records)
+        assert s["count"] == 5
+        assert s["min"] <= s["max"]
+
+    # AssemblyHistoryEntry tests
+
+    def _make_history_entries(self, n=5):
+        return [
+            make_assembly_history_entry(i, 100, 0.7 + i * 0.05, i % 2 == 0, 50 if i % 2 == 0 else None, "simulated_annealing")
+            for i in range(n)
+        ]
+
+    def test_make_assembly_history_entry(self):
+        e = make_assembly_history_entry(0, 100, 0.9, True, 50, "sa")
+        assert e.run_id == 0
+        assert e.converged is True
+        assert e.method == "sa"
+
+    def test_summarise_assembly_history_empty(self):
+        s = summarise_assembly_history([])
+        assert s.n_runs == 0
+        assert s.best_run_id is None
+
+    def test_summarise_assembly_history(self):
+        entries = self._make_history_entries(4)
+        s = summarise_assembly_history(entries)
+        assert s.n_runs == 4
+        assert 0.0 <= s.convergence_rate <= 1.0
+
+    def test_filter_converged(self):
+        entries = self._make_history_entries(5)
+        conv = filter_converged(entries)
+        assert all(e.converged for e in conv)
+
+    def test_filter_by_min_best_score(self):
+        entries = self._make_history_entries(5)
+        result = filter_by_min_best_score(entries, min_score=0.8)
+        assert all(e.best_score >= 0.8 for e in result)
+
+    def test_top_k_assembly_entries(self):
+        entries = self._make_history_entries(6)
+        top = top_k_assembly_entries(entries, k=3)
+        assert len(top) == 3
+        assert top[0].best_score >= top[1].best_score
+
+    def test_best_assembly_entry(self):
+        entries = self._make_history_entries(5)
+        best = best_assembly_entry(entries)
+        assert best is not None
+
+    def test_best_assembly_entry_empty(self):
+        assert best_assembly_entry([]) is None
+
+    def test_assembly_score_stats_empty(self):
+        s = assembly_score_stats([])
+        assert s["count"] == 0
+
+    def test_assembly_score_stats(self):
+        entries = self._make_history_entries(5)
+        s = assembly_score_stats(entries)
+        assert s["count"] == 5
+
+    def test_compare_assembly_summaries(self):
+        s1 = summarise_assembly_history(self._make_history_entries(4))
+        s2 = summarise_assembly_history(self._make_history_entries(4))
+        d = compare_assembly_summaries(s1, s2)
+        assert "delta_mean_best_score" in d
+
+    def test_batch_summarise_assembly_history(self):
+        groups = [self._make_history_entries(3), self._make_history_entries(4)]
+        results = batch_summarise_assembly_history(groups)
+        assert len(results) == 2
+
