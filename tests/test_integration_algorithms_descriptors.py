@@ -1002,13 +1002,15 @@ class TestFourierDescriptor:
         with pytest.raises(ValueError, match="4"):
             compute_fd(pts)
 
-    def test_compute_fd_normalized_first_coeff_one(self):
+    def test_compute_fd_normalized_first_nonzero_coeff_one(self):
         pts = make_circle_contour(n=64)
         cfg = FourierConfig(n_coeffs=16, normalize=True)
         fd = compute_fd(pts, cfg=cfg)
-        # After normalization, magnitude of first coeff should be ~1
-        mag0 = fd.magnitude[0]
-        assert abs(mag0 - 1.0) < 0.05
+        # For a centered circle the DC component (index 0) is ~0 after mean subtraction.
+        # Normalization divides by the amplitude of the first nonzero coefficient,
+        # so the dominant non-DC coefficient magnitude should equal 1.0.
+        # For a circle, that is coefficient index 1.
+        assert abs(fd.magnitude[1] - 1.0) < 0.05
 
     def test_fd_similarity_self_is_one(self):
         pts = make_circle_contour(n=64)
