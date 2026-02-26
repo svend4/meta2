@@ -1380,3 +1380,160 @@ class TestPlacementScoreUtils:
         assert results[0].n_placed == 3
         assert results[1].n_placed == 4
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 8. polygon_ops_utils
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestPolygonOpsUtils:
+
+    def test_config_defaults(self):
+        cfg = PolygonOpsConfig()
+        assert cfg.clip_epsilon == pytest.approx(1e-9)
+        assert cfg.n_samples == 64
+
+    def test_config_invalid_clip_epsilon(self):
+        with pytest.raises(ValueError):
+            PolygonOpsConfig(clip_epsilon=-1.0)
+
+    def test_config_invalid_n_samples(self):
+        with pytest.raises(ValueError):
+            PolygonOpsConfig(n_samples=0)
+
+    def test_signed_area_ccw(self):
+        sq = _make_square_poly(0.0, 0.0, 5.0)
+        area = signed_area(sq)
+        assert area == pytest.approx(100.0)
+
+    def test_signed_area_cw(self):
+        sq = _make_square_poly(0.0, 0.0, 5.0)[::-1]
+        area = signed_area(sq)
+        assert area == pytest.approx(-100.0)
+
+    def test_signed_area_degenerate(self):
+        assert signed_area(np.array([[0, 0], [1, 1]])) == 0.0
+
+    def test_polygon_area_positive(self):
+        sq = _make_square_poly(0.0, 0.0, 5.0)
+        assert polygon_area(sq) == pytest.approx(100.0)
+
+    def test_polygon_perimeter_square(self):
+        sq = _make_square_poly(0.0, 0.0, 5.0)
+        assert polygon_perimeter(sq) == pytest.approx(40.0)
+
+    def test_polygon_perimeter_less_than_2(self):
+        assert polygon_perimeter(np.array([[0, 0]])) == 0.0
+
+    def test_polygon_centroid_square(self):
+        sq = _make_square_poly(3.0, 7.0, 5.0)
+        c = polygon_centroid(sq)
+        assert c == pytest.approx([3.0, 7.0], abs=1e-6)
+
+    def test_polygon_centroid_degenerate(self):
+        pts = np.array([[0, 0], [1, 0]])
+        c = polygon_centroid(pts)
+        assert c == pytest.approx([0.5, 0.0])
+
+    def test_polygon_bounding_box(self):
+        sq = _make_square_poly(0.0, 0.0, 5.0)
+        bb = polygon_bounding_box(sq)
+        assert bb == pytest.approx((-5.0, -5.0, 5.0, 5.0))
+
+    def test_polygon_bounding_box_empty(self):
+        bb = polygon_bounding_box(np.empty((0, 2)))
+        assert bb == (0.0, 0.0, 0.0, 0.0)
+
+    def test_polygon_stats(self):
+        sq = _make_square_poly(0.0, 0.0, 5.0)
+        s = polygon_stats(sq)
+        assert s.n_vertices == 4
+        assert s.area == pytest.approx(100.0)
+        assert s.perimeter == pytest.approx(40.0)
+        assert s.aspect_ratio == pytest.approx(1.0, abs=0.01)
+        assert s.compactness > 0.0
+
+    def test_polygon_stats_to_dict(self):
+        sq = _make_square_poly(0.0, 0.0, 5.0)
+        d = polygon_stats(sq).to_dict()
+        assert "area" in d
+        assert "n_vertices" in d
+
+    def test_point_in_polygon_inside(self):
+        sq = _make_square_poly(0.0, 0.0, 10.0)
+        assert point_in_polygon(np.array([0.0, 0.0]), sq) is True
+
+    def test_point_in_polygon_outside(self):
+        sq = _make_square_poly(0.0, 0.0, 5.0)
+        assert point_in_polygon(np.array([20.0, 20.0]), sq) is False
+
+    def test_point_in_polygon_degenerate(self):
+        assert point_in_polygon(np.array([0.0, 0.0]), np.array([[0, 0], [1, 1]])) is False
+
+    def test_polygon_overlap_overlapping(self):
+        p1 = _make_square_poly(0.0, 0.0, 5.0)
+        p2 = _make_square_poly(3.0, 3.0, 5.0)
+        result = polygon_overlap(p1, p2)
+        assert result.overlap is True
+        assert result.iou > 0.0
+
+    def test_polygon_overlap_not_overlapping(self):
+        p1 = _make_square_poly(0.0, 0.0, 5.0)
+        p2 = _make_square_poly(50.0, 50.0, 5.0)
+        result = polygon_overlap(p1, p2)
+        assert result.overlap is False
+        assert result.iou == pytest.approx(0.0)
+
+    def test_polygon_overlap_to_dict(self):
+        p1 = _make_square_poly(0.0, 0.0, 5.0)
+        p2 = _make_square_poly(3.0, 3.0, 5.0)
+        d = polygon_overlap(p1, p2).to_dict()
+        assert "iou" in d
+
+    def test_remove_collinear_no_collinear(self):
+        sq = _make_square_poly(0.0, 0.0, 5.0)
+        result = remove_collinear(sq)
+        assert len(result) == 4
+
+    def test_remove_collinear_with_collinear(self):
+        pts = np.array([[0, 0], [5, 0], [10, 0], [10, 10], [0, 10]], dtype=float)
+        result = remove_collinear(pts)
+        assert len(result) < 5
+
+    def test_ensure_ccw_already_ccw(self):
+        sq = _make_square_poly(0.0, 0.0, 5.0)
+        result = ensure_ccw(sq)
+        assert signed_area(result) > 0
+
+    def test_ensure_cw(self):
+        sq = _make_square_poly(0.0, 0.0, 5.0)
+        result = ensure_cw(sq)
+        assert signed_area(result) < 0
+
+    def test_polygon_similarity_identical(self):
+        sq = _make_square_poly(0.0, 0.0, 5.0)
+        s = polygon_similarity(sq, sq)
+        assert s == pytest.approx(1.0, abs=0.01)
+
+    def test_polygon_similarity_non_overlapping(self):
+        p1 = _make_square_poly(0.0, 0.0, 5.0)
+        p2 = _make_square_poly(50.0, 50.0, 5.0)
+        s = polygon_similarity(p1, p2)
+        assert s == pytest.approx(0.0)
+
+    def test_batch_polygon_stats(self):
+        polys = [_make_square_poly(float(i), float(i), 5.0) for i in range(4)]
+        results = batch_polygon_stats(polys)
+        assert len(results) == 4
+
+    def test_batch_polygon_overlap(self):
+        p1s = [_make_square_poly(float(i), float(i), 5.0) for i in range(3)]
+        p2s = [_make_square_poly(float(i)+2, float(i)+2, 5.0) for i in range(3)]
+        results = batch_polygon_overlap(p1s, p2s)
+        assert len(results) == 3
+
+    def test_batch_polygon_overlap_length_mismatch(self):
+        p1s = [_make_square_poly(0.0, 0.0, 5.0)]
+        p2s = [_make_square_poly(0.0, 0.0, 5.0), _make_square_poly(1.0, 1.0, 5.0)]
+        with pytest.raises(ValueError):
+            batch_polygon_overlap(p1s, p2s)
+
