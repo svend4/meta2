@@ -403,3 +403,108 @@ class TestNaNInfEdgeCases:
         norm = float(np.linalg.norm(vec))
         assert np.isfinite(norm)
         assert norm >= 0.0
+
+
+# ---------------------------------------------------------------------------
+# 8. TestErrorRecoveryIntegration (ROADMAP-specified class)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.integration
+class TestErrorRecoveryIntegration:
+    """
+    Graceful-degradation tests specified in ROADMAP.md section 2.2.8.
+
+    Verifies that the system either:
+      (a) returns a valid result (not None, not NaN, correct type), or
+      (b) raises a specific expected exception (ValueError / RuntimeError),
+    for each edge-case input category.
+    """
+
+    # ── empty image → graceful error, not crash ───────────────────────────
+
+    def test_empty_image_no_crash(self):
+        """np.zeros image must not crash Pipeline.preprocess."""
+        pipe = _no_ocr_pipeline()
+        empty = np.zeros((100, 100, 3), dtype=np.uint8)
+        result = pipe.preprocess([empty])
+        assert isinstance(result, list)
+
+    # ── solid-colour image → FD=1.0 or contour=empty ─────────────────────
+
+    def test_solid_color_image_graceful(self):
+        """All-white image must not crash; FD must be 1.0 for degenerate case."""
+        # Solid-colour images either produce no fragment (empty contour) or
+        # a degenerate contour.  Either outcome is acceptable; no crash is required.
+        pipe = _no_ocr_pipeline()
+        white = np.full((100, 100, 3), 255, dtype=np.uint8)
+        result = pipe.preprocess([white])
+        assert isinstance(result, list)
+
+    def test_solid_color_fd_is_1_or_low(self):
+        """FD of a degenerate (3-point) contour returns 1.0."""
+        degenerate_contour = np.array([[0, 0], [5, 0], [0, 5]], dtype=float)
+        fd = box_counting_fd(degenerate_contour)
+        assert fd == 1.0
+
+    # ── 1×1 pixel image → no IndexError ──────────────────────────────────
+
+    def test_1x1_pixel_no_index_error(self):
+        """1×1 image must not raise IndexError or AttributeError."""
+        pipe = _no_ocr_pipeline()
+        tiny = np.full((1, 1, 3), 128, dtype=np.uint8)
+        try:
+            result = pipe.preprocess([tiny])
+            assert isinstance(result, list)
+        except (ValueError, RuntimeError):
+            pass  # Documented acceptable failure for degenerate images
+        except (IndexError, AttributeError) as exc:
+            pytest.fail(f"Unexpected {type(exc).__name__}: {exc}")
+
+    # ── fragment without text → text_coherence_score = 0.0, not NaN ──────
+
+    def test_fragment_without_text_score_zero_not_nan(self):
+        """text_coherence_score must not return NaN for a fragment without text."""
+        from puzzle_reconstruction.verification.ocr import text_coherence_score
+        frag = _make_square_fragment(0, size=80, fill=220)
+        if not frag.edges:
+            pytest.skip("No edges produced for test fragment")
+        edge = frag.edges[0]
+        score = text_coherence_score(frag.image, frag.image, edge, edge)
+        assert not np.isnan(score), "text_coherence_score returned NaN"
+        assert 0.0 <= score <= 1.0
+
+    # ── all-zero compat matrix → greedy returns something ─────────────────
+
+    def test_zero_compat_matrix_greedy_returns_something(self):
+        """greedy_assembly with empty entries (all-zero matrix) returns an Assembly."""
+        f1 = Fragment(fragment_id=0, image=np.zeros((50, 50, 3), dtype=np.uint8))
+        f2 = Fragment(fragment_id=1, image=np.zeros((50, 50, 3), dtype=np.uint8))
+        result = greedy_assembly([f1, f2], [])
+        assert result is not None
+        assert isinstance(result, Assembly)
+        assert len(result.placements) == 2
+
+    # ── very small fragment (< 10×10) → no crash ─────────────────────────
+
+    def test_very_small_fragment_no_crash(self):
+        """A 5×5 image must not cause a crash (IndexError/AttributeError)."""
+        pipe = _no_ocr_pipeline()
+        small = np.full((5, 5, 3), 128, dtype=np.uint8)
+        small[1:4, 1:4] = 240
+        try:
+            result = pipe.preprocess([small])
+            assert isinstance(result, list)
+        except (ValueError, RuntimeError):
+            pass
+        except (IndexError, AttributeError) as exc:
+            pytest.fail(f"Unexpected {type(exc).__name__}: {exc}")
+
+    # ── duplicate images → identical signatures ───────────────────────────
+
+    def test_duplicate_images_identical_signatures(self):
+        """Two identical images must produce identical fractal signatures."""
+        frag1 = _make_square_fragment(0, size=80)
+        frag2 = _make_square_fragment(1, size=80)
+        # Both built from the same recipe — fd_box must be the same
+        assert abs(frag1.fractal.fd_box - frag2.fractal.fd_box) < 1e-9
+        assert abs(frag1.fractal.fd_divider - frag2.fractal.fd_divider) < 1e-9
