@@ -818,77 +818,86 @@ class TestOverlapResolver:
                 compute_overlap, detect_overlaps, resolve_overlaps,
                 compute_total_overlap, overlap_ratio)
 
+    def _bbox(self, fid, x, y, w, h):
+        from puzzle_reconstruction.assembly.overlap_resolver import BBox
+        return BBox(fragment_id=fid, x=x, y=y, w=w, h=h)
+
+    def _boxes_dict(self, specs):
+        # specs = list of (fid, x, y, w, h)
+        return {fid: self._bbox(fid, x, y, w, h) for fid, x, y, w, h in specs}
+
     def test_bbox_creation(self):
-        (_, BBox, *_) = self._import()
-        b = BBox(x=10, y=20, w=50, h=30)
+        b = self._bbox(1, 10, 20, 50, 30)
         assert b.x == 10
         assert b.w == 50
+        assert b.fragment_id == 1
 
     def test_bbox_invalid_size(self):
         (_, BBox, *_) = self._import()
         with pytest.raises((ValueError, Exception)):
-            BBox(x=0, y=0, w=0, h=10)
+            BBox(fragment_id=0, x=0, y=0, w=0, h=10)
 
     def test_compute_overlap_no_overlap(self):
         (_, BBox, Overlap, _, compute_overlap, *_) = self._import()
-        a = BBox(x=0, y=0, w=10, h=10)
-        b = BBox(x=20, y=20, w=10, h=10)
+        a = self._bbox(0, 0, 0, 10, 10)
+        b = self._bbox(1, 20, 20, 10, 10)
         ov = compute_overlap(a, b)
         assert isinstance(ov, Overlap)
 
     def test_compute_overlap_full(self):
         (_, BBox, _, _, compute_overlap, *_) = self._import()
-        a = BBox(x=0, y=0, w=10, h=10)
+        a = self._bbox(0, 0, 0, 10, 10)
         ov = compute_overlap(a, a)
         assert ov.area >= 0
 
     def test_detect_overlaps_no_overlap(self):
         (_, BBox, _, _, _, detect_overlaps, *_) = self._import()
-        boxes = [BBox(x=i * 20, y=0, w=10, h=10) for i in range(3)]
+        boxes = self._boxes_dict([(i, i * 20, 0, 10, 10) for i in range(3)])
         overlaps = detect_overlaps(boxes)
         assert isinstance(overlaps, list)
+        assert overlaps == []
 
     def test_detect_overlaps_with_overlap(self):
         (_, BBox, _, _, _, detect_overlaps, *_) = self._import()
-        boxes = [BBox(x=0, y=0, w=20, h=20), BBox(x=10, y=10, w=20, h=20)]
+        boxes = self._boxes_dict([(0, 0, 0, 20, 20), (1, 10, 10, 20, 20)])
         overlaps = detect_overlaps(boxes)
-        assert len(overlaps) >= 0  # may or may not have overlaps
+        assert len(overlaps) >= 1  # should have an overlap
 
     def test_resolve_overlaps_returns_result(self):
         (ResolveConfig, BBox, _, ResolveResult, _, _, resolve_overlaps, *_) = self._import()
-        boxes = [BBox(x=i * 5, y=0, w=10, h=10) for i in range(3)]
+        boxes = self._boxes_dict([(i, i * 15, 0, 10, 10) for i in range(3)])
         result = resolve_overlaps(boxes)
         assert isinstance(result, ResolveResult)
 
     def test_resolve_overlaps_with_config(self):
         (ResolveConfig, BBox, _, ResolveResult, _, _, resolve_overlaps, *_) = self._import()
         cfg = ResolveConfig()
-        boxes = [BBox(x=0, y=0, w=10, h=10), BBox(x=5, y=5, w=10, h=10)]
+        boxes = self._boxes_dict([(0, 0, 0, 10, 10), (1, 5, 5, 10, 10)])
         result = resolve_overlaps(boxes, cfg=cfg)
         assert isinstance(result, ResolveResult)
 
     def test_compute_total_overlap(self):
         (_, BBox, _, _, _, _, _, compute_total_overlap, _) = self._import()
-        boxes = [BBox(x=i * 5, y=0, w=10, h=10) for i in range(3)]
+        boxes = self._boxes_dict([(i, i * 5, 0, 10, 10) for i in range(3)])
         total = compute_total_overlap(boxes)
         assert total >= 0.0
 
     def test_overlap_ratio_no_overlap(self):
         (_, BBox, _, _, _, _, _, _, overlap_ratio) = self._import()
-        a = BBox(x=0, y=0, w=10, h=10)
-        b = BBox(x=20, y=0, w=10, h=10)
-        ratio = overlap_ratio(a, b)
+        # Boxes far apart
+        boxes = self._boxes_dict([(0, 0, 0, 10, 10), (1, 20, 0, 10, 10)])
+        ratio = overlap_ratio(boxes)
         assert ratio == pytest.approx(0.0)
 
-    def test_overlap_ratio_full_overlap(self):
+    def test_overlap_ratio_with_overlap(self):
         (_, BBox, _, _, _, _, _, _, overlap_ratio) = self._import()
-        a = BBox(x=0, y=0, w=10, h=10)
-        ratio = overlap_ratio(a, a)
-        assert ratio == pytest.approx(1.0)
+        # Boxes overlapping
+        boxes = self._boxes_dict([(0, 0, 0, 10, 10), (1, 5, 0, 10, 10)])
+        ratio = overlap_ratio(boxes)
+        assert 0.0 <= ratio <= 1.0
 
     def test_bbox_right_bottom(self):
-        (_, BBox, *_) = self._import()
-        b = BBox(x=5, y=10, w=20, h=30)
+        b = self._bbox(0, 5, 10, 20, 30)
         assert b.x + b.w == 25
         assert b.y + b.h == 40
 
@@ -899,11 +908,11 @@ class TestOverlapResolver:
 
     def test_detect_overlaps_empty(self):
         (_, _, _, _, _, detect_overlaps, *_) = self._import()
-        assert detect_overlaps([]) == []
+        assert detect_overlaps({}) == []
 
     def test_resolve_overlaps_empty(self):
         (ResolveConfig, _, _, ResolveResult, _, _, resolve_overlaps, *_) = self._import()
-        result = resolve_overlaps([])
+        result = resolve_overlaps({})
         assert isinstance(result, ResolveResult)
 
 
