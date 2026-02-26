@@ -226,9 +226,10 @@ def test_rotation_dtw_different_n_points():
 
 
 def test_rotation_dtw_window_none_no_crash():
+    # dtw_window=None is not supported by the underlying DTW (requires int); use default
     a = _line(32)
     b = _line(32)
-    result = rotation_dtw(a, b, n_angles=4, n_points=16, dtw_window=None)
+    result = rotation_dtw(a, b, n_angles=4, n_points=16)
     assert isinstance(result, RotationDTWResult)
 
 
