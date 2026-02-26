@@ -1817,3 +1817,157 @@ class TestQualityScoreUtils:
         assert len(results) == 2
         assert results[0].n_total == 3
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 11. rank_result_utils
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestRankResultUtils:
+
+    def _make_entries(self, n=6):
+        pairs = [(i, i + 1) for i in range(n)]
+        scores = [float(i) / (n - 1) for i in range(n)]
+        return entries_from_ranked_pairs(pairs, scores)
+
+    def test_config_defaults(self):
+        cfg = RankResultConfig()
+        assert cfg.good_threshold == 0.7
+        assert cfg.poor_threshold == 0.3
+        assert cfg.top_k == 10
+
+    def test_config_invalid_good_threshold(self):
+        with pytest.raises(ValueError):
+            RankResultConfig(good_threshold=2.0)
+
+    def test_config_invalid_top_k(self):
+        with pytest.raises(ValueError):
+            RankResultConfig(top_k=-1)
+
+    def test_make_rank_result_entry(self):
+        e = make_rank_result_entry(0, 1, 0.8, 1)
+        assert e.frag_i == 0
+        assert e.frag_j == 1
+        assert e.score == pytest.approx(0.8)
+        assert e.rank == 1
+
+    def test_entry_pair_key_ordering(self):
+        e = make_rank_result_entry(5, 2, 0.5, 3)
+        assert e.pair_key == (2, 5)
+
+    def test_entry_is_top_match_true(self):
+        e = make_rank_result_entry(0, 1, 0.8, 1)
+        assert e.is_top_match is True
+
+    def test_entry_is_top_match_false(self):
+        e = make_rank_result_entry(0, 1, 0.8, 2)
+        assert e.is_top_match is False
+
+    def test_entry_dominant_channel(self):
+        e = make_rank_result_entry(0, 1, 0.8, 1, channel_scores={"r": 0.9, "g": 0.2})
+        assert e.dominant_channel == "r"
+
+    def test_entry_no_channels_dominant_none(self):
+        e = make_rank_result_entry(0, 1, 0.8, 1)
+        assert e.dominant_channel is None
+
+    def test_entries_from_ranked_pairs(self):
+        entries = self._make_entries(5)
+        assert len(entries) == 5
+
+    def test_entries_from_ranked_pairs_length_mismatch(self):
+        with pytest.raises(ValueError):
+            entries_from_ranked_pairs([(0, 1)], [0.5, 0.7])
+
+    def test_entries_from_ranked_pairs_custom_ranks(self):
+        pairs = [(0, 1), (1, 2)]
+        scores = [0.5, 0.8]
+        entries = entries_from_ranked_pairs(pairs, scores, ranks=[3, 1])
+        assert entries[0].rank == 3
+        assert entries[1].rank == 1
+
+    def test_summarise_empty(self):
+        s = summarise_rank_results([])
+        assert s.n_entries == 0
+        assert s.mean_score == 0.0
+
+    def test_summarise_rank_results(self):
+        entries = self._make_entries(6)
+        s = summarise_rank_results(entries)
+        assert s.n_entries == 6
+        assert s.min_score <= s.max_score
+
+    def test_filter_high_rank_entries(self):
+        entries = self._make_entries(6)
+        high = filter_high_rank_entries(entries, threshold=0.7)
+        assert all(e.score >= 0.7 for e in high)
+
+    def test_filter_low_rank_entries(self):
+        entries = self._make_entries(6)
+        low = filter_low_rank_entries(entries, threshold=0.3)
+        assert all(e.score < 0.3 for e in low)
+
+    def test_filter_by_rank_position(self):
+        pairs = [(i, i+1) for i in range(5)]
+        scores = [0.5] * 5
+        entries = entries_from_ranked_pairs(pairs, scores, ranks=[1, 2, 3, 4, 5])
+        result = filter_by_rank_position(entries, max_rank=3)
+        assert all(e.rank <= 3 for e in result)
+
+    def test_filter_rank_by_score_range(self):
+        entries = self._make_entries(6)
+        result = filter_rank_by_score_range(entries, lo=0.2, hi=0.6)
+        assert all(0.2 <= e.score <= 0.6 for e in result)
+
+    def test_filter_rank_by_dominant_channel(self):
+        e1 = make_rank_result_entry(0, 1, 0.8, 1, channel_scores={"r": 0.9, "g": 0.1})
+        e2 = make_rank_result_entry(1, 2, 0.7, 2, channel_scores={"r": 0.2, "g": 0.8})
+        result = filter_rank_by_dominant_channel([e1, e2], "r")
+        assert len(result) == 1
+
+    def test_top_k_rank_entries(self):
+        entries = self._make_entries(6)
+        top = top_k_rank_entries(entries, k=3)
+        assert len(top) == 3
+        assert top[0].score >= top[1].score
+
+    def test_best_rank_entry(self):
+        entries = self._make_entries(5)
+        best = best_rank_entry(entries)
+        assert best is not None
+        assert best.score == max(e.score for e in entries)
+
+    def test_best_rank_entry_empty(self):
+        assert best_rank_entry([]) is None
+
+    def test_rerank_entries_descending(self):
+        entries = self._make_entries(4)
+        reranked = rerank_entries(entries, ascending=False)
+        assert reranked[0].rank == 1
+        assert reranked[0].score >= reranked[-1].score
+
+    def test_rerank_entries_ascending(self):
+        entries = self._make_entries(4)
+        reranked = rerank_entries(entries, ascending=True)
+        assert reranked[0].score <= reranked[-1].score
+
+    def test_rank_result_stats_empty(self):
+        s = rank_result_stats([])
+        assert s["count"] == 0
+
+    def test_rank_result_stats(self):
+        entries = self._make_entries(5)
+        s = rank_result_stats(entries)
+        assert s["count"] == 5
+
+    def test_compare_rank_summaries(self):
+        s1 = summarise_rank_results(self._make_entries(5))
+        entries2 = [make_rank_result_entry(i, i+1, 0.1, i+1) for i in range(5)]
+        s2 = summarise_rank_results(entries2)
+        d = compare_rank_summaries(s1, s2)
+        assert "d_mean_score" in d
+
+    def test_batch_summarise_rank_results(self):
+        groups = [self._make_entries(3), self._make_entries(4)]
+        results = batch_summarise_rank_results(groups)
+        assert len(results) == 2
+
