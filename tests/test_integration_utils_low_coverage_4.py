@@ -1109,3 +1109,139 @@ class TestPathPlanUtils:
         results = batch_summarise_assembly_plans(groups)
         assert len(results) == 2
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 6. placement_metrics_utils
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestPlacementMetricsUtils:
+
+    def test_placement_density_basic(self):
+        assert placement_density(5, 10) == pytest.approx(0.5)
+
+    def test_placement_density_all_placed(self):
+        assert placement_density(10, 10) == pytest.approx(1.0)
+
+    def test_placement_density_zero_total(self):
+        assert placement_density(0, 0) == 0.0
+
+    def test_placement_density_negative_raises(self):
+        with pytest.raises(ValueError):
+            placement_density(-1, 10)
+
+    def test_placement_density_clamped(self):
+        # n_placed > n_total → clamped to 1.0
+        assert placement_density(15, 10) == pytest.approx(1.0)
+
+    def test_bbox_of_contour_square(self):
+        contour = np.array([[0, 0], [10, 0], [10, 10], [0, 10]], dtype=float)
+        bbox = bbox_of_contour(contour, position=(5.0, 5.0))
+        assert bbox == pytest.approx((5.0, 5.0, 15.0, 15.0))
+
+    def test_bbox_of_contour_empty(self):
+        bbox = bbox_of_contour(np.empty((0, 2)), position=(3.0, 4.0))
+        assert bbox == (3.0, 4.0, 3.0, 4.0)
+
+    def test_bbox_area_basic(self):
+        area = bbox_area((0.0, 0.0, 10.0, 5.0))
+        assert area == pytest.approx(50.0)
+
+    def test_bbox_area_zero(self):
+        assert bbox_area((0.0, 0.0, 0.0, 5.0)) == 0.0
+
+    def test_bbox_intersection_area_overlap(self):
+        a = (0.0, 0.0, 10.0, 10.0)
+        b = (5.0, 5.0, 15.0, 15.0)
+        area = bbox_intersection_area(a, b)
+        assert area == pytest.approx(25.0)
+
+    def test_bbox_intersection_area_no_overlap(self):
+        a = (0.0, 0.0, 5.0, 5.0)
+        b = (10.0, 10.0, 20.0, 20.0)
+        assert bbox_intersection_area(a, b) == 0.0
+
+    def test_compute_coverage_no_fragments(self):
+        assert compute_coverage([], [], (100, 100)) == 0.0
+
+    def test_compute_coverage_single_fragment(self):
+        contour = np.array([[0, 0], [50, 0], [50, 50], [0, 50]], dtype=float)
+        cov = compute_coverage([(0.0, 0.0)], [contour], (100, 100))
+        assert 0.0 < cov <= 1.0
+
+    def test_compute_pairwise_overlap_no_overlap(self):
+        c1 = np.array([[0, 0], [10, 0], [10, 10], [0, 10]], dtype=float)
+        c2 = np.array([[20, 20], [30, 20], [30, 30], [20, 30]], dtype=float)
+        ovlp = compute_pairwise_overlap([(0.0, 0.0), (0.0, 0.0)], [c1, c2])
+        assert ovlp == 0.0
+
+    def test_compute_pairwise_overlap_with_overlap(self):
+        c1 = np.array([[0, 0], [10, 0], [10, 10], [0, 10]], dtype=float)
+        c2 = np.array([[0, 0], [10, 0], [10, 10], [0, 10]], dtype=float)
+        ovlp = compute_pairwise_overlap([(0.0, 0.0), (0.0, 0.0)], [c1, c2])
+        assert ovlp > 0.0
+
+    def test_quality_score_perfect(self):
+        qs = quality_score(1.0, 1.0, 0.0)
+        assert qs == pytest.approx(1.0)
+
+    def test_quality_score_zero_weights(self):
+        qs = quality_score(1.0, 1.0, 0.0, w_density=0.0, w_coverage=0.0, w_overlap=0.0)
+        assert qs == 0.0
+
+    def test_quality_score_clamped(self):
+        qs = quality_score(2.0, 2.0, 0.0)
+        assert qs <= 1.0
+
+    def test_assess_placement(self):
+        c = np.array([[0, 0], [20, 0], [20, 20], [0, 20]], dtype=float)
+        positions = [(0.0, 0.0), (30.0, 30.0)]
+        contours = [c, c]
+        m = assess_placement(positions, contours, n_total=5, canvas_size=(100, 100))
+        assert isinstance(m, PlacementMetrics)
+        assert 0.0 <= m.quality_score <= 1.0
+
+    def test_compare_metrics(self):
+        c = np.array([[0, 0], [10, 0], [10, 10], [0, 10]], dtype=float)
+        m1 = assess_placement([(0.0, 0.0)], [c], n_total=5)
+        m2 = assess_placement([(5.0, 5.0)], [c], n_total=5)
+        result = compare_metrics(m1, m2)
+        assert "better" in result
+        assert result["better"] in ("a", "b")
+
+    def test_best_of(self):
+        c = np.array([[0, 0], [10, 0], [10, 10], [0, 10]], dtype=float)
+        mlist = [
+            assess_placement([(0.0, 0.0)], [c], n_total=5),
+            assess_placement([(0.0, 0.0)], [c], n_total=2),
+        ]
+        idx = best_of(mlist)
+        assert idx in (0, 1)
+
+    def test_best_of_empty(self):
+        with pytest.raises(ValueError):
+            best_of([])
+
+    def test_normalize_metrics(self):
+        c = np.array([[0, 0], [10, 0], [10, 10], [0, 10]], dtype=float)
+        m1 = PlacementMetrics(3, 5, 0.6, 0.5, 0.0, quality_score=0.4)
+        m2 = PlacementMetrics(4, 5, 0.8, 0.7, 0.0, quality_score=0.8)
+        normed = normalize_metrics([m1, m2])
+        assert len(normed) == 2
+        assert normed[0].quality_score == pytest.approx(0.0)
+        assert normed[1].quality_score == pytest.approx(1.0)
+
+    def test_normalize_metrics_empty(self):
+        assert normalize_metrics([]) == []
+
+    def test_normalize_metrics_constant(self):
+        m = PlacementMetrics(3, 5, 0.6, 0.5, 0.0, quality_score=0.5)
+        normed = normalize_metrics([m, m])
+        assert all(n.quality_score == pytest.approx(1.0) for n in normed)
+
+    def test_batch_quality_scores(self):
+        m1 = PlacementMetrics(3, 5, 0.6, 0.5, 0.0, quality_score=0.4)
+        m2 = PlacementMetrics(4, 5, 0.8, 0.7, 0.0, quality_score=0.8)
+        scores = batch_quality_scores([m1, m2])
+        assert len(scores) == 2
+        assert all(0.0 <= s <= 1.0 for s in scores)
+
