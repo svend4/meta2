@@ -1,0 +1,477 @@
+"""Integration tests for utils batch 3b.
+
+Covers:
+  - puzzle_reconstruction.utils.gradient_utils
+  - puzzle_reconstruction.utils.image_cluster_utils
+  - puzzle_reconstruction.utils.image_pipeline_utils
+  - puzzle_reconstruction.utils.image_transform_utils
+  - puzzle_reconstruction.utils.interpolation_utils
+"""
+import math
+
+import numpy as np
+import pytest
+
+rng = np.random.default_rng(42)
+
+# ---------------------------------------------------------------------------
+# Imports
+# ---------------------------------------------------------------------------
+from puzzle_reconstruction.utils.gradient_utils import (
+    GradientConfig,
+    batch_compute_gradients,
+    compute_edge_density,
+    compute_gradient_direction,
+    compute_gradient_magnitude,
+    compute_laplacian,
+    compute_sobel,
+    suppress_non_maximum,
+    threshold_gradient,
+)
+from puzzle_reconstruction.utils.image_cluster_utils import (
+    ImageStatsAnalysisConfig,
+    ImageStatsAnalysisEntry,
+    batch_summarise_image_stats_entries,
+    best_image_stats_entry,
+    compare_image_stats_summaries,
+    filter_by_max_entropy,
+    filter_by_min_contrast,
+    filter_by_min_sharpness,
+    image_stats_score_stats,
+    make_image_stats_entry,
+    summarise_image_stats_entries,
+    top_k_sharpest,
+)
+from puzzle_reconstruction.utils.image_pipeline_utils import (
+    CanvasBuildRecord,
+    CanvasBuildSummary,
+    FrequencyMatchRecord,
+    FrequencyMatchSummary,
+    PatchMatchRecord,
+    PatchMatchSummary,
+    filter_frequency_matches,
+    summarize_canvas_builds,
+    summarize_frequency_matches,
+    summarize_patch_matches,
+    top_frequency_matches,
+)
+from puzzle_reconstruction.utils.image_transform_utils import (
+    ImageTransformConfig,
+    TransformResult,
+    apply_affine,
+    batch_pad,
+    batch_resize_to_max,
+    batch_rotate,
+    crop_image,
+    flip_horizontal,
+    flip_vertical,
+    pad_image,
+    resize_image,
+    resize_to_max_side,
+    rotate_image,
+    rotation_matrix_2x3,
+)
+from puzzle_reconstruction.utils.interpolation_utils import (
+    InterpolationConfig,
+    batch_resample,
+    bilinear_interpolate,
+    fill_missing,
+    interpolate_scores,
+    lerp,
+    lerp_array,
+    resample_1d,
+    smooth_interpolate,
+)
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _gray(h=32, w=32):
+    return rng.integers(0, 256, (h, w), dtype=np.uint8)
+
+
+def _color(h=32, w=32):
+    return rng.integers(0, 256, (h, w, 3), dtype=np.uint8)
+
+
+def _make_entry(fid, sharpness=1.0, entropy=5.0, contrast=20.0):
+    return make_image_stats_entry(fid, sharpness, entropy, contrast, 128.0, 1024)
+
+
+# ===========================================================================
+# gradient_utils
+# ===========================================================================
+
+class TestGradientUtils:
+    def test_gradient_config_defaults(self):
+        cfg = GradientConfig()
+        assert cfg.ksize == 3
+        assert cfg.normalize is True
+        assert cfg.threshold == 32.0
+
+    def test_gradient_config_invalid_ksize(self):
+        with pytest.raises(ValueError):
+            GradientConfig(ksize=2)
+
+    def test_compute_gradient_magnitude_shape(self):
+        img = _gray()
+        mag = compute_gradient_magnitude(img)
+        assert mag.shape == img.shape
+        assert mag.dtype == np.float32
+
+    def test_compute_gradient_magnitude_normalized(self):
+        img = _gray()
+        mag = compute_gradient_magnitude(img, GradientConfig(normalize=True))
+        assert mag.max() <= 1.0 + 1e-6
+
+    def test_compute_gradient_magnitude_color(self):
+        img = _color()
+        mag = compute_gradient_magnitude(img)
+        assert mag.ndim == 2
+
+    def test_compute_gradient_direction_range(self):
+        img = _gray()
+        d = compute_gradient_direction(img)
+        assert d.shape == img.shape
+        assert d.min() >= -math.pi - 1e-5
+        assert d.max() <= math.pi + 1e-5
+
+    def test_compute_sobel_returns_triple(self):
+        img = _gray()
+        mag, dx, dy = compute_sobel(img)
+        assert mag.shape == dx.shape == dy.shape == img.shape
+
+    def test_compute_laplacian_shape_and_dtype(self):
+        img = _gray()
+        lap = compute_laplacian(img)
+        assert lap.shape == img.shape
+        assert lap.dtype == np.float32
+
+    def test_threshold_gradient_binary(self):
+        img = _gray()
+        mag = compute_gradient_magnitude(img)
+        mask = threshold_gradient(mag)
+        assert mask.dtype == bool
+
+    def test_suppress_non_maximum_shape(self):
+        img = _gray()
+        mag, _, _ = compute_sobel(img)
+        d = compute_gradient_direction(img)
+        out = suppress_non_maximum(mag, d)
+        assert out.shape == mag.shape
+
+    def test_compute_edge_density_range(self):
+        img = _gray()
+        density = compute_edge_density(img)
+        assert 0.0 <= density <= 1.0
+
+    def test_batch_compute_gradients(self):
+        imgs = [_gray() for _ in range(3)]
+        mags = batch_compute_gradients(imgs)
+        assert len(mags) == 3
+        for m in mags:
+            assert m.ndim == 2
+
+
+# ===========================================================================
+# image_cluster_utils
+# ===========================================================================
+
+class TestImageClusterUtils:
+    def _entries(self):
+        return [
+            _make_entry(0, sharpness=10.0, entropy=4.0, contrast=30.0),
+            _make_entry(1, sharpness=5.0,  entropy=6.0, contrast=15.0),
+            _make_entry(2, sharpness=8.0,  entropy=7.5, contrast=25.0),
+        ]
+
+    def test_make_entry_fields(self):
+        e = _make_entry(7, sharpness=3.5, entropy=2.0, contrast=12.0)
+        assert e.fragment_id == 7
+        assert e.sharpness == pytest.approx(3.5)
+
+    def test_summarise_empty(self):
+        s = summarise_image_stats_entries([])
+        assert s.n_images == 0
+        assert s.sharpest_id is None
+
+    def test_summarise_nonempty(self):
+        entries = self._entries()
+        s = summarise_image_stats_entries(entries)
+        assert s.n_images == 3
+        assert s.sharpest_id == 0
+        assert s.blurriest_id == 1
+
+    def test_filter_by_min_sharpness(self):
+        entries = self._entries()
+        result = filter_by_min_sharpness(entries, 8.0)
+        ids = {e.fragment_id for e in result}
+        assert 0 in ids and 2 in ids and 1 not in ids
+
+    def test_filter_by_max_entropy(self):
+        entries = self._entries()
+        result = filter_by_max_entropy(entries, 6.0)
+        assert all(e.entropy <= 6.0 for e in result)
+
+    def test_filter_by_min_contrast(self):
+        entries = self._entries()
+        result = filter_by_min_contrast(entries, 20.0)
+        assert all(e.contrast >= 20.0 for e in result)
+
+    def test_top_k_sharpest(self):
+        entries = self._entries()
+        top = top_k_sharpest(entries, 2)
+        assert len(top) == 2
+        assert top[0].sharpness >= top[1].sharpness
+
+    def test_best_image_stats_entry(self):
+        entries = self._entries()
+        best = best_image_stats_entry(entries)
+        assert best.sharpness == max(e.sharpness for e in entries)
+
+    def test_image_stats_score_stats_keys(self):
+        entries = self._entries()
+        stats = image_stats_score_stats(entries)
+        assert {"min", "max", "mean", "std", "count"} <= stats.keys()
+
+    def test_compare_summaries_delta(self):
+        a = summarise_image_stats_entries(self._entries()[:2])
+        b = summarise_image_stats_entries(self._entries())
+        delta = compare_image_stats_summaries(a, b)
+        assert "delta_mean_sharpness" in delta
+
+    def test_batch_summarise(self):
+        entries = self._entries()
+        summaries = batch_summarise_image_stats_entries([entries[:2], entries[2:]])
+        assert len(summaries) == 2
+
+    def test_score_stats_empty(self):
+        s = image_stats_score_stats([])
+        assert s["count"] == 0
+
+
+# ===========================================================================
+# image_pipeline_utils
+# ===========================================================================
+
+class TestImagePipelineUtils:
+    def _freq_records(self):
+        return [
+            FrequencyMatchRecord(0, 1, 0.9),
+            FrequencyMatchRecord(0, 2, 0.3),
+            FrequencyMatchRecord(1, 2, 0.7),
+        ]
+
+    def test_freq_match_record_pair(self):
+        r = FrequencyMatchRecord(3, 5, 0.8)
+        assert r.pair == (3, 5)
+        assert r.is_similar is True
+
+    def test_freq_match_record_invalid_similarity(self):
+        with pytest.raises(ValueError):
+            FrequencyMatchRecord(0, 1, 1.5)
+
+    def test_summarize_frequency_matches(self):
+        records = self._freq_records()
+        s = summarize_frequency_matches(records)
+        assert s.total_pairs == 3
+        assert s.similar_pairs == 2
+        assert 0.0 <= s.mean_similarity <= 1.0
+
+    def test_summarize_frequency_matches_empty(self):
+        s = summarize_frequency_matches([])
+        assert s.total_pairs == 0
+
+    def test_filter_frequency_matches(self):
+        records = self._freq_records()
+        filtered = filter_frequency_matches(records, min_similarity=0.5)
+        assert all(r.similarity >= 0.5 for r in filtered)
+
+    def test_top_frequency_matches(self):
+        records = self._freq_records()
+        top = top_frequency_matches(records, 2)
+        assert len(top) == 2
+        assert top[0].similarity >= top[1].similarity
+
+    def test_canvas_build_record_properties(self):
+        rec = CanvasBuildRecord(n_fragments=5, coverage=0.8, canvas_w=100, canvas_h=100)
+        assert rec.canvas_area == 10000
+        assert rec.is_well_covered is True
+
+    def test_summarize_canvas_builds(self):
+        records = [
+            CanvasBuildRecord(4, 0.9, 50, 50),
+            CanvasBuildRecord(3, 0.5, 50, 50),
+        ]
+        s = summarize_canvas_builds(records)
+        assert s.n_canvases == 2
+        assert s.total_fragments == 7
+
+    def test_patch_match_record_displacement(self):
+        r = PatchMatchRecord(10, 20, 15, 25, 0.95)
+        assert r.displacement == (5, 5)
+
+    def test_summarize_patch_matches(self):
+        batch = [
+            [PatchMatchRecord(0, 0, 1, 1, 0.8), PatchMatchRecord(0, 1, 1, 2, 0.7)],
+            [PatchMatchRecord(1, 0, 2, 1, 0.6)],
+        ]
+        s = summarize_patch_matches(batch)
+        assert s.n_pairs == 2
+        assert s.n_total_matches == 3
+
+    def test_freq_summary_similar_ratio(self):
+        s = FrequencyMatchSummary(total_pairs=4, similar_pairs=2, mean_similarity=0.5,
+                                  max_similarity=1.0, min_similarity=0.0)
+        assert s.similar_ratio == pytest.approx(0.5)
+
+    def test_canvas_build_summary_well_covered_ratio(self):
+        s = CanvasBuildSummary(n_canvases=5, mean_coverage=0.7, well_covered_count=3,
+                               total_fragments=20)
+        assert s.well_covered_ratio == pytest.approx(0.6)
+
+
+# ===========================================================================
+# image_transform_utils
+# ===========================================================================
+
+class TestImageTransformUtils:
+    def test_rotate_image_shape_preserved(self):
+        img = _gray()
+        out = rotate_image(img, math.pi / 4)
+        assert out.shape == img.shape
+
+    def test_rotate_zero_identity(self):
+        img = _gray()
+        out = rotate_image(img, 0.0)
+        assert np.array_equal(out, img)
+
+    def test_flip_horizontal_reverses_cols(self):
+        img = _gray()
+        out = flip_horizontal(img)
+        assert np.array_equal(out, img[:, ::-1])
+
+    def test_flip_vertical_reverses_rows(self):
+        img = _gray()
+        out = flip_vertical(img)
+        assert np.array_equal(out, img[::-1, :])
+
+    def test_pad_image_shape(self):
+        img = _gray(10, 10)
+        out = pad_image(img, top=2, bottom=3, left=1, right=4)
+        assert out.shape == (15, 15)
+
+    def test_crop_image_shape(self):
+        img = _gray(20, 20)
+        out = crop_image(img, 2, 3, 10, 15)
+        assert out.shape == (8, 12)
+
+    def test_resize_image_target_size(self):
+        img = _gray(40, 40)
+        out = resize_image(img, (20, 20))
+        assert out.shape == (20, 20)
+
+    def test_resize_to_max_side(self):
+        img = _gray(100, 50)
+        out = resize_to_max_side(img, 50)
+        assert max(out.shape[:2]) == 50
+
+    def test_rotation_matrix_2x3_shape(self):
+        M = rotation_matrix_2x3(math.pi / 6, 16.0, 16.0)
+        assert M.shape == (2, 3)
+
+    def test_batch_rotate_count(self):
+        imgs = [_gray() for _ in range(4)]
+        results = batch_rotate(imgs, math.pi / 8)
+        assert len(results) == 4
+
+    def test_batch_pad_shape(self):
+        imgs = [_gray(10, 10) for _ in range(3)]
+        results = batch_pad(imgs, 5)
+        for r in results:
+            assert r.shape == (20, 20)
+
+    def test_transform_result_to_dict(self):
+        img = _gray()
+        tr = TransformResult(image=img, angle_rad=0.5, scale=1.0, translation=(0.0, 0.0))
+        d = tr.to_dict()
+        assert "angle_deg" in d and "scale" in d
+
+
+# ===========================================================================
+# interpolation_utils
+# ===========================================================================
+
+class TestInterpolationUtils:
+    def test_lerp_endpoints(self):
+        assert lerp(0.0, 10.0, 0.0) == pytest.approx(0.0)
+        assert lerp(0.0, 10.0, 1.0) == pytest.approx(10.0)
+
+    def test_lerp_midpoint(self):
+        assert lerp(0.0, 10.0, 0.5) == pytest.approx(5.0)
+
+    def test_lerp_invalid_t(self):
+        with pytest.raises(ValueError):
+            lerp(0.0, 1.0, -0.1)
+
+    def test_lerp_array_shape(self):
+        a = np.array([0.0, 2.0, 4.0])
+        b = np.array([1.0, 3.0, 5.0])
+        out = lerp_array(a, b, 0.5)
+        assert out.shape == a.shape
+        np.testing.assert_allclose(out, [0.5, 2.5, 4.5])
+
+    def test_lerp_array_mismatch_raises(self):
+        with pytest.raises(ValueError):
+            lerp_array(np.ones(3), np.ones(4), 0.5)
+
+    def test_bilinear_interpolate_exact_corner(self):
+        grid = np.array([[1.0, 2.0], [3.0, 4.0]])
+        assert bilinear_interpolate(grid, 0.0, 0.0) == pytest.approx(1.0)
+        assert bilinear_interpolate(grid, 1.0, 1.0) == pytest.approx(4.0)
+
+    def test_bilinear_interpolate_center(self):
+        grid = np.array([[0.0, 0.0], [0.0, 4.0]])
+        val = bilinear_interpolate(grid, 0.5, 0.5)
+        assert val == pytest.approx(1.0)
+
+    def test_resample_1d_upsample(self):
+        arr = np.array([0.0, 1.0, 2.0, 3.0])
+        out = resample_1d(arr, 8)
+        assert len(out) == 8
+
+    def test_resample_1d_downsample(self):
+        arr = rng.random(20)
+        out = resample_1d(arr, 5)
+        assert len(out) == 5
+
+    def test_fill_missing_no_nans(self):
+        arr = np.array([1.0, 2.0, 3.0])
+        out = fill_missing(arr)
+        np.testing.assert_allclose(out, arr)
+
+    def test_fill_missing_interior_nan(self):
+        arr = np.array([1.0, np.nan, 3.0])
+        out = fill_missing(arr)
+        assert not np.any(np.isnan(out))
+        assert out[1] == pytest.approx(2.0)
+
+    def test_interpolate_scores_symmetry(self):
+        M = rng.random((4, 4))
+        out = interpolate_scores(M, alpha=0.5)
+        np.testing.assert_allclose(out, out.T, atol=1e-10)
+
+    def test_smooth_interpolate_same_length(self):
+        arr = rng.random(10)
+        out = smooth_interpolate(arr, window=3)
+        assert len(out) == len(arr)
+
+    def test_batch_resample_lengths(self):
+        arrays = [rng.random(n) for n in [5, 10, 15]]
+        results = batch_resample(arrays, 8)
+        assert all(len(r) == 8 for r in results)
+
+    def test_interpolation_config_invalid_method(self):
+        with pytest.raises(ValueError):
+            InterpolationConfig(method="cubic")
