@@ -418,20 +418,14 @@ class TestInterpolationUtils:
         val = bilinear_interpolate(grid, 0.5, 0.5)
         assert val == pytest.approx(1.0)
 
-    def test_resample_1d_upsample(self):
+    def test_resample_1d_upsample_downsample(self):
         arr = np.array([0.0, 1.0, 2.0, 3.0])
-        out = resample_1d(arr, 8)
-        assert len(out) == 8
-
-    def test_resample_1d_downsample(self):
-        arr = rng.random(20)
-        out = resample_1d(arr, 5)
-        assert len(out) == 5
+        assert len(resample_1d(arr, 8)) == 8
+        assert len(resample_1d(rng.random(20), 5)) == 5
 
     def test_fill_missing_no_nans(self):
         arr = np.array([1.0, 2.0, 3.0])
-        out = fill_missing(arr)
-        np.testing.assert_allclose(out, arr)
+        np.testing.assert_allclose(fill_missing(arr), arr)
 
     def test_fill_missing_interior_nan(self):
         arr = np.array([1.0, np.nan, 3.0])
@@ -446,12 +440,10 @@ class TestInterpolationUtils:
 
     def test_smooth_interpolate_same_length(self):
         arr = rng.random(10)
-        out = smooth_interpolate(arr, window=3)
-        assert len(out) == len(arr)
+        assert len(smooth_interpolate(arr, window=3)) == len(arr)
 
     def test_batch_resample_lengths(self):
-        arrays = [rng.random(n) for n in [5, 10, 15]]
-        results = batch_resample(arrays, 8)
+        results = batch_resample([rng.random(n) for n in [5, 10, 15]], 8)
         assert all(len(r) == 8 for r in results)
 
     def test_interpolation_config_invalid_method(self):
