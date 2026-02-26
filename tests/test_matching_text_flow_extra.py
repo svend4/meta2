@@ -263,7 +263,7 @@ def test_compare_angles_range():
 
 def test_compare_angles_max_diff_0_returns_one_only_if_same():
     assert compare_baseline_angles(5.0, 5.0, max_diff_deg=0.0) == pytest.approx(1.0)
-    assert compare_baseline_angles(5.0, 6.0, max_diff_deg=0.0) == pytest.approx(0.0)
+    assert compare_baseline_angles(5.0, 6.0, tolerance_deg=0.0, max_diff_deg=0.0) == pytest.approx(0.0)
 
 
 # ─── align_line_positions ─────────────────────────────────────────────────────
