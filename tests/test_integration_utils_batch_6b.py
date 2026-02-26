@@ -315,9 +315,11 @@ class TestTopologyUtils:
         assert 0.0 <= result <= 1.0
 
     def test_batch_topology(self):
-        masks = [self._solid_square(), self._square_with_hole()]
-        results = batch_topology(masks)
+        square = np.array([[0, 0], [4, 0], [4, 4], [0, 4]], dtype=float)
+        tri = np.array([[0, 0], [6, 0], [3, 5]], dtype=float)
+        results = batch_topology([square, tri])
         assert len(results) == 2
+        assert "solidity" in results[0]
 
 
 # ─── tracker_utils ────────────────────────────────────────────────────────────
