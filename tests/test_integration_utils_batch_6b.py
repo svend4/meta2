@@ -193,7 +193,7 @@ class TestTileUtils:
         img = self._gray_image(64, 64)
         cfg = TileConfig(tile_h=32, tile_w=32)
         tiles = tile_image(img, cfg)
-        restored = reassemble_tiles(tiles, img.shape[:2], cfg)
+        restored = reassemble_tiles(tiles, img.shape[:2])
         np.testing.assert_array_equal(restored, img)
 
     def test_compute_tile_grid_count(self):
