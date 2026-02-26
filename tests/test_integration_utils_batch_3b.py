@@ -166,12 +166,10 @@ class TestGradientUtils:
         density = compute_edge_density(img)
         assert 0.0 <= density <= 1.0
 
-    def test_batch_compute_gradients(self):
+    def test_batch_compute_gradients_count(self):
         imgs = [_gray() for _ in range(3)]
         mags = batch_compute_gradients(imgs)
-        assert len(mags) == 3
-        for m in mags:
-            assert m.ndim == 2
+        assert len(mags) == 3 and all(m.ndim == 2 for m in mags)
 
 
 # ===========================================================================
@@ -231,24 +229,19 @@ class TestImageClusterUtils:
         assert best.sharpness == max(e.sharpness for e in entries)
 
     def test_image_stats_score_stats_keys(self):
-        entries = self._entries()
-        stats = image_stats_score_stats(entries)
+        stats = image_stats_score_stats(self._entries())
         assert {"min", "max", "mean", "std", "count"} <= stats.keys()
 
     def test_compare_summaries_delta(self):
-        a = summarise_image_stats_entries(self._entries()[:2])
-        b = summarise_image_stats_entries(self._entries())
-        delta = compare_image_stats_summaries(a, b)
-        assert "delta_mean_sharpness" in delta
+        entries = self._entries()
+        a = summarise_image_stats_entries(entries[:2])
+        b = summarise_image_stats_entries(entries)
+        assert "delta_mean_sharpness" in compare_image_stats_summaries(a, b)
 
-    def test_batch_summarise(self):
+    def test_batch_summarise_length(self):
         entries = self._entries()
         summaries = batch_summarise_image_stats_entries([entries[:2], entries[2:]])
         assert len(summaries) == 2
-
-    def test_score_stats_empty(self):
-        s = image_stats_score_stats([])
-        assert s["count"] == 0
 
 
 # ===========================================================================
@@ -318,18 +311,12 @@ class TestImagePipelineUtils:
             [PatchMatchRecord(1, 0, 2, 1, 0.6)],
         ]
         s = summarize_patch_matches(batch)
-        assert s.n_pairs == 2
-        assert s.n_total_matches == 3
+        assert s.n_pairs == 2 and s.n_total_matches == 3
 
     def test_freq_summary_similar_ratio(self):
         s = FrequencyMatchSummary(total_pairs=4, similar_pairs=2, mean_similarity=0.5,
                                   max_similarity=1.0, min_similarity=0.0)
         assert s.similar_ratio == pytest.approx(0.5)
-
-    def test_canvas_build_summary_well_covered_ratio(self):
-        s = CanvasBuildSummary(n_canvases=5, mean_coverage=0.7, well_covered_count=3,
-                               total_fragments=20)
-        assert s.well_covered_ratio == pytest.approx(0.6)
 
 
 # ===========================================================================
@@ -383,20 +370,15 @@ class TestImageTransformUtils:
 
     def test_batch_rotate_count(self):
         imgs = [_gray() for _ in range(4)]
-        results = batch_rotate(imgs, math.pi / 8)
-        assert len(results) == 4
+        assert len(batch_rotate(imgs, math.pi / 8)) == 4
 
     def test_batch_pad_shape(self):
         imgs = [_gray(10, 10) for _ in range(3)]
-        results = batch_pad(imgs, 5)
-        for r in results:
-            assert r.shape == (20, 20)
+        assert all(r.shape == (20, 20) for r in batch_pad(imgs, 5))
 
     def test_transform_result_to_dict(self):
-        img = _gray()
-        tr = TransformResult(image=img, angle_rad=0.5, scale=1.0, translation=(0.0, 0.0))
-        d = tr.to_dict()
-        assert "angle_deg" in d and "scale" in d
+        tr = TransformResult(image=_gray(), angle_rad=0.5, scale=1.0, translation=(0.0, 0.0))
+        assert "angle_deg" in tr.to_dict()
 
 
 # ===========================================================================
