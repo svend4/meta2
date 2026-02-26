@@ -464,3 +464,157 @@ class TestOverlapScoreUtils:
         r = repr(s)
         assert "OverlapSummary" in r
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2. pair_score_utils
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestPairScoreUtils:
+
+    def test_config_defaults(self):
+        cfg = PairScoreConfig()
+        assert cfg.good_threshold == 0.7
+        assert cfg.poor_threshold == 0.3
+
+    def test_config_invalid_good_threshold(self):
+        with pytest.raises(ValueError):
+            PairScoreConfig(good_threshold=1.5)
+
+    def test_config_invalid_poor_threshold(self):
+        with pytest.raises(ValueError):
+            PairScoreConfig(poor_threshold=-0.1)
+
+    def test_make_entry_basic(self):
+        e = make_pair_score_entry(0, 1, 0.8)
+        assert e.frag_i == 0
+        assert e.frag_j == 1
+        assert e.score == pytest.approx(0.8)
+
+    def test_entry_pair_key_ordering(self):
+        e = make_pair_score_entry(5, 2, 0.5)
+        assert e.pair_key == (2, 5)
+
+    def test_entry_dominant_channel(self):
+        e = make_pair_score_entry(0, 1, 0.7, channels={"a": 0.3, "b": 0.9, "c": 0.1})
+        assert e.dominant_channel == "b"
+
+    def test_entry_no_channels_dominant_none(self):
+        e = make_pair_score_entry(0, 1, 0.5)
+        assert e.dominant_channel is None
+
+    def test_entry_is_strong_match_true(self):
+        e = make_pair_score_entry(0, 1, 0.75)
+        assert e.is_strong_match is True
+
+    def test_entry_is_strong_match_false(self):
+        e = make_pair_score_entry(0, 1, 0.5)
+        assert e.is_strong_match is False
+
+    def test_entries_from_pair_results(self):
+        pairs = [(0, 1), (1, 2), (2, 3)]
+        scores = [0.5, 0.7, 0.9]
+        entries = entries_from_pair_results(pairs, scores)
+        assert len(entries) == 3
+        assert entries[2].score == pytest.approx(0.9)
+
+    def test_entries_from_pair_results_length_mismatch(self):
+        with pytest.raises(ValueError):
+            entries_from_pair_results([(0, 1)], [0.5, 0.7])
+
+    def test_entries_from_pair_results_with_channels(self):
+        pairs = [(0, 1), (1, 2)]
+        scores = [0.6, 0.8]
+        chs = [{"ch1": 0.5}, {"ch1": 0.9}]
+        entries = entries_from_pair_results(pairs, scores, channel_lists=chs)
+        assert entries[1].channels["ch1"] == pytest.approx(0.9)
+
+    def test_summarise_empty(self):
+        s = summarise_pair_scores([])
+        assert s.n_entries == 0
+        assert s.mean_score == 0.0
+
+    def test_summarise_pair_scores(self):
+        pairs = [(i, i+1) for i in range(10)]
+        scores = [i * 0.1 for i in range(10)]
+        entries = entries_from_pair_results(pairs, scores)
+        s = summarise_pair_scores(entries)
+        assert s.n_entries == 10
+        assert s.min_score == pytest.approx(0.0)
+        assert s.max_score == pytest.approx(0.9)
+
+    def test_summarise_channel_means(self):
+        chs = [{"r": 0.4, "g": 0.6}] * 5
+        pairs = [(i, i+1) for i in range(5)]
+        entries = entries_from_pair_results(pairs, [0.5]*5, channel_lists=chs)
+        s = summarise_pair_scores(entries)
+        assert s.channel_means["r"] == pytest.approx(0.4)
+
+    def test_filter_strong(self):
+        entries = [make_pair_score_entry(i, i+1, 0.5 + i*0.1) for i in range(5)]
+        strong = filter_strong_pair_matches(entries, threshold=0.7)
+        assert all(e.score >= 0.7 for e in strong)
+
+    def test_filter_weak(self):
+        entries = [make_pair_score_entry(i, i+1, 0.1 * i) for i in range(5)]
+        weak = filter_weak_pair_matches(entries, threshold=0.3)
+        assert all(e.score < 0.3 for e in weak)
+
+    def test_filter_by_score_range(self):
+        entries = [make_pair_score_entry(i, i+1, 0.2 * i) for i in range(6)]
+        result = filter_pair_by_score_range(entries, lo=0.2, hi=0.6)
+        assert all(0.2 <= e.score <= 0.6 for e in result)
+
+    def test_filter_by_channel(self):
+        chs = [{"edge": 0.8}, {"edge": 0.2}, {"edge": 0.9}]
+        entries = [make_pair_score_entry(i, i+1, 0.5, channels=chs[i]) for i in range(3)]
+        result = filter_pair_by_channel(entries, "edge", min_val=0.7)
+        assert len(result) == 2
+
+    def test_filter_by_dominant_channel(self):
+        chs = [{"r": 0.9, "g": 0.1}, {"r": 0.1, "g": 0.9}]
+        entries = [make_pair_score_entry(i, i+1, 0.5, channels=chs[i]) for i in range(2)]
+        result = filter_pair_by_dominant_channel(entries, "r")
+        assert len(result) == 1
+        assert result[0].frag_i == 0
+
+    def test_top_k_pair_entries(self):
+        entries = [make_pair_score_entry(i, i+1, float(i)/10) for i in range(10)]
+        top = top_k_pair_entries(entries, k=3)
+        assert len(top) == 3
+        assert top[0].score >= top[1].score
+
+    def test_best_pair_entry(self):
+        entries = [make_pair_score_entry(i, i+1, float(i)/10) for i in range(5)]
+        best = best_pair_entry(entries)
+        assert best is not None
+        assert best.score == pytest.approx(0.4)
+
+    def test_best_pair_entry_empty(self):
+        assert best_pair_entry([]) is None
+
+    def test_pair_score_stats_empty(self):
+        s = pair_score_stats([])
+        assert s["count"] == 0
+
+    def test_pair_score_stats(self):
+        entries = [make_pair_score_entry(i, i+1, float(i)/10) for i in range(5)]
+        stats = pair_score_stats(entries)
+        assert stats["count"] == 5
+        assert "n_strong" in stats
+
+    def test_compare_pair_summaries(self):
+        e1 = [make_pair_score_entry(i, i+1, 0.8) for i in range(5)]
+        e2 = [make_pair_score_entry(i, i+1, 0.4) for i in range(5)]
+        s1 = summarise_pair_scores(e1)
+        s2 = summarise_pair_scores(e2)
+        d = compare_pair_summaries(s1, s2)
+        assert d["d_mean_score"] > 0
+
+    def test_batch_summarise_pair_scores(self):
+        groups = [
+            [make_pair_score_entry(i, i+1, 0.5) for i in range(3)],
+            [make_pair_score_entry(i, i+1, 0.8) for i in range(3)],
+        ]
+        results = batch_summarise_pair_scores(groups)
+        assert len(results) == 2
+

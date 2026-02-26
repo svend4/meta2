@@ -221,7 +221,7 @@ class TestTileUtils:
         img[32:, 32:] = 200
         cfg = TileConfig(tile_h=32, tile_w=32)
         tiles = tile_image(img, cfg)
-        filtered = filter_tiles_by_content(tiles, min_fraction=0.3)
+        filtered = filter_tiles_by_content(tiles, min_foreground=0.3)
         # Only one quadrant has sufficient content
         assert len(filtered) == 1
 
@@ -308,10 +308,11 @@ class TestTopologyUtils:
         mask = self._square_with_hole()
         assert is_simply_connected(mask) is False
 
-    def test_shape_complexity_returns_dict(self):
+    def test_shape_complexity_returns_float(self):
         pts = np.array([[0, 0], [4, 0], [4, 4], [0, 4]], dtype=float)
         result = shape_complexity(pts)
-        assert isinstance(result, dict)
+        assert isinstance(result, float)
+        assert 0.0 <= result <= 1.0
 
     def test_batch_topology(self):
         masks = [self._solid_square(), self._square_with_hole()]
