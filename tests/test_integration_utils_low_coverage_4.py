@@ -1245,3 +1245,138 @@ class TestPlacementMetricsUtils:
         assert len(scores) == 2
         assert all(0.0 <= s <= 1.0 for s in scores)
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 7. placement_score_utils
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestPlacementScoreUtils:
+
+    def test_config_defaults(self):
+        cfg = PlacementScoreConfig()
+        assert cfg.min_score == 0.0
+        assert cfg.coverage_weight == 0.5
+
+    def test_config_invalid_min_score(self):
+        with pytest.raises(ValueError):
+            PlacementScoreConfig(min_score=1.5)
+
+    def test_config_invalid_coverage_weight(self):
+        with pytest.raises(ValueError):
+            PlacementScoreConfig(coverage_weight=-0.1)
+
+    def test_config_invalid_overlap_penalty_weight(self):
+        with pytest.raises(ValueError):
+            PlacementScoreConfig(overlap_penalty_weight=2.0)
+
+    def test_make_placement_entry(self):
+        e = make_placement_entry(0, 3, 0.1, 0.1, (5.0, 10.0))
+        assert e.step == 0
+        assert e.fragment_idx == 3
+        assert e.position == (5.0, 10.0)
+
+    def test_placement_entry_negative_step_raises(self):
+        with pytest.raises(ValueError):
+            PlacementScoreEntry(step=-1, fragment_idx=0, score_delta=0.1, cumulative_score=0.1)
+
+    def test_placement_entry_negative_fragment_idx_raises(self):
+        with pytest.raises(ValueError):
+            PlacementScoreEntry(step=0, fragment_idx=-1, score_delta=0.1, cumulative_score=0.1)
+
+    def test_placement_entry_repr(self):
+        e = make_placement_entry(0, 1, 0.2, 0.2)
+        assert "PlacementScoreEntry" in repr(e)
+
+    def test_entries_from_history_basic(self):
+        history = [
+            {"step": 0, "idx": 1, "score_delta": 0.1},
+            {"step": 1, "idx": 2, "score_delta": 0.2},
+        ]
+        entries = entries_from_history(history)
+        assert len(entries) == 2
+        assert entries[1].cumulative_score == pytest.approx(0.3)
+
+    def test_entries_from_history_with_position(self):
+        history = [{"step": 0, "idx": 1, "score_delta": 0.3, "position": (5.0, 7.0)}]
+        entries = entries_from_history(history)
+        assert entries[0].position == (5.0, 7.0)
+
+    def test_summarise_placement_empty(self):
+        s = summarise_placement([])
+        assert s.n_placed == 0
+        assert s.final_score == 0.0
+
+    def test_summarise_placement(self):
+        history = [{"step": i, "idx": i, "score_delta": 0.1} for i in range(5)]
+        entries = entries_from_history(history)
+        s = summarise_placement(entries)
+        assert s.n_placed == 5
+        assert s.final_score == pytest.approx(0.5)
+
+    def test_placement_summary_repr(self):
+        history = [{"step": 0, "idx": 0, "score_delta": 0.1}]
+        entries = entries_from_history(history)
+        s = summarise_placement(entries)
+        assert "PlacementSummary" in repr(s)
+
+    def test_filter_positive_steps(self):
+        history = [
+            {"step": 0, "idx": 0, "score_delta": 0.2},
+            {"step": 1, "idx": 1, "score_delta": -0.1},
+            {"step": 2, "idx": 2, "score_delta": 0.3},
+        ]
+        entries = entries_from_history(history)
+        pos = filter_positive_steps(entries)
+        assert all(e.score_delta > 0 for e in pos)
+
+    def test_filter_by_min_score(self):
+        history = [{"step": i, "idx": i, "score_delta": 0.1} for i in range(5)]
+        entries = entries_from_history(history)
+        result = filter_by_min_score(entries, min_score=0.3)
+        assert all(e.cumulative_score >= 0.3 for e in result)
+
+    def test_top_k_steps(self):
+        history = [{"step": i, "idx": i, "score_delta": float(i) * 0.1} for i in range(6)]
+        entries = entries_from_history(history)
+        top = top_k_steps(entries, k=3)
+        assert len(top) == 3
+        assert top[0].score_delta >= top[1].score_delta
+
+    def test_rank_fragments(self):
+        history = [{"step": i, "idx": i, "score_delta": float(i) * 0.1} for i in range(4)]
+        entries = entries_from_history(history)
+        ranked = rank_fragments(entries)
+        assert len(ranked) == 4
+        assert ranked[0][1] >= ranked[-1][1]
+
+    def test_placement_score_stats_empty(self):
+        s = placement_score_stats([])
+        assert s["n"] == 0
+
+    def test_placement_score_stats(self):
+        history = [{"step": i, "idx": i, "score_delta": (0.1 if i % 2 == 0 else -0.05)}
+                   for i in range(6)]
+        entries = entries_from_history(history)
+        stats = placement_score_stats(entries)
+        assert stats["n"] == 6
+        assert stats["n_positive"] > 0
+        assert stats["n_negative"] > 0
+
+    def test_compare_placements(self):
+        h1 = [{"step": i, "idx": i, "score_delta": 0.2} for i in range(4)]
+        h2 = [{"step": i, "idx": i, "score_delta": 0.1} for i in range(4)]
+        s1 = summarise_placement(entries_from_history(h1))
+        s2 = summarise_placement(entries_from_history(h2))
+        d = compare_placements(s1, s2)
+        assert d["better"] in ("a", "b", "tie")
+
+    def test_batch_summarise(self):
+        histories = [
+            [{"step": i, "idx": i, "score_delta": 0.1} for i in range(3)],
+            [{"step": i, "idx": i, "score_delta": 0.2} for i in range(4)],
+        ]
+        results = batch_summarise(histories)
+        assert len(results) == 2
+        assert results[0].n_placed == 3
+        assert results[1].n_placed == 4
+
