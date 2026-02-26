@@ -281,13 +281,52 @@ class AssemblyViewer:
         return None
 
     def _fragment_confidence(self, frag_id: int) -> float:
-        """Средняя оценка совместимости краёв фрагмента с соседями."""
-        frag = next((f for f in self.assembly.fragments
-                     if f.fragment_id == frag_id), None)
-        if frag is None or not frag.edges:
+        """
+        Средняя оценка совместимости краёв фрагмента с соседями.
+
+        Использует матрицу совместимости: для каждого ребра фрагмента берёт
+        максимальный score среди всех пар с рёбрами других фрагментов, затем
+        усредняет по рёбрам. Fallback — нормированный общий score сборки.
+        """
+        frags = self.assembly.fragments or []
+        # Проверяем что фрагмент существует
+        target = next((f for f in frags if f.fragment_id == frag_id), None)
+        if target is None or not target.edges:
             return 0.5
-        # Ищем лучший счёт из матрицы (если есть)
-        return self.assembly.total_score / max(1, len(self.assembly.fragments))
+
+        mat = self.assembly.compat_matrix
+        if mat is None or mat.size == 0:
+            return 0.5
+
+        # Строим карту: глобальный индекс ребра → frag_id (тот же порядок, что
+        # в build_compat_matrix: итерация по fragments→edges)
+        frag_of_edge: list = []
+        for f in frags:
+            for _ in f.edges:
+                frag_of_edge.append(f.fragment_id)
+
+        # Собираем индексы рёбер, принадлежащих запрошенному фрагменту
+        own_indices = [idx for idx, fid in enumerate(frag_of_edge)
+                       if fid == frag_id and idx < mat.shape[0]]
+
+        if not own_indices:
+            return 0.5
+
+        # Для каждого ребра фрагмента — лучший score с чужим ребром
+        best_scores = []
+        for idx in own_indices:
+            row = mat[idx].copy()
+            # Обнуляем стыки с рёбрами того же фрагмента
+            for other_idx, fid in enumerate(frag_of_edge):
+                if fid == frag_id and other_idx < len(row):
+                    row[other_idx] = 0.0
+            best = float(np.max(row))
+            if best > 0.0:
+                best_scores.append(best)
+
+        if best_scores:
+            return float(np.mean(best_scores))
+        return self.assembly.total_score / max(1, len(frags))
 
     @staticmethod
     def _confidence_color(score: float) -> Tuple[int, int, int]:

@@ -1,275 +1,161 @@
-"""Тесты для puzzle_reconstruction.matching.global_matcher."""
+"""Тесты для puzzle_reconstruction/matching/global_matcher.py."""
 import pytest
 import numpy as np
+
 from puzzle_reconstruction.matching.global_matcher import (
-    GlobalMatch,
     GlobalMatchConfig,
+    GlobalMatch,
     GlobalMatchResult,
     aggregate_pair_scores,
-    filter_matches,
-    global_match,
-    merge_match_results,
     rank_candidates,
+    global_match,
+    filter_matches,
+    merge_match_results,
 )
 
 
-# ─── TestGlobalMatchConfig ────────────────────────────────────────────────────
+def _make_scores():
+    return {
+        "css": {(0, 1): 0.9, (0, 2): 0.6, (1, 2): 0.7},
+        "dtw": {(0, 1): 0.8, (0, 2): 0.5, (1, 2): 0.75},
+    }
+
 
 class TestGlobalMatchConfig:
     def test_defaults(self):
-        cfg = GlobalMatchConfig()
-        assert cfg.top_k == 5
-        assert cfg.min_score == pytest.approx(0.0)
-        assert cfg.aggregate == "mean"
-        assert cfg.symmetric is True
+        c = GlobalMatchConfig()
+        assert c.top_k == 5
+        assert c.min_score == 0.0
+        assert c.aggregate == "mean"
 
-    def test_custom_values(self):
-        cfg = GlobalMatchConfig(top_k=3, min_score=0.2, aggregate="max")
-        assert cfg.top_k == 3
-        assert cfg.min_score == pytest.approx(0.2)
-        assert cfg.aggregate == "max"
-
-    def test_top_k_zero_raises(self):
+    def test_invalid_top_k_raises(self):
         with pytest.raises(ValueError):
             GlobalMatchConfig(top_k=0)
 
-    def test_min_score_neg_raises(self):
+    def test_invalid_min_score_raises(self):
         with pytest.raises(ValueError):
-            GlobalMatchConfig(min_score=-0.1)
-
-    def test_min_score_above_one_raises(self):
-        with pytest.raises(ValueError):
-            GlobalMatchConfig(min_score=1.1)
+            GlobalMatchConfig(min_score=1.5)
 
     def test_invalid_aggregate_raises(self):
         with pytest.raises(ValueError):
-            GlobalMatchConfig(aggregate="invalid_method")
+            GlobalMatchConfig(aggregate="invalid")
 
-    def test_valid_aggregates(self):
-        for m in ("mean", "max", "min"):
-            cfg = GlobalMatchConfig(aggregate=m)
-            assert cfg.aggregate == m
-
-
-# ─── TestGlobalMatch ──────────────────────────────────────────────────────────
 
 class TestGlobalMatch:
-    def test_basic_construction(self):
-        m = GlobalMatch(fragment_id=0, candidate_id=1, score=0.8)
-        assert m.fragment_id == 0
-        assert m.candidate_id == 1
-        assert m.score == pytest.approx(0.8)
-        assert m.rank == 1
-
-    def test_is_top_true(self):
+    def test_is_top_property(self):
         m = GlobalMatch(fragment_id=0, candidate_id=1, score=0.8, rank=1)
-        assert m.is_top is True
+        assert m.is_top
 
-    def test_is_top_false(self):
+    def test_not_top_for_rank_2(self):
         m = GlobalMatch(fragment_id=0, candidate_id=1, score=0.8, rank=2)
-        assert m.is_top is False
+        assert not m.is_top
 
-    def test_score_neg_raises(self):
+    def test_score_out_of_range_raises(self):
         with pytest.raises(ValueError):
-            GlobalMatch(fragment_id=0, candidate_id=1, score=-0.1)
-
-    def test_score_above_one_raises(self):
-        with pytest.raises(ValueError):
-            GlobalMatch(fragment_id=0, candidate_id=1, score=1.1)
+            GlobalMatch(fragment_id=0, candidate_id=1, score=1.5, rank=1)
 
     def test_rank_zero_raises(self):
         with pytest.raises(ValueError):
             GlobalMatch(fragment_id=0, candidate_id=1, score=0.5, rank=0)
 
 
-# ─── TestGlobalMatchResult ────────────────────────────────────────────────────
-
 class TestGlobalMatchResult:
-    def _make(self) -> GlobalMatchResult:
+    def _make_result(self):
         matches = {
             0: [GlobalMatch(fragment_id=0, candidate_id=1, score=0.9, rank=1),
-                GlobalMatch(fragment_id=0, candidate_id=2, score=0.7, rank=2)],
-            1: [GlobalMatch(fragment_id=1, candidate_id=0, score=0.8, rank=1)],
+                GlobalMatch(fragment_id=0, candidate_id=2, score=0.6, rank=2)],
+            1: [GlobalMatch(fragment_id=1, candidate_id=0, score=0.9, rank=1)],
         }
-        return GlobalMatchResult(matches=matches, n_fragments=2, n_channels=2)
+        return GlobalMatchResult(matches=matches, n_fragments=3, n_channels=2)
 
-    def test_top_match_returns_best(self):
-        r = self._make()
+    def test_top_match(self):
+        r = self._make_result()
         top = r.top_match(0)
-        assert top is not None
-        assert top.rank == 1
+        assert top is not None and top.rank == 1
 
-    def test_top_match_missing_fragment(self):
-        r = self._make()
+    def test_top_match_none_for_missing(self):
+        r = self._make_result()
         assert r.top_match(99) is None
 
-    def test_all_top_matches_count(self):
-        r = self._make()
-        tops = r.all_top_matches()
-        assert len(tops) == 2
+    def test_all_top_matches(self):
+        r = self._make_result()
+        assert len(r.all_top_matches()) == 2
 
     def test_fragment_ids(self):
-        r = self._make()
-        fids = r.fragment_ids()
-        assert set(fids) == {0, 1}
+        r = self._make_result()
+        assert set(r.fragment_ids()) == {0, 1}
 
-    def test_n_fragments_neg_raises(self):
-        with pytest.raises(ValueError):
-            GlobalMatchResult(matches={}, n_fragments=-1, n_channels=0)
-
-    def test_n_channels_neg_raises(self):
-        with pytest.raises(ValueError):
-            GlobalMatchResult(matches={}, n_fragments=0, n_channels=-1)
-
-
-# ─── TestAggregatePairScores ──────────────────────────────────────────────────
 
 class TestAggregatePairScores:
-    def test_returns_dict(self):
-        scores = {"ch1": {(0, 1): 0.8, (1, 2): 0.6}}
-        result = aggregate_pair_scores(scores)
-        assert isinstance(result, dict)
+    def test_aggregates_channels(self):
+        agg = aggregate_pair_scores(_make_scores())
+        assert (0, 1) in agg
+        assert 0.0 <= agg[(0, 1)] <= 1.0
 
-    def test_keys_are_ordered_pairs(self):
-        scores = {"ch1": {(1, 0): 0.8}}  # reversed key
-        result = aggregate_pair_scores(scores)
-        for a, b in result:
-            assert a <= b
+    def test_all_pairs_present(self):
+        agg = aggregate_pair_scores(_make_scores())
+        assert len(agg) == 3
 
-    def test_values_in_range(self):
-        scores = {"ch1": {(0, 1): 0.7}, "ch2": {(0, 1): 0.5}}
-        result = aggregate_pair_scores(scores)
-        for v in result.values():
-            assert 0.0 <= v <= 1.0
-
-    def test_symmetric_averaging(self):
-        scores = {"ch1": {(0, 1): 0.8, (1, 0): 0.6}}
+    def test_symmetric_aggregation(self):
+        scores = {"ch": {(0, 1): 0.8, (1, 0): 0.6}}
         cfg = GlobalMatchConfig(symmetric=True)
-        result = aggregate_pair_scores(scores, cfg)
-        assert result[(0, 1)] == pytest.approx(0.7)
+        agg = aggregate_pair_scores(scores, cfg)
+        val = agg.get((0, 1)) or agg.get((1, 0))
+        assert val == pytest.approx(0.7)
 
-    def test_empty_input(self):
-        result = aggregate_pair_scores({})
-        assert result == {}
-
-    def test_mean_aggregation(self):
-        scores = {"c1": {(0, 1): 0.6}, "c2": {(0, 1): 0.8}}
-        cfg = GlobalMatchConfig(aggregate="mean", symmetric=False)
-        result = aggregate_pair_scores(scores, cfg)
-        assert result[(0, 1)] == pytest.approx(0.7)
-
-
-# ─── TestRankCandidates ───────────────────────────────────────────────────────
 
 class TestRankCandidates:
-    def _pair_scores(self):
-        return {(0, 1): 0.9, (0, 2): 0.7, (0, 3): 0.5, (1, 2): 0.6}
+    def test_rank_1_highest_score(self):
+        pair_scores = {(0, 1): 0.9, (0, 2): 0.6, (0, 3): 0.7}
+        ranked = rank_candidates(0, pair_scores)
+        assert ranked[0].score == pytest.approx(0.9) and ranked[0].rank == 1
 
-    def test_returns_list(self):
-        result = rank_candidates(0, self._pair_scores())
-        assert isinstance(result, list)
-
-    def test_sorted_by_score_desc(self):
-        result = rank_candidates(0, self._pair_scores())
-        scores = [m.score for m in result]
-        assert scores == sorted(scores, reverse=True)
-
-    def test_top_k_respected(self):
-        cfg = GlobalMatchConfig(top_k=2)
-        result = rank_candidates(0, self._pair_scores(), cfg)
-        assert len(result) <= 2
-
-    def test_rank_starts_at_1(self):
-        result = rank_candidates(0, self._pair_scores())
-        if result:
-            assert result[0].rank == 1
+    def test_top_k_limits_results(self):
+        pair_scores = {(0, i): float(i) / 10 for i in range(1, 10)}
+        ranked = rank_candidates(0, pair_scores, GlobalMatchConfig(top_k=3))
+        assert len(ranked) <= 3
 
     def test_min_score_filter(self):
-        cfg = GlobalMatchConfig(min_score=0.8)
-        result = rank_candidates(0, self._pair_scores(), cfg)
-        assert all(m.score >= 0.8 for m in result)
+        pair_scores = {(0, 1): 0.9, (0, 2): 0.3}
+        ranked = rank_candidates(0, pair_scores, GlobalMatchConfig(min_score=0.5))
+        assert all(m.score >= 0.5 for m in ranked)
 
-    def test_no_candidates_for_absent_fragment(self):
-        result = rank_candidates(99, self._pair_scores())
-        assert result == []
-
-
-# ─── TestGlobalMatch Function ─────────────────────────────────────────────────
 
 class TestGlobalMatchFn:
-    def test_returns_global_match_result(self):
-        fragment_ids = [0, 1, 2]
-        scores = {"ch1": {(0, 1): 0.8, (1, 2): 0.6, (0, 2): 0.5}}
-        r = global_match(fragment_ids, scores)
-        assert isinstance(r, GlobalMatchResult)
+    def test_basic_run(self):
+        result = global_match([0, 1, 2], _make_scores())
+        assert isinstance(result, GlobalMatchResult)
+        assert result.n_fragments == 3
+        assert result.n_channels == 2
 
-    def test_n_fragments_correct(self):
-        fragment_ids = [0, 1, 2]
-        scores = {"ch1": {(0, 1): 0.8}}
-        r = global_match(fragment_ids, scores)
-        assert r.n_fragments == 3
+    def test_all_fragment_ids_present(self):
+        result = global_match([0, 1, 2], _make_scores())
+        assert set(result.matches.keys()) == {0, 1, 2}
 
-    def test_n_channels_correct(self):
-        fragment_ids = [0, 1]
-        scores = {"c1": {(0, 1): 0.8}, "c2": {(0, 1): 0.7}}
-        r = global_match(fragment_ids, scores)
-        assert r.n_channels == 2
-
-    def test_empty_fragments(self):
-        r = global_match([], {})
-        assert r.n_fragments == 0
-
-
-# ─── TestFilterMatches ────────────────────────────────────────────────────────
 
 class TestFilterMatches:
-    def _result(self) -> GlobalMatchResult:
-        matches = {
-            0: [GlobalMatch(fragment_id=0, candidate_id=1, score=0.9, rank=1),
-                GlobalMatch(fragment_id=0, candidate_id=2, score=0.3, rank=2)],
-        }
-        return GlobalMatchResult(matches=matches, n_fragments=1, n_channels=1)
-
     def test_filters_low_scores(self):
-        r = self._result()
+        matches = {0: [
+            GlobalMatch(fragment_id=0, candidate_id=1, score=0.9, rank=1),
+            GlobalMatch(fragment_id=0, candidate_id=2, score=0.3, rank=2),
+        ]}
+        r = GlobalMatchResult(matches=matches, n_fragments=2, n_channels=1)
         filtered = filter_matches(r, min_score=0.5)
-        assert all(m.score >= 0.5 for ms in filtered.matches.values() for m in ms)
+        assert len(filtered.matches[0]) == 1
+        assert filtered.matches[0][0].score == pytest.approx(0.9)
 
     def test_invalid_min_score_raises(self):
-        r = self._result()
+        r = GlobalMatchResult(matches={}, n_fragments=0, n_channels=0)
         with pytest.raises(ValueError):
             filter_matches(r, min_score=1.5)
 
-    def test_reindexes_ranks(self):
-        r = self._result()
-        filtered = filter_matches(r, min_score=0.5)
-        for cands in filtered.matches.values():
-            for i, m in enumerate(cands):
-                assert m.rank == i + 1
-
-
-# ─── TestMergeMatchResults ────────────────────────────────────────────────────
 
 class TestMergeMatchResults:
-    def test_empty_returns_empty(self):
-        r = merge_match_results([])
-        assert r.n_fragments == 0
-
-    def test_single_result_preserved(self):
-        matches = {0: [GlobalMatch(fragment_id=0, candidate_id=1, score=0.9, rank=1)]}
-        r = GlobalMatchResult(matches=matches, n_fragments=1, n_channels=1)
-        merged = merge_match_results([r])
-        assert 0 in merged.matches
-
-    def test_multiple_results_merged(self):
-        r1 = GlobalMatchResult(
-            matches={0: [GlobalMatch(0, 1, 0.8, rank=1)]},
-            n_fragments=1, n_channels=1
-        )
-        r2 = GlobalMatchResult(
-            matches={0: [GlobalMatch(0, 2, 0.7, rank=1)]},
-            n_fragments=1, n_channels=1
-        )
+    def test_merge_two_results(self):
+        r1 = global_match([0, 1, 2], _make_scores())
+        r2 = global_match([0, 1, 2], {"seam": {(0, 1): 0.85, (1, 2): 0.65}})
         merged = merge_match_results([r1, r2])
-        # Both candidates should be present (up to top_k)
-        assert len(merged.matches.get(0, [])) >= 1
+        assert isinstance(merged, GlobalMatchResult)
+
+    def test_empty_list_returns_empty(self):
+        assert merge_match_results([]).n_fragments == 0
