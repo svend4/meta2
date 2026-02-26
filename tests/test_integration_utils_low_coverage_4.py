@@ -920,3 +920,192 @@ class TestPatchUtils:
         with pytest.raises(ValueError):
             batch_compare(pairs, method="invalid")
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 5. path_plan_utils
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestPathPlanUtils:
+
+    def _make_entries(self, n=5, all_found=True):
+        results = []
+        for i in range(n):
+            found = True if all_found else (i % 2 == 0)
+            results.append((0, i + 1, list(range(i + 2)), float(i + 1), found))
+        return entries_from_path_results(results)
+
+    def test_make_path_entry(self):
+        e = make_path_entry(0, 3, [0, 1, 2, 3], 3.0, True)
+        assert e.hops == 3
+        assert e.found is True
+
+    def test_path_entry_empty_path(self):
+        e = make_path_entry(0, 1, [], 0.0, False)
+        assert e.hops == 0
+
+    def test_entries_from_path_results(self):
+        entries = self._make_entries(5)
+        assert len(entries) == 5
+
+    def test_summarise_empty(self):
+        s = summarise_path_entries([])
+        assert s.n_entries == 0
+        assert s.found_rate == 0.0
+
+    def test_summarise_all_found(self):
+        entries = self._make_entries(4, all_found=True)
+        s = summarise_path_entries(entries)
+        assert s.n_found == 4
+        assert s.found_rate == pytest.approx(1.0)
+
+    def test_summarise_mixed_found(self):
+        entries = self._make_entries(4, all_found=False)
+        s = summarise_path_entries(entries)
+        assert s.n_not_found > 0
+        assert 0.0 < s.found_rate < 1.0
+
+    def test_filter_found_paths(self):
+        entries = self._make_entries(5, all_found=False)
+        found = filter_found_paths(entries)
+        assert all(e.found for e in found)
+
+    def test_filter_not_found_paths(self):
+        entries = self._make_entries(5, all_found=False)
+        not_found = filter_not_found_paths(entries)
+        assert all(not e.found for e in not_found)
+
+    def test_filter_path_by_cost_range(self):
+        entries = self._make_entries(6)
+        result = filter_path_by_cost_range(entries, lo=2.0, hi=4.0)
+        assert all(2.0 <= e.cost <= 4.0 for e in result)
+
+    def test_filter_path_by_max_hops(self):
+        entries = self._make_entries(5)
+        result = filter_path_by_max_hops(entries, max_hops=3)
+        assert all(e.hops <= 3 for e in result)
+
+    def test_top_k_shortest_paths(self):
+        entries = self._make_entries(6)
+        top = top_k_shortest_paths(entries, k=3)
+        assert len(top) == 3
+        assert top[0].cost <= top[1].cost
+
+    def test_cheapest_path_entry(self):
+        entries = self._make_entries(5)
+        cheapest = cheapest_path_entry(entries)
+        assert cheapest is not None
+        assert cheapest.cost == min(e.cost for e in entries if e.found)
+
+    def test_cheapest_path_entry_none_found(self):
+        e = make_path_entry(0, 1, [], 0.0, False)
+        assert cheapest_path_entry([e]) is None
+
+    def test_path_cost_stats_empty(self):
+        s = path_cost_stats([])
+        assert s["count"] == 0
+
+    def test_path_cost_stats(self):
+        entries = self._make_entries(5)
+        s = path_cost_stats(entries)
+        assert s["count"] == 5
+        assert s["min"] <= s["max"]
+
+    def test_compare_path_summaries(self):
+        s1 = summarise_path_entries(self._make_entries(4))
+        e2 = [make_path_entry(0, 1, [0, 1], 10.0, True)]
+        s2 = summarise_path_entries(e2)
+        d = compare_path_summaries(s1, s2)
+        assert "mean_cost_delta" in d
+
+    def test_batch_summarise_path_entries(self):
+        groups = [self._make_entries(3), self._make_entries(4)]
+        results = batch_summarise_path_entries(groups)
+        assert len(results) == 2
+
+    # AssemblyPlan utilities
+
+    def _make_plan_entries(self, n=4, strategy="greedy"):
+        return [
+            make_assembly_plan_entry(i, 10, 8, 0.8, 0.7, strategy, list(range(8)))
+            for i in range(n)
+        ]
+
+    def test_make_assembly_plan_entry(self):
+        e = make_assembly_plan_entry(0, 10, 9, 0.9, 0.85, "greedy", [1, 2, 3])
+        assert e.plan_id == 0
+        assert e.coverage == pytest.approx(0.9)
+
+    def test_summarise_assembly_plans_empty(self):
+        s = summarise_assembly_plans([])
+        assert s.n_plans == 0
+
+    def test_summarise_assembly_plans(self):
+        entries = self._make_plan_entries(4)
+        s = summarise_assembly_plans(entries)
+        assert s.n_plans == 4
+        assert s.strategy == "greedy"
+
+    def test_summarise_assembly_plans_mixed_strategy(self):
+        e1 = make_assembly_plan_entry(0, 10, 8, 0.8, 0.7, "greedy", [])
+        e2 = make_assembly_plan_entry(1, 10, 8, 0.8, 0.7, "beam", [])
+        s = summarise_assembly_plans([e1, e2])
+        assert s.strategy == "mixed"
+
+    def test_filter_full_coverage_plans(self):
+        e1 = make_assembly_plan_entry(0, 10, 10, 1.0, 0.9, "greedy", [])
+        e2 = make_assembly_plan_entry(1, 10, 5, 0.5, 0.7, "greedy", [])
+        result = filter_full_coverage_plans([e1, e2])
+        assert len(result) == 1
+        assert result[0].plan_id == 0
+
+    def test_filter_assembly_plans_by_coverage(self):
+        entries = self._make_plan_entries(4)
+        result = filter_assembly_plans_by_coverage(entries, min_coverage=0.9)
+        assert all(e.coverage >= 0.9 for e in result)
+
+    def test_filter_assembly_plans_by_score(self):
+        entries = self._make_plan_entries(4)
+        result = filter_assembly_plans_by_score(entries, min_score=0.8)
+        assert all(e.mean_score >= 0.8 for e in result)
+
+    def test_filter_assembly_plans_by_strategy(self):
+        e1 = make_assembly_plan_entry(0, 10, 8, 0.8, 0.7, "greedy", [])
+        e2 = make_assembly_plan_entry(1, 10, 8, 0.8, 0.7, "beam", [])
+        result = filter_assembly_plans_by_strategy([e1, e2], "greedy")
+        assert len(result) == 1
+
+    def test_top_k_assembly_plan_entries(self):
+        entries = [
+            make_assembly_plan_entry(i, 10, 8, float(i)/10, float(i)/10, "greedy", [])
+            for i in range(5)
+        ]
+        top = top_k_assembly_plan_entries(entries, k=2)
+        assert len(top) == 2
+
+    def test_best_assembly_plan_entry_empty(self):
+        assert best_assembly_plan_entry([]) is None
+
+    def test_best_assembly_plan_entry(self):
+        entries = self._make_plan_entries(3)
+        best = best_assembly_plan_entry(entries)
+        assert best is not None
+
+    def test_assembly_plan_stats(self):
+        entries = self._make_plan_entries(3)
+        s = assembly_plan_stats(entries)
+        assert s["count"] == 3.0
+        assert "mean_coverage" in s
+
+    def test_compare_assembly_plan_summaries(self):
+        e1 = [make_assembly_plan_entry(0, 10, 9, 0.9, 0.9, "greedy", [])]
+        e2 = [make_assembly_plan_entry(0, 10, 5, 0.5, 0.5, "greedy", [])]
+        s1 = summarise_assembly_plans(e1)
+        s2 = summarise_assembly_plans(e2)
+        d = compare_assembly_plan_summaries(s1, s2)
+        assert d["mean_coverage_delta"] > 0
+
+    def test_batch_summarise_assembly_plans(self):
+        groups = [self._make_plan_entries(2), self._make_plan_entries(3)]
+        results = batch_summarise_assembly_plans(groups)
+        assert len(results) == 2
+

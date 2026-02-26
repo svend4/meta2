@@ -535,6 +535,6 @@ class TestWindowUtils:
     def test_batch_rolling(self):
         signals = [self._signal(15) for _ in range(4)]
         cfg = WindowConfig(size=3, padding="same")
-        results = batch_rolling(signals, cfg, stat="mean")
+        results = batch_rolling(signals, stat="mean", cfg=cfg)
         assert len(results) == 4
         assert all(len(r) == 15 for r in results)
