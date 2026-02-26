@@ -1971,3 +1971,191 @@ class TestRankResultUtils:
         results = batch_summarise_rank_results(groups)
         assert len(results) == 2
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 12. ranking_layout_utils
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestRankingLayoutUtils:
+
+    # GlobalRanking tests
+
+    def _make_global_entries(self, n=6):
+        return [
+            make_global_ranking_entry(i, i + 1, float(i) / (n - 1), i)
+            for i in range(n)
+        ]
+
+    def test_global_ranking_config_defaults(self):
+        cfg = GlobalRankingConfig()
+        assert cfg.min_score == 0.0
+        assert cfg.top_k == 10
+
+    def test_make_global_ranking_entry(self):
+        e = make_global_ranking_entry(0, 1, 0.8, 0, color=0.7, edge=0.9)
+        assert e.idx1 == 0
+        assert e.idx2 == 1
+        assert e.score == pytest.approx(0.8)
+        assert e.component_scores["color"] == pytest.approx(0.7)
+
+    def test_summarise_global_ranking_empty(self):
+        s = summarise_global_ranking_entries([])
+        assert s.n_pairs == 0
+        assert s.top_pair is None
+
+    def test_summarise_global_ranking(self):
+        entries = self._make_global_entries(5)
+        s = summarise_global_ranking_entries(entries)
+        assert s.n_pairs == 5
+        assert s.top_pair is not None
+
+    def test_summarise_global_ranking_top_pair(self):
+        entries = self._make_global_entries(5)
+        s = summarise_global_ranking_entries(entries)
+        # best = lowest rank = rank 0
+        best = min(entries, key=lambda e: e.rank)
+        assert s.top_pair == (best.idx1, best.idx2)
+
+    def test_filter_ranking_by_min_score(self):
+        entries = self._make_global_entries(6)
+        result = filter_ranking_by_min_score(entries, min_score=0.5)
+        assert all(e.score >= 0.5 for e in result)
+
+    def test_filter_ranking_by_fragment(self):
+        entries = self._make_global_entries(6)
+        result = filter_ranking_by_fragment(entries, fragment_idx=2)
+        assert all(e.idx1 == 2 or e.idx2 == 2 for e in result)
+
+    def test_filter_ranking_by_top_k(self):
+        entries = self._make_global_entries(6)
+        result = filter_ranking_by_top_k(entries, k=3)
+        assert len(result) == 3
+
+    def test_top_k_ranking_entries(self):
+        entries = self._make_global_entries(6)
+        top = top_k_ranking_entries(entries, k=3)
+        assert len(top) == 3
+        assert top[0].score >= top[1].score
+
+    def test_best_ranking_entry(self):
+        entries = self._make_global_entries(5)
+        best = best_ranking_entry(entries)
+        assert best is not None
+
+    def test_best_ranking_entry_empty(self):
+        assert best_ranking_entry([]) is None
+
+    def test_ranking_score_stats_empty(self):
+        s = ranking_score_stats([])
+        assert s["count"] == 0
+
+    def test_ranking_score_stats(self):
+        entries = self._make_global_entries(5)
+        s = ranking_score_stats(entries)
+        assert s["count"] == 5
+        assert s["min"] <= s["max"]
+
+    def test_compare_global_ranking_summaries(self):
+        s1 = summarise_global_ranking_entries(self._make_global_entries(5))
+        s2 = summarise_global_ranking_entries(self._make_global_entries(3))
+        d = compare_global_ranking_summaries(s1, s2)
+        assert "delta_n_pairs" in d
+
+    def test_batch_summarise_global_ranking(self):
+        groups = [self._make_global_entries(3), self._make_global_entries(4)]
+        results = batch_summarise_global_ranking_entries(groups)
+        assert len(results) == 2
+
+    # LayoutScoring tests
+
+    def _make_layout_entries(self, n=4):
+        levels = ["poor", "fair", "good", "excellent"]
+        return [
+            make_layout_scoring_entry(
+                i, float(i) / (n - 1) if n > 1 else 0.5,
+                0.7, 0.1, 0.8, 10,
+                quality_level=levels[i % len(levels)]
+            )
+            for i in range(n)
+        ]
+
+    def test_layout_scoring_config_defaults(self):
+        cfg = LayoutScoringConfig()
+        assert cfg.min_total_score == 0.0
+
+    def test_make_layout_scoring_entry(self):
+        e = make_layout_scoring_entry(0, 0.8, 0.9, 0.05, 0.85, 10, quality_level="good")
+        assert e.layout_id == 0
+        assert e.total_score == pytest.approx(0.8)
+        assert e.quality_level == "good"
+
+    def test_make_layout_scoring_entry_with_params(self):
+        e = make_layout_scoring_entry(0, 0.8, 0.9, 0.05, 0.85, 10, threshold=0.5)
+        assert e.params["threshold"] == 0.5
+
+    def test_summarise_layout_scoring_empty(self):
+        s = summarise_layout_scoring_entries([])
+        assert s.n_layouts == 0
+        assert s.best_layout_id is None
+
+    def test_summarise_layout_scoring(self):
+        entries = self._make_layout_entries(4)
+        s = summarise_layout_scoring_entries(entries)
+        assert s.n_layouts == 4
+        assert s.best_layout_id is not None
+
+    def test_summarise_layout_quality_counts(self):
+        entries = self._make_layout_entries(4)
+        s = summarise_layout_scoring_entries(entries)
+        assert sum(s.quality_counts.values()) == 4
+
+    def test_filter_layout_by_min_score(self):
+        entries = self._make_layout_entries(4)
+        result = filter_layout_by_min_score(entries, min_score=0.5)
+        assert all(e.total_score >= 0.5 for e in result)
+
+    def test_filter_layout_by_quality(self):
+        entries = self._make_layout_entries(4)
+        result = filter_layout_by_quality(entries, quality="good")
+        assert all(e.quality_level == "good" for e in result)
+
+    def test_filter_layout_by_max_overlap(self):
+        entries = self._make_layout_entries(4)
+        result = filter_layout_by_max_overlap(entries, max_overlap=0.15)
+        assert all(e.overlap_ratio <= 0.15 for e in result)
+
+    def test_top_k_layout_entries(self):
+        entries = self._make_layout_entries(4)
+        top = top_k_layout_entries(entries, k=2)
+        assert len(top) == 2
+        assert top[0].total_score >= top[1].total_score
+
+    def test_best_layout_entry(self):
+        entries = self._make_layout_entries(4)
+        best = best_layout_entry(entries)
+        assert best is not None
+
+    def test_best_layout_entry_empty(self):
+        assert best_layout_entry([]) is None
+
+    def test_layout_score_stats_empty(self):
+        s = layout_score_stats([])
+        assert s["count"] == 0
+
+    def test_layout_score_stats(self):
+        entries = self._make_layout_entries(4)
+        s = layout_score_stats(entries)
+        assert s["count"] == 4
+
+    def test_compare_layout_scoring_summaries(self):
+        s1 = summarise_layout_scoring_entries(self._make_layout_entries(4))
+        e2 = [make_layout_scoring_entry(i, 0.3, 0.5, 0.2, 0.6, 8) for i in range(3)]
+        s2 = summarise_layout_scoring_entries(e2)
+        d = compare_layout_scoring_summaries(s1, s2)
+        assert "delta_n_layouts" in d
+
+    def test_batch_summarise_layout_scoring_entries(self):
+        groups = [self._make_layout_entries(2), self._make_layout_entries(3)]
+        results = batch_summarise_layout_scoring_entries(groups)
+        assert len(results) == 2
+
