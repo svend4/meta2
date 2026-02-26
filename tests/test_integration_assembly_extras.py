@@ -1,967 +1,824 @@
 """
-Integration tests for puzzle_reconstruction assembly extra modules.
+Integration tests for assembly modules:
+    astar.py, bridge.py, fragment_scorer.py, gamma_optimizer.py, hierarchical.py
 
-Covers:
-- assembly/astar.py
-- assembly/candidate_filter.py
-- assembly/canvas_builder.py
-- assembly/collision_detector.py
-- assembly/fragment_arranger.py
-- assembly/fragment_mapper.py
-- assembly/fragment_sequencer.py
-- assembly/fragment_sorter.py
-- assembly/gap_analyzer.py
-- assembly/hierarchical.py
-- assembly/layout_builder.py
-- assembly/layout_refiner.py
-- assembly/overlap_resolver.py
-- assembly/placement_optimizer.py
+At least 12 tests per module (~60+ total).
+Uses numpy seeded arrays and synthetic Fragment / CompatEntry objects.
+No mocks – all tests exercise real code paths and verify computed values.
 """
 from __future__ import annotations
 
+import math
 import numpy as np
 import pytest
 
-# ── helpers to build domain objects ──────────────────────────────────────────
-
-def _make_fragment(fid: int, n_edges: int = 2):
-    """Create a minimal Fragment with simple Edge objects."""
-    from puzzle_reconstruction.models import Fragment, Edge
-    edges = []
-    for k in range(n_edges):
-        eid = fid * 10 + k
-        edges.append(Edge(edge_id=eid, contour=np.zeros((4, 2))))
-    img = np.zeros((10, 10, 3), dtype=np.uint8)
-    return Fragment(fragment_id=fid, image=img, edges=edges)
+from puzzle_reconstruction.models import (
+    Fragment,
+    CompatEntry,
+    Assembly,
+    EdgeSignature,
+    EdgeSide,
+)
 
 
-def _make_compat_entry(edge_i, edge_j, score: float):
-    from puzzle_reconstruction.models import CompatEntry
-    return CompatEntry(edge_i=edge_i, edge_j=edge_j, score=score)
+# ---------------------------------------------------------------------------
+# Shared helpers
+# ---------------------------------------------------------------------------
+
+def _make_edge(edge_id: int, n_pts: int = 10, seed: int = 0) -> EdgeSignature:
+    rng = np.random.RandomState(seed)
+    curve = rng.rand(n_pts, 2).astype(np.float32)
+    return EdgeSignature(
+        edge_id=edge_id,
+        side=EdgeSide.TOP,
+        virtual_curve=curve,
+        fd=1.5,
+        css_vec=rng.rand(8).astype(np.float32),
+        ifs_coeffs=rng.rand(4).astype(np.float32),
+        length=float(n_pts),
+    )
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# 1. astar.py
-# ═══════════════════════════════════════════════════════════════════════════════
+def _make_fragment(fragment_id: int, n_edges: int = 2, seed: int = 0) -> Fragment:
+    rng = np.random.RandomState(seed + fragment_id * 17)
+    image = rng.randint(0, 255, (32, 32, 3), dtype=np.uint8)
+    edges = [_make_edge(edge_id=fragment_id * 10 + i, n_pts=10, seed=seed + i)
+             for i in range(n_edges)]
+    return Fragment(fragment_id=fragment_id, image=image, edges=edges)
+
+
+def _make_compat_entries(fragments, rng: np.random.RandomState):
+    """Create synthetic CompatEntry records between every pair of fragments."""
+    entries = []
+    for i, fi in enumerate(fragments):
+        for j, fj in enumerate(fragments):
+            if i >= j:
+                continue
+            score = float(rng.rand())
+            entry = CompatEntry(
+                edge_i=fi.edges[0],
+                edge_j=fj.edges[0],
+                score=score,
+                dtw_dist=float(rng.rand() * 5 + 0.1),
+                css_sim=float(rng.rand()),
+                fd_diff=float(rng.rand() * 0.5),
+                text_score=0.0,
+            )
+            entries.append(entry)
+    entries.sort(key=lambda e: e.score, reverse=True)
+    return entries
+
+
+# ---------------------------------------------------------------------------
+# TestAstar
+# ---------------------------------------------------------------------------
 
 class TestAstar:
-    def _make_assembly_inputs(self, n: int = 3):
-        frags = [_make_fragment(i) for i in range(n)]
-        entries = []
-        for i in range(n):
-            for j in range(i + 1, n):
-                ei = frags[i].edges[0]
-                ej = frags[j].edges[0]
-                entries.append(_make_compat_entry(ei, ej, score=0.8))
+    """Tests for puzzle_reconstruction.assembly.astar"""
+
+    @pytest.fixture(autouse=True)
+    def _imports(self):
+        from puzzle_reconstruction.assembly.astar import (
+            astar_assembly,
+            _build_edge_to_frag,
+            _build_best_score_per_frag,
+            _score_for_placement,
+            _heuristic,
+            _place_new_fragment,
+            _AStarState,
+        )
+        self.astar_assembly = astar_assembly
+        self._build_edge_to_frag = _build_edge_to_frag
+        self._build_best_score_per_frag = _build_best_score_per_frag
+        self._score_for_placement = _score_for_placement
+        self._heuristic = _heuristic
+        self._place_new_fragment = _place_new_fragment
+        self._AStarState = _AStarState
+
+    def _frags_and_entries(self, n: int = 4, seed: int = 42):
+        rng = np.random.RandomState(seed)
+        frags = [_make_fragment(i, n_edges=2, seed=seed) for i in range(n)]
+        entries = _make_compat_entries(frags, rng)
         return frags, entries
 
-    def test_astar_returns_assembly(self):
-        from puzzle_reconstruction.assembly.astar import astar_assembly
-        frags, entries = self._make_assembly_inputs(3)
-        result = astar_assembly(frags, entries, max_states=200, beam_width=10)
-        assert result is not None
-        assert result.method == "astar"
-
-    def test_astar_empty_fragments(self):
-        from puzzle_reconstruction.assembly.astar import astar_assembly
-        result = astar_assembly([], [])
-        assert result.method == "astar"
+    # ── 1. Empty fragments returns empty Assembly ──────────────────────────
+    def test_empty_fragments(self):
+        result = self.astar_assembly([], [])
+        assert isinstance(result, Assembly)
         assert result.placements == {}
 
-    def test_astar_single_fragment(self):
-        from puzzle_reconstruction.assembly.astar import astar_assembly
+    # ── 2. Single fragment is placed at origin ─────────────────────────────
+    def test_single_fragment_placed_at_origin(self):
         frags = [_make_fragment(0)]
-        result = astar_assembly(frags, [])
-        assert len(result.placements) >= 1
+        result = self.astar_assembly(frags, [])
+        assert 0 in result.placements
+        pos, rot = result.placements[0]
+        np.testing.assert_array_equal(pos, [0.0, 0.0])
+        assert rot == 0.0
 
-    def test_astar_places_all_fragments(self):
-        from puzzle_reconstruction.assembly.astar import astar_assembly
-        frags, entries = self._make_assembly_inputs(4)
-        result = astar_assembly(frags, entries, max_states=500, beam_width=20)
+    # ── 3. All fragments are placed ────────────────────────────────────────
+    def test_all_fragments_placed(self):
+        frags, entries = self._frags_and_entries(4)
+        result = self.astar_assembly(frags, entries)
         assert len(result.placements) == 4
+        for f in frags:
+            assert f.fragment_id in result.placements
 
-    def test_astar_total_score_nonnegative(self):
-        from puzzle_reconstruction.assembly.astar import astar_assembly
-        frags, entries = self._make_assembly_inputs(3)
-        result = astar_assembly(frags, entries)
+    # ── 4. Method tag is "astar" ───────────────────────────────────────────
+    def test_method_tag(self):
+        frags, entries = self._frags_and_entries(3)
+        result = self.astar_assembly(frags, entries)
+        assert result.method == "astar"
+
+    # ── 5. total_score is a finite float ──────────────────────────────────
+    def test_total_score_finite(self):
+        frags, entries = self._frags_and_entries(4)
+        result = self.astar_assembly(frags, entries)
+        assert math.isfinite(result.total_score)
+
+    # ── 6. total_score >= 0 (scores are non-negative) ─────────────────────
+    def test_total_score_non_negative(self):
+        frags, entries = self._frags_and_entries(4)
+        result = self.astar_assembly(frags, entries)
         assert result.total_score >= 0.0
 
-    def test_astar_no_entries(self):
-        from puzzle_reconstruction.assembly.astar import astar_assembly
-        frags = [_make_fragment(i) for i in range(3)]
-        result = astar_assembly(frags, [])
-        # should still place all fragments even with no compat entries
-        assert len(result.placements) >= 1
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 2. candidate_filter.py
-# ═══════════════════════════════════════════════════════════════════════════════
-
-class TestCandidateFilter:
-    def _candidates(self):
-        from puzzle_reconstruction.assembly.candidate_filter import Candidate
-        return [
-            Candidate(idx1=0, idx2=1, score=0.9),
-            Candidate(idx1=1, idx2=2, score=0.5),
-            Candidate(idx1=2, idx2=3, score=0.3),
-            Candidate(idx1=0, idx2=3, score=0.7),
-        ]
-
-    def test_filter_by_threshold_basic(self):
-        from puzzle_reconstruction.assembly.candidate_filter import filter_by_threshold
-        cands = self._candidates()
-        result = filter_by_threshold(cands, threshold=0.6)
-        assert result.n_kept == 2
-        assert result.n_removed == 2
-
-    def test_filter_by_threshold_sorted_descending(self):
-        from puzzle_reconstruction.assembly.candidate_filter import filter_by_threshold
-        result = filter_by_threshold(self._candidates(), threshold=0.0)
-        scores = [c.score for c in result.candidates]
-        assert scores == sorted(scores, reverse=True)
-
-    def test_filter_top_k(self):
-        from puzzle_reconstruction.assembly.candidate_filter import filter_top_k
-        result = filter_top_k(self._candidates(), k=2)
-        assert result.n_kept == 2
-        assert result.candidates[0].score >= result.candidates[1].score
-
-    def test_filter_by_rank(self):
-        from puzzle_reconstruction.assembly.candidate_filter import filter_by_rank
-        result = filter_by_rank(self._candidates(), rank_threshold=0.5)
-        assert result.n_kept >= 1
-
-    def test_deduplicate_candidates(self):
-        from puzzle_reconstruction.assembly.candidate_filter import (
-            Candidate, deduplicate_candidates,
-        )
-        dupes = [
-            Candidate(idx1=0, idx2=1, score=0.8),
-            Candidate(idx1=1, idx2=0, score=0.6),  # duplicate pair, lower score
-            Candidate(idx1=2, idx2=3, score=0.4),
-        ]
-        result = deduplicate_candidates(dupes)
-        assert result.n_kept == 2
-        # The kept score for pair (0,1) should be the max
-        pair_scores = {(min(c.idx1, c.idx2), max(c.idx1, c.idx2)): c.score
-                       for c in result.candidates}
-        assert pair_scores[(0, 1)] == 0.8
-
-    def test_normalize_scores(self):
-        from puzzle_reconstruction.assembly.candidate_filter import (
-            Candidate, normalize_scores,
-        )
-        cands = [
-            Candidate(idx1=0, idx2=1, score=0.2),
-            Candidate(idx1=1, idx2=2, score=0.6),
-            Candidate(idx1=2, idx2=3, score=1.0),
-        ]
-        normed = normalize_scores(cands)
-        assert normed[0].score == pytest.approx(0.0)
-        assert normed[-1].score == pytest.approx(1.0)
-
-    def test_merge_candidate_lists(self):
-        from puzzle_reconstruction.assembly.candidate_filter import (
-            Candidate, merge_candidate_lists,
-        )
-        list1 = [Candidate(idx1=0, idx2=1, score=0.9)]
-        list2 = [Candidate(idx1=2, idx2=3, score=0.5)]
-        merged = merge_candidate_lists([list1, list2])
-        assert len(merged) == 2
-
-    def test_batch_filter(self):
-        from puzzle_reconstruction.assembly.candidate_filter import (
-            Candidate, batch_filter,
-        )
-        lists = [
-            [Candidate(idx1=0, idx2=1, score=0.9),
-             Candidate(idx1=1, idx2=2, score=0.2)],
-            [Candidate(idx1=2, idx2=3, score=0.8)],
-        ]
-        results = batch_filter(lists, threshold=0.5)
-        assert len(results) == 2
-        assert results[0].n_kept == 1
-        assert results[1].n_kept == 1
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 3. canvas_builder.py
-# ═══════════════════════════════════════════════════════════════════════════════
-
-class TestCanvasBuilder:
-    def _make_placement(self, fid, x, y, h=20, w=20):
-        from puzzle_reconstruction.assembly.canvas_builder import FragmentPlacement
-        img = np.full((h, w, 3), fill_value=128, dtype=np.uint8)
-        return FragmentPlacement(fragment_id=fid, image=img, x=x, y=y)
-
-    def test_build_canvas_basic(self):
-        from puzzle_reconstruction.assembly.canvas_builder import build_canvas
-        ps = [self._make_placement(0, 0, 0), self._make_placement(1, 30, 0)]
-        result = build_canvas(ps)
-        assert result.n_placed == 2
-        assert result.canvas.shape[2] == 3
-
-    def test_build_canvas_coverage_between_0_1(self):
-        from puzzle_reconstruction.assembly.canvas_builder import build_canvas
-        ps = [self._make_placement(0, 0, 0)]
-        result = build_canvas(ps, canvas_w=100, canvas_h=100)
-        assert 0.0 <= result.coverage <= 1.0
-
-    def test_compute_canvas_size(self):
-        from puzzle_reconstruction.assembly.canvas_builder import (
-            compute_canvas_size, FragmentPlacement,
-        )
-        img = np.zeros((10, 15, 3), dtype=np.uint8)
-        ps = [FragmentPlacement(fragment_id=0, image=img, x=5, y=5)]
-        w, h = compute_canvas_size(ps, padding=0)
-        assert w == 20  # 5+15
-        assert h == 15  # 5+10
-
-    def test_make_empty_canvas(self):
-        from puzzle_reconstruction.assembly.canvas_builder import (
-            make_empty_canvas, CanvasConfig,
-        )
-        cfg = CanvasConfig(bg_color=(0, 0, 0))
-        canvas = make_empty_canvas(50, 40, cfg)
-        assert canvas.shape == (40, 50, 3)
-        assert canvas.sum() == 0
-
-    def test_place_fragment_overwrites(self):
-        from puzzle_reconstruction.assembly.canvas_builder import (
-            make_empty_canvas, place_fragment, FragmentPlacement,
-        )
-        canvas = make_empty_canvas(30, 30)
-        img = np.full((10, 10, 3), 99, dtype=np.uint8)
-        p = FragmentPlacement(fragment_id=0, image=img, x=0, y=0)
-        canvas = place_fragment(canvas, p, blend_mode="overwrite")
-        assert canvas[0, 0, 0] == 99
-
-    def test_crop_to_content(self):
-        from puzzle_reconstruction.assembly.canvas_builder import (
-            build_canvas, crop_to_content,
-        )
-        ps = [self._make_placement(0, 10, 10)]
-        result = build_canvas(ps, canvas_w=50, canvas_h=50)
-        cropped = crop_to_content(result)
-        assert cropped.shape[0] <= 50
-        assert cropped.shape[1] <= 50
-
-    def test_batch_build_canvases(self):
-        from puzzle_reconstruction.assembly.canvas_builder import batch_build_canvases
-        ps1 = [self._make_placement(0, 0, 0)]
-        ps2 = [self._make_placement(0, 0, 0), self._make_placement(1, 25, 0)]
-        results = batch_build_canvases([ps1, ps2])
-        assert len(results) == 2
-        assert results[1].n_placed == 2
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 4. collision_detector.py
-# ═══════════════════════════════════════════════════════════════════════════════
-
-class TestCollisionDetector:
-    def _rect(self, fid, x, y, w=10, h=10):
-        from puzzle_reconstruction.assembly.collision_detector import PlacedRect
-        return PlacedRect(fragment_id=fid, x=x, y=y, width=w, height=h)
-
-    def test_aabb_overlap_true(self):
-        from puzzle_reconstruction.assembly.collision_detector import aabb_overlap
-        a = self._rect(0, 0, 0, 10, 10)
-        b = self._rect(1, 5, 5, 10, 10)
-        assert aabb_overlap(a, b) is True
-
-    def test_aabb_overlap_false(self):
-        from puzzle_reconstruction.assembly.collision_detector import aabb_overlap
-        a = self._rect(0, 0, 0, 10, 10)
-        b = self._rect(1, 20, 20, 10, 10)
-        assert aabb_overlap(a, b) is False
-
-    def test_compute_overlap_returns_collision_info(self):
-        from puzzle_reconstruction.assembly.collision_detector import compute_overlap
-        a = self._rect(0, 0, 0, 10, 10)
-        b = self._rect(1, 5, 0, 10, 10)
-        info = compute_overlap(a, b)
-        assert info is not None
-        assert info.overlap_area > 0
-
-    def test_compute_overlap_no_collision(self):
-        from puzzle_reconstruction.assembly.collision_detector import compute_overlap
-        a = self._rect(0, 0, 0, 10, 10)
-        b = self._rect(1, 20, 0, 10, 10)
-        assert compute_overlap(a, b) is None
-
-    def test_detect_collisions_finds_overlap(self):
-        from puzzle_reconstruction.assembly.collision_detector import detect_collisions
-        rects = [self._rect(0, 0, 0), self._rect(1, 5, 5), self._rect(2, 50, 50)]
-        colls = detect_collisions(rects)
-        assert len(colls) >= 1
-
-    def test_is_collision_free_true(self):
-        from puzzle_reconstruction.assembly.collision_detector import is_collision_free
-        rects = [self._rect(0, 0, 0), self._rect(1, 20, 0)]
-        assert is_collision_free(rects) is True
-
-    def test_is_collision_free_false(self):
-        from puzzle_reconstruction.assembly.collision_detector import is_collision_free
-        rects = [self._rect(0, 0, 0), self._rect(1, 5, 0)]
-        assert is_collision_free(rects) is False
-
-    def test_total_overlap_area(self):
-        from puzzle_reconstruction.assembly.collision_detector import (
-            detect_collisions, total_overlap_area,
-        )
-        rects = [self._rect(0, 0, 0), self._rect(1, 5, 5)]
-        colls = detect_collisions(rects)
-        area = total_overlap_area(colls)
-        assert area >= 0
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 5. fragment_arranger.py
-# ═══════════════════════════════════════════════════════════════════════════════
-
-class TestFragmentArranger:
-    def test_arrange_grid_basic(self):
-        from puzzle_reconstruction.assembly.fragment_arranger import arrange_grid
-        sizes = [(20, 20)] * 6
-        placements = arrange_grid(sizes, cols=3, gap=5)
-        assert len(placements) == 6
-
-    def test_arrange_grid_no_negative_coords(self):
-        from puzzle_reconstruction.assembly.fragment_arranger import arrange_grid
-        sizes = [(10, 10), (15, 20), (8, 8)]
-        placements = arrange_grid(sizes, cols=2, gap=2)
-        for p in placements:
-            assert p.x >= 0
-            assert p.y >= 0
-
-    def test_arrange_strip_basic(self):
-        from puzzle_reconstruction.assembly.fragment_arranger import arrange_strip
-        sizes = [(30, 20), (30, 20), (30, 20)]
-        placements = arrange_strip(sizes, canvas_w=70, gap=5)
-        assert len(placements) == 3
-
-    def test_arrange_strip_wraps_rows(self):
-        from puzzle_reconstruction.assembly.fragment_arranger import arrange_strip
-        # Each fragment is 40px wide, canvas 50px → wraps after first
-        sizes = [(40, 10), (40, 10), (40, 10)]
-        placements = arrange_strip(sizes, canvas_w=50, gap=0)
-        # Second and third fragment should start at x=0 (new row)
-        assert placements[1].x == 0
-        assert placements[2].x == 0
-
-    def test_center_placements(self):
-        from puzzle_reconstruction.assembly.fragment_arranger import (
-            arrange_grid, center_placements,
-        )
-        sizes = [(20, 20)] * 4
-        placements = arrange_grid(sizes, cols=2, gap=0)
-        centered = center_placements(placements, canvas_w=200, canvas_h=200)
-        assert len(centered) == 4
-
-    def test_group_bbox(self):
-        from puzzle_reconstruction.assembly.fragment_arranger import (
-            arrange_grid, group_bbox,
-        )
-        sizes = [(20, 20)] * 4
-        placements = arrange_grid(sizes, cols=2, gap=0)
-        x, y, w, h = group_bbox(placements)
-        assert w > 0 and h > 0
-
-    def test_shift_placements(self):
-        from puzzle_reconstruction.assembly.fragment_arranger import (
-            arrange_grid, shift_placements,
-        )
-        sizes = [(10, 10)]
-        placements = arrange_grid(sizes, cols=1, gap=0)
-        shifted = shift_placements(placements, dx=5, dy=3)
-        assert shifted[0].x == placements[0].x + 5
-        assert shifted[0].y == placements[0].y + 3
-
-    def test_arrange_dispatches_strategies(self):
-        from puzzle_reconstruction.assembly.fragment_arranger import (
-            arrange, ArrangementParams,
-        )
-        sizes = [(10, 10)] * 4
-        for strategy in ("grid", "strip", "center"):
-            params = ArrangementParams(strategy=strategy, canvas_w=100, canvas_h=100)
-            result = arrange(sizes, params)
-            assert len(result) == 4
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 6. fragment_mapper.py
-# ═══════════════════════════════════════════════════════════════════════════════
-
-class TestFragmentMapper:
-    def test_build_fragment_map_basic(self):
-        from puzzle_reconstruction.assembly.fragment_mapper import (
-            build_fragment_map, MapConfig,
-        )
-        cfg = MapConfig(canvas_w=100, canvas_h=100, n_zones_x=2, n_zones_y=2)
-        ids = [0, 1, 2]
-        pos = [(10, 10), (60, 10), (10, 60)]
-        result = build_fragment_map(ids, pos, cfg)
-        assert result.n_fragments == 3
-        assert result.n_assigned == 3
-
-    def test_assign_to_zone_clamp(self):
-        from puzzle_reconstruction.assembly.fragment_mapper import (
-            assign_to_zone, MapConfig,
-        )
-        cfg = MapConfig(canvas_w=100, canvas_h=100, n_zones_x=4, n_zones_y=4)
-        zx, zy = assign_to_zone(200, 200, cfg)
-        assert zx == 3  # clamped to max
-        assert zy == 3
-
-    def test_compute_zone_grid(self):
-        from puzzle_reconstruction.assembly.fragment_mapper import (
-            compute_zone_grid, MapConfig,
-        )
-        cfg = MapConfig(canvas_w=100, canvas_h=100, n_zones_x=2, n_zones_y=2)
-        zones = compute_zone_grid(cfg)
-        assert len(zones) == 4
-
-    def test_map_result_by_fragment(self):
-        from puzzle_reconstruction.assembly.fragment_mapper import build_fragment_map
-        result = build_fragment_map([0, 1], [(0, 0), (50, 50)])
-        d = result.by_fragment
-        assert 0 in d and 1 in d
-
-    def test_score_mapping_nonnegative(self):
-        from puzzle_reconstruction.assembly.fragment_mapper import (
-            build_fragment_map, score_mapping,
-        )
-        result = build_fragment_map([0, 1, 2], [(0, 0), (256, 0), (256, 256)])
-        s = score_mapping(result)
-        assert 0.0 <= s <= 1.0
-
-    def test_remap_fragments(self):
-        from puzzle_reconstruction.assembly.fragment_mapper import (
-            build_fragment_map, remap_fragments,
-        )
-        result = build_fragment_map([0, 1], [(0, 0), (100, 100)])
-        remapped = remap_fragments(result, {0: 10, 1: 20})
-        fids = [fz.fragment_id for fz in remapped.assignments]
-        assert 10 in fids and 20 in fids
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 7. fragment_sequencer.py
-# ═══════════════════════════════════════════════════════════════════════════════
-
-class TestFragmentSequencer:
-    def _matrix(self, n=4):
-        np.random.seed(0)
-        m = np.random.rand(n, n)
-        np.fill_diagonal(m, 0)
-        return (m + m.T) / 2  # symmetric
-
-    def test_sequence_greedy_returns_full_order(self):
-        from puzzle_reconstruction.assembly.fragment_sequencer import sequence_greedy
-        mat = self._matrix(4)
-        result = sequence_greedy(mat)
-        assert len(result.order) == 4
-        assert set(result.order) == {0, 1, 2, 3}
-
-    def test_sequence_greedy_with_start(self):
-        from puzzle_reconstruction.assembly.fragment_sequencer import sequence_greedy
-        mat = self._matrix(4)
-        result = sequence_greedy(mat, start=2)
-        assert result.order[0] == 2
-
-    def test_sequence_by_score(self):
-        from puzzle_reconstruction.assembly.fragment_sequencer import sequence_by_score
-        scores = [0.3, 0.9, 0.1, 0.7]
-        result = sequence_by_score(scores, descending=True)
-        assert result.order[0] == 1  # highest score first
-
-    def test_compute_sequence_score(self):
-        from puzzle_reconstruction.assembly.fragment_sequencer import (
-            compute_sequence_score,
-        )
-        mat = np.array([[0, 0.5], [0.5, 0]], dtype=float)
-        score = compute_sequence_score([0, 1], mat)
-        assert score == pytest.approx(0.5)
-
-    def test_reverse_sequence(self):
-        from puzzle_reconstruction.assembly.fragment_sequencer import (
-            sequence_greedy, reverse_sequence,
-        )
-        mat = self._matrix(4)
-        result = sequence_greedy(mat)
-        rev = reverse_sequence(result)
-        assert rev.order == list(reversed(result.order))
-
-    def test_rotate_sequence(self):
-        from puzzle_reconstruction.assembly.fragment_sequencer import (
-            sequence_greedy, rotate_sequence,
-        )
-        mat = self._matrix(4)
-        result = sequence_greedy(mat, start=0)
-        second_elem = result.order[1]
-        rotated = rotate_sequence(result, second_elem)
-        assert rotated.order[0] == second_elem
-
-    def test_sequence_to_pairs(self):
-        from puzzle_reconstruction.assembly.fragment_sequencer import (
-            SequenceResult, sequence_to_pairs,
-        )
-        sr = SequenceResult(order=[0, 1, 2, 3], total_score=1.0)
-        pairs = sequence_to_pairs(sr)
-        assert pairs == [(0, 1), (1, 2), (2, 3)]
-
-    def test_batch_sequence(self):
-        from puzzle_reconstruction.assembly.fragment_sequencer import batch_sequence
-        mats = [self._matrix(3) for _ in range(4)]
-        results = batch_sequence(mats)
-        assert len(results) == 4
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 8. fragment_sorter.py
-# ═══════════════════════════════════════════════════════════════════════════════
-
-class TestFragmentSorter:
-    def _frags(self):
-        from puzzle_reconstruction.assembly.fragment_sorter import FragmentSortInfo
-        return [
-            FragmentSortInfo(fragment_id=3, area=100.0, score=0.5),
-            FragmentSortInfo(fragment_id=1, area=50.0,  score=0.9),
-            FragmentSortInfo(fragment_id=2, area=200.0, score=0.2),
-        ]
-
-    def test_sort_by_id_ascending(self):
-        from puzzle_reconstruction.assembly.fragment_sorter import sort_by_id
-        result = sort_by_id(self._frags(), reverse=False)
-        ids = [f.fragment_id for f in result]
-        assert ids == [1, 2, 3]
-
-    def test_sort_by_area_descending(self):
-        from puzzle_reconstruction.assembly.fragment_sorter import sort_by_area
-        result = sort_by_area(self._frags(), reverse=True)
-        areas = [f.area for f in result]
-        assert areas == sorted(areas, reverse=True)
-
-    def test_sort_by_score_descending(self):
-        from puzzle_reconstruction.assembly.fragment_sorter import sort_by_score
-        result = sort_by_score(self._frags(), reverse=True)
-        scores = [f.score for f in result]
-        assert scores == sorted(scores, reverse=True)
-
-    def test_sort_random_reproducible(self):
-        from puzzle_reconstruction.assembly.fragment_sorter import sort_random
-        r1 = [f.fragment_id for f in sort_random(self._frags(), seed=42)]
-        r2 = [f.fragment_id for f in sort_random(self._frags(), seed=42)]
-        assert r1 == r2
-
-    def test_assign_positions(self):
-        from puzzle_reconstruction.assembly.fragment_sorter import (
-            assign_positions,
-        )
-        frags = self._frags()
-        result = assign_positions(frags)
-        for i, sf in enumerate(result):
-            assert sf.position == i
-
-    def test_sort_fragments_via_config(self):
-        from puzzle_reconstruction.assembly.fragment_sorter import (
-            sort_fragments, SortConfig,
-        )
-        cfg = SortConfig(strategy="area", reverse=True)
-        result = sort_fragments(self._frags(), cfg)
-        areas = [f.area for f in result]
-        assert areas[0] >= areas[-1]
-
-    def test_batch_sort(self):
-        from puzzle_reconstruction.assembly.fragment_sorter import batch_sort
-        lists = [self._frags(), self._frags()]
-        results = batch_sort(lists)
-        assert len(results) == 2
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 9. gap_analyzer.py
-# ═══════════════════════════════════════════════════════════════════════════════
-
-class TestGapAnalyzer:
-    def _bounds(self, fid, x, y, w=20.0, h=20.0):
-        from puzzle_reconstruction.assembly.gap_analyzer import FragmentBounds
-        return FragmentBounds(fragment_id=fid, x=x, y=y, width=w, height=h)
-
-    def test_compute_gap_far(self):
-        from puzzle_reconstruction.assembly.gap_analyzer import compute_gap
-        a = self._bounds(0, 0, 0)
-        b = self._bounds(1, 100, 100)
-        info = compute_gap(a, b)
-        assert info.category == "far"
-        assert info.distance > 0
-
-    def test_compute_gap_overlap(self):
-        from puzzle_reconstruction.assembly.gap_analyzer import compute_gap
-        a = self._bounds(0, 0, 0)
-        b = self._bounds(1, 5, 5)
-        info = compute_gap(a, b)
-        assert info.category == "overlap"
-        assert info.is_overlapping
-
-    def test_analyze_all_gaps_count(self):
-        from puzzle_reconstruction.assembly.gap_analyzer import analyze_all_gaps
-        frags = [self._bounds(i, i * 30, 0) for i in range(4)]
-        gaps = analyze_all_gaps(frags)
-        assert len(gaps) == 6  # C(4,2)
-
-    def test_gap_histogram(self):
-        from puzzle_reconstruction.assembly.gap_analyzer import (
-            analyze_all_gaps, gap_histogram,
-        )
-        frags = [self._bounds(i, i * 50, 0) for i in range(3)]
-        gaps = analyze_all_gaps(frags)
-        counts, edges = gap_histogram(gaps, bins=5)
-        assert len(counts) == 5
-        assert len(edges) == 6
-
-    def test_classify_gaps(self):
-        from puzzle_reconstruction.assembly.gap_analyzer import (
-            analyze_all_gaps, classify_gaps,
-        )
-        frags = [self._bounds(0, 0, 0), self._bounds(1, 5, 5), self._bounds(2, 100, 0)]
-        gaps = analyze_all_gaps(frags)
-        classified = classify_gaps(gaps)
-        assert set(classified.keys()) == {"overlap", "touching", "near", "far"}
-
-    def test_summarize(self):
-        from puzzle_reconstruction.assembly.gap_analyzer import (
-            analyze_all_gaps, summarize,
-        )
-        frags = [self._bounds(i, i * 40, 0) for i in range(3)]
-        gaps = analyze_all_gaps(frags)
-        stats = summarize(gaps)
-        assert stats.n_pairs == 3
-        assert stats.mean_distance >= 0
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 10. hierarchical.py
-# ═══════════════════════════════════════════════════════════════════════════════
-
-class TestHierarchical:
-    def _make_inputs(self, n=3):
-        frags = [_make_fragment(i) for i in range(n)]
-        entries = []
-        for i in range(n):
-            for j in range(i + 1, n):
-                ei = frags[i].edges[0]
-                ej = frags[j].edges[0]
-                entries.append(_make_compat_entry(ei, ej, score=0.7))
-        return frags, entries
-
-    def test_hierarchical_basic(self):
-        from puzzle_reconstruction.assembly.hierarchical import hierarchical_assembly
-        frags, entries = self._make_inputs(3)
-        result = hierarchical_assembly(frags, entries)
-        assert result.method == "hierarchical"
-        assert len(result.placements) == 3
-
-    def test_hierarchical_empty(self):
-        from puzzle_reconstruction.assembly.hierarchical import hierarchical_assembly
-        result = hierarchical_assembly([], [])
-        assert result.placements == {}
-
-    def test_hierarchical_single_linkage(self):
-        from puzzle_reconstruction.assembly.hierarchical import (
-            hierarchical_assembly, HierarchicalConfig,
-        )
-        frags, entries = self._make_inputs(3)
-        cfg = HierarchicalConfig(linkage="single")
-        result = hierarchical_assembly(frags, entries, cfg)
-        assert result.total_score >= 0.0
-
-    def test_hierarchical_complete_linkage(self):
-        from puzzle_reconstruction.assembly.hierarchical import (
-            hierarchical_assembly, HierarchicalConfig,
-        )
-        frags, entries = self._make_inputs(3)
-        cfg = HierarchicalConfig(linkage="complete")
-        result = hierarchical_assembly(frags, entries, cfg)
-        assert result.method == "hierarchical"
-
-    def test_linkage_helpers(self):
-        from puzzle_reconstruction.assembly.hierarchical import (
-            single_linkage_score, average_linkage_score, complete_linkage_score,
-        )
-        scores = [0.2, 0.8, 0.5]
-        assert single_linkage_score(scores) == 0.8
-        assert complete_linkage_score(scores) == 0.2
-        assert average_linkage_score(scores) == pytest.approx(0.5)
-
-    def test_linkage_helpers_empty(self):
-        from puzzle_reconstruction.assembly.hierarchical import (
-            single_linkage_score, average_linkage_score, complete_linkage_score,
-        )
-        assert single_linkage_score([]) == 0.0
-        assert average_linkage_score([]) == 0.0
-        assert complete_linkage_score([]) == 0.0
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 11. layout_builder.py
-# ═══════════════════════════════════════════════════════════════════════════════
-
-class TestLayoutBuilder:
-    def test_create_layout(self):
-        from puzzle_reconstruction.assembly.layout_builder import create_layout
-        layout = create_layout(canvas_w=200, canvas_h=100, version="1.0")
-        assert layout.canvas_w == 200.0
-        assert layout.canvas_h == 100.0
-        assert layout.params.get("version") == "1.0"
-
-    def test_add_and_remove_cell(self):
-        from puzzle_reconstruction.assembly.layout_builder import (
-            create_layout, add_cell, remove_cell,
-        )
-        layout = create_layout()
-        layout = add_cell(layout, fragment_idx=0, x=10, y=20, width=50, height=40)
-        assert len(layout.cells) == 1
-        layout = remove_cell(layout, fragment_idx=0)
-        assert len(layout.cells) == 0
-
-    def test_add_cell_replaces_existing(self):
-        from puzzle_reconstruction.assembly.layout_builder import (
-            create_layout, add_cell,
-        )
-        layout = create_layout()
-        layout = add_cell(layout, 0, x=0, y=0, width=10, height=10)
-        layout = add_cell(layout, 0, x=5, y=5, width=20, height=20)
-        assert len(layout.cells) == 1
-        assert layout.cells[0].x == 5.0
-
-    def test_compute_bounding_box(self):
-        from puzzle_reconstruction.assembly.layout_builder import (
-            create_layout, add_cell, compute_bounding_box,
-        )
-        layout = create_layout()
-        layout = add_cell(layout, 0, x=0, y=0, width=30, height=20)
-        layout = add_cell(layout, 1, x=30, y=20, width=10, height=10)
-        x, y, w, h = compute_bounding_box(layout)
-        assert w == 40.0
-        assert h == 30.0
-
-    def test_snap_to_grid(self):
-        from puzzle_reconstruction.assembly.layout_builder import (
-            create_layout, add_cell, snap_to_grid,
-        )
-        layout = create_layout()
-        layout = add_cell(layout, 0, x=7.3, y=2.8, width=10, height=10)
-        snap_to_grid(layout, grid_size=5.0)
-        assert layout.cells[0].x % 5.0 == pytest.approx(0.0)
-
-    def test_render_layout_image(self):
-        from puzzle_reconstruction.assembly.layout_builder import (
-            create_layout, add_cell, render_layout_image,
-        )
-        layout = create_layout()
-        layout = add_cell(layout, 0, x=0, y=0, width=40, height=30)
-        img = render_layout_image(layout)
-        assert img.ndim == 2
-        assert img.dtype == np.uint8
-
-    def test_layout_serialization_roundtrip(self):
-        from puzzle_reconstruction.assembly.layout_builder import (
-            create_layout, add_cell, layout_to_dict, dict_to_layout,
-        )
-        layout = create_layout(canvas_w=100, canvas_h=80)
-        layout = add_cell(layout, 0, x=5, y=5, width=20, height=20, rotation=45.0)
-        d = layout_to_dict(layout)
-        restored = dict_to_layout(d)
-        assert len(restored.cells) == 1
-        assert restored.cells[0].rotation == 45.0
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# 12. layout_refiner.py
-# ═══════════════════════════════════════════════════════════════════════════════
-
-class TestLayoutRefiner:
-    def _positions(self):
-        from puzzle_reconstruction.assembly.layout_refiner import FragmentPosition
-        return {
-            0: FragmentPosition(fragment_id=0, x=0.0, y=0.0),
-            1: FragmentPosition(fragment_id=1, x=10.0, y=0.0),
-        }
-
-    def test_compute_layout_score(self):
-        from puzzle_reconstruction.assembly.layout_refiner import compute_layout_score
-        positions = self._positions()
-        adjacency = {(0, 1): 0.8}
-        score = compute_layout_score(positions, adjacency, target_gap=10.0)
+    # ── 7. _build_edge_to_frag maps every edge_id to its parent ───────────
+    def test_build_edge_to_frag(self):
+        frags = [_make_fragment(i, n_edges=2) for i in range(3)]
+        mapping = self._build_edge_to_frag(frags)
+        for frag in frags:
+            for edge in frag.edges:
+                assert edge.edge_id in mapping
+                assert mapping[edge.edge_id].fragment_id == frag.fragment_id
+
+    # ── 8. _build_best_score_per_frag returns correct upper bounds ─────────
+    def test_build_best_score_per_frag_values(self):
+        frags, entries = self._frags_and_entries(3)
+        e2f = self._build_edge_to_frag(frags)
+        best = self._build_best_score_per_frag(frags, entries, e2f)
+        # Each value must be >= 0
+        for frag in frags:
+            fid = frag.fragment_id
+            assert fid in best
+            assert best[fid] >= 0.0
+
+    # ── 9. _heuristic sums best scores for unplaced frags ─────────────────
+    def test_heuristic_sum(self):
+        best = {0: 0.9, 1: 0.5, 2: 0.3}
+        unplaced = frozenset([1, 2])
+        h = self._heuristic(unplaced, best)
+        assert abs(h - 0.8) < 1e-9
+
+    # ── 10. _heuristic is zero for empty unplaced set ─────────────────────
+    def test_heuristic_empty(self):
+        h = self._heuristic(frozenset(), {0: 1.0})
+        assert h == 0.0
+
+    # ── 11. _score_for_placement returns 0 when no placed frags share entries
+    def test_score_for_placement_no_overlap(self):
+        frags, entries = self._frags_and_entries(4)
+        e2f = self._build_edge_to_frag(frags)
+        # placed set contains only fragment id 99 (not in entries)
+        score = self._score_for_placement(frags[0], frozenset([99]), entries, e2f)
+        assert score == 0.0
+
+    # ── 12. _score_for_placement is >= 0 ──────────────────────────────────
+    def test_score_for_placement_non_negative(self):
+        frags, entries = self._frags_and_entries(4)
+        e2f = self._build_edge_to_frag(frags)
+        placed = frozenset([frags[1].fragment_id, frags[2].fragment_id])
+        score = self._score_for_placement(frags[0], placed, entries, e2f)
         assert score >= 0.0
 
-    def test_refine_layout_runs(self):
-        from puzzle_reconstruction.assembly.layout_refiner import (
-            refine_layout, RefineConfig,
+    # ── 13. _AStarState f_score is negated (g+h) ──────────────────────────
+    def test_astar_state_f_score(self):
+        state = self._AStarState(frozenset([0]), {}, g_score=3.0, h_score=2.0)
+        assert state.f_score == -(3.0 + 2.0)
+
+    # ── 14. Placement positions are 2-element arrays ──────────────────────
+    def test_placement_positions_shape(self):
+        frags, entries = self._frags_and_entries(3)
+        result = self.astar_assembly(frags, entries)
+        for fid, (pos, rot) in result.placements.items():
+            assert pos.shape == (2,)
+
+    # ── 15. max_states=1 still returns a valid Assembly ───────────────────
+    def test_max_states_one(self):
+        frags, entries = self._frags_and_entries(3)
+        result = self.astar_assembly(frags, entries, max_states=1)
+        assert isinstance(result, Assembly)
+        assert len(result.placements) >= 1
+
+    # ── 16. beam_width=1 returns valid Assembly ───────────────────────────
+    def test_beam_width_one(self):
+        frags, entries = self._frags_and_entries(3)
+        result = self.astar_assembly(frags, entries, beam_width=1)
+        assert isinstance(result, Assembly)
+
+
+# ---------------------------------------------------------------------------
+# TestAssemblyBridge
+# ---------------------------------------------------------------------------
+
+class TestAssemblyBridge:
+    """Tests for puzzle_reconstruction.assembly.bridge"""
+
+    @pytest.fixture(autouse=True)
+    def _imports(self):
+        from puzzle_reconstruction.assembly.bridge import (
+            build_assembly_registry,
+            list_assembly_fns,
+            get_assembly_fn,
+            get_assembly_category,
+            ASSEMBLY_CATEGORIES,
         )
-        positions = self._positions()
-        adjacency = {(0, 1): 0.9}
-        cfg = RefineConfig(max_iter=5, step_size=1.0)
-        result = refine_layout(positions, adjacency, cfg=cfg, target_gap=10.0)
-        assert result.n_iter <= 5
-        assert len(result.positions) == 2
+        self.build_assembly_registry = build_assembly_registry
+        self.list_assembly_fns = list_assembly_fns
+        self.get_assembly_fn = get_assembly_fn
+        self.get_assembly_category = get_assembly_category
+        self.ASSEMBLY_CATEGORIES = ASSEMBLY_CATEGORIES
 
-    def test_refine_layout_converges(self):
-        from puzzle_reconstruction.assembly.layout_refiner import (
-            refine_layout, RefineConfig,
-        )
-        positions = self._positions()
-        adjacency = {(0, 1): 1.0}
-        cfg = RefineConfig(max_iter=50, convergence_eps=0.0001)
-        result = refine_layout(positions, adjacency, cfg=cfg)
-        # Either converged or exhausted iterations
-        assert result.n_iter >= 1
+    # ── 1. build_assembly_registry returns a dict ─────────────────────────
+    def test_registry_is_dict(self):
+        reg = self.build_assembly_registry()
+        assert isinstance(reg, dict)
 
-    def test_apply_offset(self):
-        from puzzle_reconstruction.assembly.layout_refiner import apply_offset
-        positions = self._positions()
-        shifted = apply_offset(positions, dx=5.0, dy=3.0)
-        assert shifted[0].x == pytest.approx(5.0)
-        assert shifted[1].x == pytest.approx(15.0)
+    # ── 2. Registry values are all callable ───────────────────────────────
+    def test_registry_values_callable(self):
+        reg = self.build_assembly_registry()
+        for name, fn in reg.items():
+            assert callable(fn), f"{name} is not callable"
 
-    def test_compare_layouts(self):
-        from puzzle_reconstruction.assembly.layout_refiner import (
-            apply_offset, compare_layouts,
-        )
-        before = self._positions()
-        after = apply_offset(before, dx=2.0, dy=0.0)
-        comparison = compare_layouts(before, after)
-        assert comparison["mean_shift"] == pytest.approx(2.0)
-        assert comparison["n_moved"] == 2
+    # ── 3. list_assembly_fns returns a sorted list ────────────────────────
+    def test_list_fns_sorted(self):
+        fns = self.list_assembly_fns()
+        assert fns == sorted(fns)
 
+    # ── 4. list_assembly_fns with valid category returns subset ───────────
+    def test_list_fns_by_category(self):
+        for cat in self.ASSEMBLY_CATEGORIES:
+            fns = self.list_assembly_fns(cat)
+            assert isinstance(fns, list)
+            cat_set = set(self.ASSEMBLY_CATEGORIES[cat])
+            for name in fns:
+                assert name in cat_set
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# 13. overlap_resolver.py
-# ═══════════════════════════════════════════════════════════════════════════════
+    # ── 5. list_assembly_fns unknown category returns empty ───────────────
+    def test_list_fns_unknown_category(self):
+        fns = self.list_assembly_fns("nonexistent_category_xyz")
+        assert fns == []
 
-class TestOverlapResolver:
-    def _bbox(self, fid, x, y, w=20.0, h=20.0):
-        from puzzle_reconstruction.assembly.overlap_resolver import BBox
-        return BBox(fragment_id=fid, x=x, y=y, w=w, h=h)
+    # ── 6. get_assembly_fn returns callable for known functions ───────────
+    def test_get_assembly_fn_known(self):
+        reg = self.build_assembly_registry()
+        for name in list(reg.keys())[:3]:
+            fn = self.get_assembly_fn(name)
+            assert callable(fn)
 
-    def test_compute_overlap_with_overlap(self):
-        from puzzle_reconstruction.assembly.overlap_resolver import compute_overlap
-        a = self._bbox(0, 0, 0)
-        b = self._bbox(1, 10, 0)
-        ov = compute_overlap(a, b)
-        assert ov.has_overlap
-        assert ov.area > 0
+    # ── 7. get_assembly_fn returns None for unknown name ──────────────────
+    def test_get_assembly_fn_unknown(self):
+        result = self.get_assembly_fn("__nonexistent_fn_xyz__")
+        assert result is None
 
-    def test_compute_overlap_no_overlap(self):
-        from puzzle_reconstruction.assembly.overlap_resolver import compute_overlap
-        a = self._bbox(0, 0, 0)
-        b = self._bbox(1, 50, 0)
-        ov = compute_overlap(a, b)
-        assert not ov.has_overlap
+    # ── 8. get_assembly_category returns correct category ─────────────────
+    def test_get_assembly_category_correct(self):
+        for cat, names in self.ASSEMBLY_CATEGORIES.items():
+            for name in names:
+                returned = self.get_assembly_category(name)
+                assert returned == cat
+                break  # one sample per category
 
-    def test_detect_overlaps(self):
-        from puzzle_reconstruction.assembly.overlap_resolver import detect_overlaps
-        boxes = {
-            0: self._bbox(0, 0, 0),
-            1: self._bbox(1, 5, 5),
-            2: self._bbox(2, 100, 100),
-        }
-        overlaps = detect_overlaps(boxes)
-        assert len(overlaps) >= 1
+    # ── 9. get_assembly_category returns None for unknown ─────────────────
+    def test_get_assembly_category_unknown(self):
+        assert self.get_assembly_category("__no_such_fn__") is None
 
-    def test_resolve_overlaps_reduces_overlap(self):
-        from puzzle_reconstruction.assembly.overlap_resolver import (
-            resolve_overlaps, compute_total_overlap,
-        )
-        boxes = {0: self._bbox(0, 0, 0), 1: self._bbox(1, 5, 5)}
-        before = compute_total_overlap(boxes)
-        result = resolve_overlaps(boxes)
-        after = compute_total_overlap(result.boxes)
-        assert after <= before
+    # ── 10. ASSEMBLY_CATEGORIES has exactly 8 categories ──────────────────
+    def test_categories_count(self):
+        expected = {"state", "filter", "geometry", "cost",
+                    "layout", "scoring", "sequencing", "tracking"}
+        assert set(self.ASSEMBLY_CATEGORIES.keys()) == expected
 
-    def test_resolve_overlaps_result_structure(self):
-        from puzzle_reconstruction.assembly.overlap_resolver import resolve_overlaps
-        boxes = {0: self._bbox(0, 0, 0), 1: self._bbox(1, 100, 100)}
-        result = resolve_overlaps(boxes)
-        assert result.n_iter >= 1
-        assert isinstance(result.resolved, bool)
+    # ── 11. All category values are non-empty lists ────────────────────────
+    def test_category_values_are_lists(self):
+        for cat, names in self.ASSEMBLY_CATEGORIES.items():
+            assert isinstance(names, list), f"{cat} value is not a list"
+            assert len(names) > 0, f"{cat} is empty"
 
-    def test_overlap_ratio(self):
-        from puzzle_reconstruction.assembly.overlap_resolver import overlap_ratio
-        boxes = {0: self._bbox(0, 0, 0), 1: self._bbox(1, 10, 0)}
-        ratio = overlap_ratio(boxes)
-        assert 0.0 <= ratio <= 1.0
+    # ── 12. list_assembly_fns result is a subset of ASSEMBLY_CATEGORIES ───
+    def test_all_listed_fns_in_categories(self):
+        all_cats = {name for names in self.ASSEMBLY_CATEGORIES.values()
+                    for name in names}
+        for fn_name in self.list_assembly_fns():
+            assert fn_name in all_cats
 
-    def test_bbox_translate(self):
-        from puzzle_reconstruction.assembly.overlap_resolver import BBox
-        b = BBox(fragment_id=0, x=5.0, y=5.0, w=10.0, h=10.0)
-        b2 = b.translate(3.0, 2.0)
-        assert b2.x == 8.0
-        assert b2.y == 7.0
-        # Original unmodified
-        assert b.x == 5.0
+    # ── 13. Registry is idempotent (call twice -> same keys) ──────────────
+    def test_registry_idempotent(self):
+        reg1 = self.build_assembly_registry()
+        reg2 = self.build_assembly_registry()
+        assert set(reg1.keys()) == set(reg2.keys())
+
+    # ── 14. "geometry" category contains geometry-related names ───────────
+    def test_geometry_category_names(self):
+        geom_names = set(self.ASSEMBLY_CATEGORIES["geometry"])
+        assert "aabb_overlap" in geom_names
+        assert "detect_collisions" in geom_names
+        assert "analyze_all_gaps" in geom_names
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# 14. placement_optimizer.py
-# ═══════════════════════════════════════════════════════════════════════════════
+# ---------------------------------------------------------------------------
+# TestFragmentScorer
+# ---------------------------------------------------------------------------
 
-class TestPlacementOptimizer:
-    def _score_matrix(self, n=4):
-        np.random.seed(7)
-        m = np.random.rand(n, n)
-        np.fill_diagonal(m, 0)
-        return (m + m.T) / 2
+class TestFragmentScorer:
+    """Tests for puzzle_reconstruction.assembly.fragment_scorer"""
 
-    def test_greedy_place_basic(self):
-        from puzzle_reconstruction.assembly.placement_optimizer import greedy_place
-        mat = self._score_matrix(4)
-        result = greedy_place(4, mat, root=0)
-        assert result.n_placed == 4
-        assert result.score >= 0.0
-
-    def test_greedy_place_history_length(self):
-        from puzzle_reconstruction.assembly.placement_optimizer import greedy_place
-        mat = self._score_matrix(4)
-        result = greedy_place(4, mat, root=0)
-        assert len(result.history) == 4
-
-    def test_score_placement(self):
-        from puzzle_reconstruction.assembly.placement_optimizer import (
-            greedy_place, score_placement,
-        )
-        mat = self._score_matrix(4)
-        result = greedy_place(4, mat, root=0)
-        s = score_placement(result.state, mat)
-        assert s >= 0.0
-
-    def test_find_best_next(self):
-        from puzzle_reconstruction.assembly.placement_optimizer import (
-            find_best_next,
+    @pytest.fixture(autouse=True)
+    def _imports(self):
+        from puzzle_reconstruction.assembly.fragment_scorer import (
+            ScoreConfig,
+            FragmentScore,
+            AssemblyScore,
+            score_fragment,
+            score_assembly,
+            top_k_placed,
+            bottom_k_placed,
+            batch_score,
         )
         from puzzle_reconstruction.assembly.assembly_state import (
-            create_state, place_fragment,
+            create_state, place_fragment, add_adjacency,
         )
-        mat = self._score_matrix(4)
-        state = create_state(4)
-        state = place_fragment(state, 0, position=(0.0, 0.0))
-        best_idx, gain = find_best_next(state, mat)
-        assert best_idx in {1, 2, 3}
+        from puzzle_reconstruction.assembly.cost_matrix import build_from_scores
+        self.ScoreConfig = ScoreConfig
+        self.FragmentScore = FragmentScore
+        self.AssemblyScore = AssemblyScore
+        self.score_fragment = score_fragment
+        self.score_assembly = score_assembly
+        self.top_k_placed = top_k_placed
+        self.bottom_k_placed = bottom_k_placed
+        self.batch_score = batch_score
+        self.create_state = create_state
+        self.place_fragment = place_fragment
+        self.add_adjacency = add_adjacency
+        self.build_from_scores = build_from_scores
 
-    def test_remove_worst_placed(self):
-        from puzzle_reconstruction.assembly.placement_optimizer import (
-            greedy_place, remove_worst_placed,
+    def _make_state_and_cm(self, n: int = 4, seed: int = 7):
+        rng = np.random.RandomState(seed)
+        scores = rng.rand(n, n).astype(np.float32)
+        np.fill_diagonal(scores, 0.0)
+        cm = self.build_from_scores(scores)
+        state = self.create_state(n)
+        for i in range(n):
+            state = self.place_fragment(state, i, (float(i * 10), 0.0))
+        # connect 0-1, 1-2, 2-3
+        for i in range(n - 1):
+            state = self.add_adjacency(state, i, i + 1)
+        return state, cm
+
+    # ── 1. ScoreConfig default weights sum to 1.0 ─────────────────────────
+    def test_score_config_default_total_weight(self):
+        cfg = self.ScoreConfig()
+        assert abs(cfg.total_weight - 1.0) < 1e-9
+
+    # ── 2. ScoreConfig rejects negative neighbor_weight ───────────────────
+    def test_score_config_negative_neighbor_weight(self):
+        with pytest.raises(ValueError):
+            self.ScoreConfig(neighbor_weight=-0.1)
+
+    # ── 3. ScoreConfig rejects negative coverage_weight ──────────────────
+    def test_score_config_negative_coverage_weight(self):
+        with pytest.raises(ValueError):
+            self.ScoreConfig(coverage_weight=-1.0)
+
+    # ── 4. ScoreConfig rejects min_neighbors < 1 ──────────────────────────
+    def test_score_config_min_neighbors_zero(self):
+        with pytest.raises(ValueError):
+            self.ScoreConfig(min_neighbors=0)
+
+    # ── 5. FragmentScore local_score is in [0, 1] ─────────────────────────
+    def test_fragment_score_local_in_range(self):
+        state, cm = self._make_state_and_cm()
+        fs = self.score_fragment(state, 0, cm)
+        assert 0.0 <= fs.local_score <= 1.0
+
+    # ── 6. Isolated fragment (no neighbours) gets local_score=0.5 ─────────
+    def test_fragment_score_isolated_neutral(self):
+        state = self.create_state(3)
+        rng = np.random.RandomState(1)
+        scores = rng.rand(3, 3).astype(np.float32)
+        cm = self.build_from_scores(scores)
+        state = self.place_fragment(state, 0, (0.0, 0.0))
+        fs = self.score_fragment(state, 0, cm)
+        assert fs.local_score == 0.5
+        assert fs.n_neighbors == 0
+        assert not fs.is_reliable
+
+    # ── 7. score_fragment raises when fragment not placed ─────────────────
+    def test_score_fragment_unplaced_raises(self):
+        state, cm = self._make_state_and_cm(3)
+        state2 = self.create_state(3)
+        state2 = self.place_fragment(state2, 0, (0.0, 0.0))
+        with pytest.raises(ValueError):
+            self.score_fragment(state2, 2, cm)
+
+    # ── 8. score_fragment raises on cm/state n_fragments mismatch ─────────
+    def test_score_fragment_mismatch_raises(self):
+        state, cm = self._make_state_and_cm(4)
+        state3 = self.create_state(3)
+        state3 = self.place_fragment(state3, 0, (0.0, 0.0))
+        with pytest.raises(ValueError):
+            self.score_fragment(state3, 0, cm)
+
+    # ── 9. score_assembly coverage matches placed/total ───────────────────
+    def test_assembly_score_coverage(self):
+        state, cm = self._make_state_and_cm(4)
+        asm = self.score_assembly(state, cm)
+        assert abs(asm.coverage - 1.0) < 1e-9
+
+    # ── 10. score_assembly global_score in [0, 1] ─────────────────────────
+    def test_assembly_score_global_in_range(self):
+        state, cm = self._make_state_and_cm(4)
+        asm = self.score_assembly(state, cm)
+        assert 0.0 <= asm.global_score <= 1.0
+
+    # ── 11. score_assembly n_placed matches placed count ──────────────────
+    def test_assembly_score_n_placed(self):
+        state, cm = self._make_state_and_cm(4)
+        asm = self.score_assembly(state, cm)
+        assert asm.n_placed == 4
+
+    # ── 12. top_k_placed returns at most k items sorted ascending ─────────
+    def test_top_k_placed_sorted_ascending(self):
+        state, cm = self._make_state_and_cm(4)
+        asm = self.score_assembly(state, cm)
+        top = self.top_k_placed(asm, k=3)
+        assert len(top) == 3
+        scores_only = [s for _, s in top]
+        assert scores_only == sorted(scores_only)
+
+    # ── 13. bottom_k_placed returns at most k items sorted descending ──────
+    def test_bottom_k_placed_sorted_descending(self):
+        state, cm = self._make_state_and_cm(4)
+        asm = self.score_assembly(state, cm)
+        bottom = self.bottom_k_placed(asm, k=3)
+        assert len(bottom) == 3
+        scores_only = [s for _, s in bottom]
+        assert scores_only == sorted(scores_only, reverse=True)
+
+    # ── 14. top_k_placed raises when k < 1 ────────────────────────────────
+    def test_top_k_placed_invalid_k(self):
+        state, cm = self._make_state_and_cm(3)
+        asm = self.score_assembly(state, cm)
+        with pytest.raises(ValueError):
+            self.top_k_placed(asm, k=0)
+
+    # ── 15. bottom_k_placed raises when k < 1 ─────────────────────────────
+    def test_bottom_k_placed_invalid_k(self):
+        state, cm = self._make_state_and_cm(3)
+        asm = self.score_assembly(state, cm)
+        with pytest.raises(ValueError):
+            self.bottom_k_placed(asm, k=0)
+
+    # ── 16. batch_score returns same length as input ───────────────────────
+    def test_batch_score_length(self):
+        state, cm = self._make_state_and_cm(4)
+        results = self.batch_score([state, state, state], cm)
+        assert len(results) == 3
+
+    # ── 17. AssemblyScore summary string contains key fields ──────────────
+    def test_assembly_score_summary_string(self):
+        state, cm = self._make_state_and_cm(4)
+        asm = self.score_assembly(state, cm)
+        s = asm.summary()
+        assert "global=" in s
+        assert "coverage=" in s
+        assert "placed=" in s
+
+    # ── 18. FragmentScore raises on negative fragment_idx ─────────────────
+    def test_fragment_score_invalid_idx(self):
+        with pytest.raises(ValueError):
+            self.FragmentScore(fragment_idx=-1, local_score=0.5, n_neighbors=0)
+
+    # ── 19. FragmentScore raises on local_score > 1 ───────────────────────
+    def test_fragment_score_out_of_range_local(self):
+        with pytest.raises(ValueError):
+            self.FragmentScore(fragment_idx=0, local_score=1.5, n_neighbors=0)
+
+
+# ---------------------------------------------------------------------------
+# TestGammaOptimizer
+# ---------------------------------------------------------------------------
+
+class TestGammaOptimizer:
+    """Tests for puzzle_reconstruction.assembly.gamma_optimizer"""
+
+    @pytest.fixture(autouse=True)
+    def _imports(self):
+        from puzzle_reconstruction.assembly.gamma_optimizer import (
+            GammaEdgeModel,
+            gamma_optimizer,
+            _fit_gamma_model,
+            _evaluate_ll,
+            _rotate_curve,
         )
-        mat = self._score_matrix(4)
-        result = greedy_place(4, mat, root=0)
-        trimmed = remove_worst_placed(result, mat)
-        assert trimmed.n_placed == 3
+        self.GammaEdgeModel = GammaEdgeModel
+        self.gamma_optimizer = gamma_optimizer
+        self._fit_gamma_model = _fit_gamma_model
+        self._evaluate_ll = _evaluate_ll
+        self._rotate_curve = _rotate_curve
 
-    def test_iterative_place(self):
-        from puzzle_reconstruction.assembly.placement_optimizer import iterative_place
-        mat = self._score_matrix(4)
-        result = iterative_place(4, mat, root=0, max_iter=3, patience=2)
-        assert result.n_placed == 4
+    def _frags_and_entries(self, n: int = 3, seed: int = 99):
+        rng = np.random.RandomState(seed)
+        frags = [_make_fragment(i, n_edges=2, seed=seed) for i in range(n)]
+        entries = _make_compat_entries(frags, rng)
+        return frags, entries
+
+    # ── 1. GammaEdgeModel has default k and theta ──────────────────────────
+    def test_default_params(self):
+        m = self.GammaEdgeModel()
+        assert m.k == 2.0
+        assert m.theta == 0.5
+
+    # ── 2. fit updates k and theta ────────────────────────────────────────
+    def test_fit_updates_params(self):
+        rng = np.random.RandomState(0)
+        deviations = rng.gamma(shape=3.0, scale=0.8, size=200)
+        m = self.GammaEdgeModel()
+        m.fit(deviations)
+        assert m.k > 0.0
+        assert m.theta > 0.0
+
+    # ── 3. fit with too few points keeps defaults ──────────────────────────
+    def test_fit_too_few_points(self):
+        m = self.GammaEdgeModel(k=2.0, theta=0.5)
+        m.fit(np.array([0.1, 0.2]))  # < 5 points
+        assert m.k == 2.0
+        assert m.theta == 0.5
+
+    # ── 4. log_likelihood returns finite float ─────────────────────────────
+    def test_log_likelihood_finite(self):
+        m = self.GammaEdgeModel()
+        ll = m.log_likelihood(np.array([0.1, 0.5, 1.0, 2.0]))
+        assert math.isfinite(ll)
+
+    # ── 5. log_likelihood is <= 0 ─────────────────────────────────────────
+    def test_log_likelihood_non_positive(self):
+        m = self.GammaEdgeModel()
+        ll = m.log_likelihood(np.array([0.1, 0.5, 1.0, 2.0]))
+        assert ll <= 0.0
+
+    # ── 6. pair_score returns finite value for compatible arrays ──────────
+    def test_pair_score_finite(self):
+        rng = np.random.RandomState(1)
+        a = rng.rand(15, 2).astype(np.float32)
+        b = rng.rand(15, 2).astype(np.float32)
+        m = self.GammaEdgeModel()
+        score = m.pair_score(a, b)
+        assert math.isfinite(score)
+
+    # ── 7. pair_score returns -inf for empty arrays ────────────────────────
+    def test_pair_score_empty(self):
+        m = self.GammaEdgeModel()
+        score = m.pair_score(np.zeros((0, 2)), np.zeros((5, 2)))
+        assert score == -np.inf
+
+    # ── 8. gamma_optimizer returns Assembly ───────────────────────────────
+    def test_returns_assembly(self):
+        frags, entries = self._frags_and_entries(3)
+        result = self.gamma_optimizer(frags, entries, n_iter=50, seed=42)
+        assert isinstance(result, Assembly)
+
+    # ── 9. gamma_optimizer covers all fragments ───────────────────────────
+    def test_all_fragments_covered(self):
+        frags, entries = self._frags_and_entries(3)
+        result = self.gamma_optimizer(frags, entries, n_iter=50, seed=42)
+        assert len(result.placements) == 3
+
+    # ── 10. Empty fragments returns empty Assembly ─────────────────────────
+    def test_empty_fragments(self):
+        result = self.gamma_optimizer([], [], n_iter=10, seed=0)
+        assert result.placements == {}
+
+    # ── 11. _rotate_curve preserves point count ───────────────────────────
+    def test_rotate_curve_shape(self):
+        rng = np.random.RandomState(3)
+        curve = rng.rand(20, 2).astype(np.float32)
+        rotated = self._rotate_curve(curve, math.pi / 4)
+        assert rotated.shape == (20, 2)
+
+    # ── 12. _rotate_curve by 0 is identity ────────────────────────────────
+    def test_rotate_curve_zero_angle(self):
+        rng = np.random.RandomState(5)
+        curve = rng.rand(10, 2).astype(np.float32)
+        rotated = self._rotate_curve(curve, 0.0)
+        np.testing.assert_allclose(rotated, curve, atol=1e-5)
+
+    # ── 13. _rotate_curve by 2*pi is identity (within tolerance) ──────────
+    def test_rotate_curve_full_rotation(self):
+        rng = np.random.RandomState(6)
+        curve = rng.rand(10, 2).astype(np.float32)
+        rotated = self._rotate_curve(curve, 2 * math.pi)
+        np.testing.assert_allclose(rotated, curve, atol=1e-5)
+
+    # ── 14. _fit_gamma_model returns GammaEdgeModel ───────────────────────
+    def test_fit_gamma_model_type(self):
+        _, entries = self._frags_and_entries(3)
+        model = self._fit_gamma_model(entries)
+        assert isinstance(model, self.GammaEdgeModel)
+
+    # ── 15. _fit_gamma_model with empty entries returns model with defaults
+    def test_fit_gamma_model_empty(self):
+        model = self._fit_gamma_model([])
+        assert model.k == 2.0
+        assert model.theta == 0.5
+
+    # ── 16. gamma_optimizer total_score is finite ─────────────────────────
+    def test_total_score_finite(self):
+        frags, entries = self._frags_and_entries(3)
+        result = self.gamma_optimizer(frags, entries, n_iter=50, seed=42)
+        assert math.isfinite(result.total_score)
+
+    # ── 17. Two calls with same seed yield same total_score ────────────────
+    def test_deterministic_with_seed(self):
+        frags, entries = self._frags_and_entries(3)
+        r1 = self.gamma_optimizer(frags, entries, n_iter=50, seed=7)
+        r2 = self.gamma_optimizer(frags, entries, n_iter=50, seed=7)
+        assert abs(r1.total_score - r2.total_score) < 1e-9
+
+
+# ---------------------------------------------------------------------------
+# TestHierarchical
+# ---------------------------------------------------------------------------
+
+class TestHierarchical:
+    """Tests for puzzle_reconstruction.assembly.hierarchical"""
+
+    @pytest.fixture(autouse=True)
+    def _imports(self):
+        from puzzle_reconstruction.assembly.hierarchical import (
+            hierarchical_assembly,
+            HierarchicalConfig,
+            Cluster,
+            _inter_cluster_score,
+            _merge_clusters,
+            single_linkage_score,
+            average_linkage_score,
+            complete_linkage_score,
+        )
+        self.hierarchical_assembly = hierarchical_assembly
+        self.HierarchicalConfig = HierarchicalConfig
+        self.Cluster = Cluster
+        self._inter_cluster_score = _inter_cluster_score
+        self._merge_clusters = _merge_clusters
+        self.single_linkage_score = single_linkage_score
+        self.average_linkage_score = average_linkage_score
+        self.complete_linkage_score = complete_linkage_score
+
+    def _frags_and_entries(self, n: int = 4, seed: int = 21):
+        rng = np.random.RandomState(seed)
+        frags = [_make_fragment(i, n_edges=2, seed=seed) for i in range(n)]
+        entries = _make_compat_entries(frags, rng)
+        return frags, entries
+
+    def _edge_to_frag(self, frags):
+        from puzzle_reconstruction.assembly.astar import _build_edge_to_frag
+        return _build_edge_to_frag(frags)
+
+    # ── 1. Empty fragments returns empty Assembly ──────────────────────────
+    def test_empty_fragments(self):
+        result = self.hierarchical_assembly([], [])
+        assert isinstance(result, Assembly)
+        assert result.placements == {}
+
+    # ── 2. Single fragment is placed ──────────────────────────────────────
+    def test_single_fragment(self):
+        frags = [_make_fragment(0)]
+        result = self.hierarchical_assembly(frags, [])
+        assert 0 in result.placements
+
+    # ── 3. All fragments are placed ────────────────────────────────────────
+    def test_all_fragments_placed(self):
+        frags, entries = self._frags_and_entries(4)
+        result = self.hierarchical_assembly(frags, entries)
+        for f in frags:
+            assert f.fragment_id in result.placements
+
+    # ── 4. Method tag is "hierarchical" ───────────────────────────────────
+    def test_method_tag(self):
+        frags, entries = self._frags_and_entries(3)
+        result = self.hierarchical_assembly(frags, entries)
+        assert result.method == "hierarchical"
+
+    # ── 5. total_score is non-negative ────────────────────────────────────
+    def test_total_score_non_negative(self):
+        frags, entries = self._frags_and_entries(4)
+        result = self.hierarchical_assembly(frags, entries)
+        assert result.total_score >= 0.0
+
+    # ── 6. single linkage returns max of list ─────────────────────────────
+    def test_single_linkage(self):
+        scores = [0.1, 0.9, 0.4]
+        assert self.single_linkage_score(scores) == pytest.approx(0.9)
+
+    # ── 7. average linkage returns mean of list ────────────────────────────
+    def test_average_linkage(self):
+        scores = [0.0, 1.0]
+        assert self.average_linkage_score(scores) == pytest.approx(0.5)
+
+    # ── 8. complete linkage returns min of list ────────────────────────────
+    def test_complete_linkage(self):
+        scores = [0.1, 0.9, 0.4]
+        assert self.complete_linkage_score(scores) == pytest.approx(0.1)
+
+    # ── 9. Linkage functions return 0.0 on empty list ─────────────────────
+    def test_linkage_empty(self):
+        assert self.single_linkage_score([]) == 0.0
+        assert self.average_linkage_score([]) == 0.0
+        assert self.complete_linkage_score([]) == 0.0
+
+    # ── 10. HierarchicalConfig defaults ───────────────────────────────────
+    def test_config_defaults(self):
+        cfg = self.HierarchicalConfig()
+        assert cfg.linkage == "average"
+        assert cfg.min_merge_score == 0.0
+        assert cfg.max_clusters == 1
+
+    # ── 11. _inter_cluster_score returns -1 when no connecting entries ────
+    def test_inter_cluster_no_entries(self):
+        frags, entries = self._frags_and_entries(4)
+        e2f = self._edge_to_frag(frags)
+        ca = self.Cluster(0, {frags[0].fragment_id},
+                          {frags[0].fragment_id: (np.array([0.0, 0.0]), 0.0)})
+        cb = self.Cluster(1, {frags[1].fragment_id},
+                          {frags[1].fragment_id: (np.array([100.0, 0.0]), 0.0)})
+        score = self._inter_cluster_score(ca, cb, [], e2f)
+        assert score == -1.0
+
+    # ── 12. _inter_cluster_score with entries returns value in [-1, 1] ────
+    def test_inter_cluster_with_entries(self):
+        frags, entries = self._frags_and_entries(4)
+        e2f = self._edge_to_frag(frags)
+        ca = self.Cluster(0, {frags[0].fragment_id},
+                          {frags[0].fragment_id: (np.array([0.0, 0.0]), 0.0)})
+        cb = self.Cluster(1, {frags[1].fragment_id},
+                          {frags[1].fragment_id: (np.array([100.0, 0.0]), 0.0)})
+        score = self._inter_cluster_score(ca, cb, entries, e2f)
+        assert -1.0 <= score <= 1.0
+
+    # ── 13. _merge_clusters combines fragment ids ──────────────────────────
+    def test_merge_clusters_ids(self):
+        frags, entries = self._frags_and_entries(4)
+        e2f = self._edge_to_frag(frags)
+        ca = self.Cluster(0, {frags[0].fragment_id},
+                          {frags[0].fragment_id: (np.array([0.0, 0.0]), 0.0)})
+        cb = self.Cluster(1, {frags[1].fragment_id},
+                          {frags[1].fragment_id: (np.array([100.0, 0.0]), 0.0)})
+        merged = self._merge_clusters(ca, cb, entries, e2f,
+                                      new_id=99, merge_score=0.5)
+        assert frags[0].fragment_id in merged.fragment_ids
+        assert frags[1].fragment_id in merged.fragment_ids
+        assert merged.cluster_id == 99
+
+    # ── 14. _merge_clusters total_score includes merge_score ──────────────
+    def test_merge_clusters_score(self):
+        frags, entries = self._frags_and_entries(4)
+        e2f = self._edge_to_frag(frags)
+        ca = self.Cluster(0, {frags[0].fragment_id},
+                          {frags[0].fragment_id: (np.array([0.0, 0.0]), 0.0)},
+                          total_score=1.0)
+        cb = self.Cluster(1, {frags[1].fragment_id},
+                          {frags[1].fragment_id: (np.array([100.0, 0.0]), 0.0)},
+                          total_score=2.0)
+        merged = self._merge_clusters(ca, cb, entries, e2f,
+                                      new_id=99, merge_score=0.3)
+        assert abs(merged.total_score - (1.0 + 2.0 + 0.3)) < 1e-9
+
+    # ── 15. single- and average-linkage both produce valid assemblies ──────
+    def test_single_vs_average_linkage(self):
+        frags, entries = self._frags_and_entries(5)
+        cfg_single = self.HierarchicalConfig(linkage="single")
+        cfg_avg    = self.HierarchicalConfig(linkage="average")
+        r1 = self.hierarchical_assembly(frags, entries, cfg=cfg_single)
+        r2 = self.hierarchical_assembly(frags, entries, cfg=cfg_avg)
+        assert len(r1.placements) == 5
+        assert len(r2.placements) == 5
+
+    # ── 16. max_clusters=2 still covers all fragment placements ───────────
+    def test_max_clusters_two(self):
+        frags, entries = self._frags_and_entries(4)
+        cfg = self.HierarchicalConfig(max_clusters=2)
+        result = self.hierarchical_assembly(frags, entries, cfg=cfg)
+        assert len(result.placements) == 4
+
+    # ── 17. min_merge_score above max score stops immediately ─────────────
+    def test_min_merge_score_no_merges(self):
+        frags, entries = self._frags_and_entries(3)
+        cfg = self.HierarchicalConfig(min_merge_score=999.0)
+        result = self.hierarchical_assembly(frags, entries, cfg=cfg)
+        assert len(result.placements) == 3
+
+    # ── 18. Placements have 2-element position arrays ─────────────────────
+    def test_placement_position_shape(self):
+        frags, entries = self._frags_and_entries(3)
+        result = self.hierarchical_assembly(frags, entries)
+        for fid, (pos, rot) in result.placements.items():
+            assert pos.shape == (2,)
