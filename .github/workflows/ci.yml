@@ -119,7 +119,7 @@ jobs:
           ruff check puzzle_reconstruction/ tools/ \
             --ignore E501,F401,N803,N806,UP006,UP007,UP035,RUF012,W291
 
-      - name: mypy check (core modules)
+      - name: mypy check (core + new modules)
         run: |
           mypy \
             puzzle_reconstruction/config.py \
@@ -131,14 +131,59 @@ jobs:
             puzzle_reconstruction/algorithms/fractal/box_counting.py \
             puzzle_reconstruction/algorithms/fractal/css.py \
             puzzle_reconstruction/algorithms/fractal/divider.py \
+            puzzle_reconstruction/algorithms/fractal/ifs.py \
+            puzzle_reconstruction/algorithms/wavelet_descriptor.py \
             puzzle_reconstruction/algorithms/tangram/hull.py \
             puzzle_reconstruction/matching/pairwise.py \
             puzzle_reconstruction/matching/compat_matrix.py \
             puzzle_reconstruction/matching/matcher_registry.py \
+            puzzle_reconstruction/matching/rotation_dtw.py \
+            puzzle_reconstruction/matching/text_flow.py \
+            puzzle_reconstruction/assembly/astar.py \
+            puzzle_reconstruction/assembly/hierarchical.py \
+            puzzle_reconstruction/verification/homography_verifier.py \
             --ignore-missing-imports \
             --no-strict-optional \
             --check-untyped-defs
         continue-on-error: true   # предупреждения не блокируют, ошибки — блокируют
+
+  # ── Бенчмарки (опциональные, только на ubuntu) ───────────────────────────
+  benchmarks:
+    name: "Benchmarks (smoke test)"
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libgl1-mesa-glx libglib2.0-0
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install scikit-learn scipy || true
+
+      - name: Run benchmark smoke tests
+        run: |
+          python -m pytest benchmarks/bench_descriptors.py \
+            benchmarks/bench_compat_matrix.py \
+            benchmarks/bench_assembly_methods.py \
+            -q --tb=short -x \
+            --timeout=120
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        continue-on-error: true   # benchmarks are informational, not blocking
 
   # ── Сборка пакета ───────────────────────────────────────────────────────
   build:

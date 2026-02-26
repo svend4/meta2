@@ -145,6 +145,7 @@ module = [
     "puzzle_reconstruction.verification.text_coherence",
     "puzzle_reconstruction.verification.edge_validator",
     "puzzle_reconstruction.verification.report",
+    "puzzle_reconstruction.verification.homography_verifier",
 ]
 disallow_untyped_defs = true
 
@@ -161,6 +162,8 @@ module = [
     "puzzle_reconstruction.assembly.exhaustive",
     "puzzle_reconstruction.assembly.parallel",
     "puzzle_reconstruction.assembly.assembly_state",
+    "puzzle_reconstruction.assembly.astar",
+    "puzzle_reconstruction.assembly.hierarchical",
 ]
 disallow_untyped_defs = true
 
@@ -171,6 +174,8 @@ module = [
     "puzzle_reconstruction.matching.pairwise",
     "puzzle_reconstruction.matching.compat_matrix",
     "puzzle_reconstruction.matching.matcher_registry",
+    "puzzle_reconstruction.matching.rotation_dtw",
+    "puzzle_reconstruction.matching.text_flow",
 ]
 disallow_untyped_defs = true
 
@@ -185,6 +190,7 @@ module = [
     "puzzle_reconstruction.algorithms.fractal.css",
     "puzzle_reconstruction.algorithms.fractal.ifs",
     "puzzle_reconstruction.algorithms.synthesis",
+    "puzzle_reconstruction.algorithms.wavelet_descriptor",
 ]
 disallow_untyped_defs = true
 
