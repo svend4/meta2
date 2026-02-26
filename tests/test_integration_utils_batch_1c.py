@@ -261,7 +261,7 @@ def test_apply_profile_fast():
 
 
 def test_apply_profile_unknown_raises():
-    with pytest.raises(KeyError):
+    with pytest.raises(ValueError):
         apply_profile({}, "nonexistent_profile")
 
 
