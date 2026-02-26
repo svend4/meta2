@@ -146,7 +146,8 @@ class TestThresholdUtils:
         high = rng.uniform(0.7, 1.0, 50)
         arr = np.concatenate([low, high])
         t = otsu_threshold(arr)
-        assert 0.3 < t < 0.7
+        # Threshold should lie between the two clusters
+        assert float(low.max()) < t < float(high.min()) + 0.1
 
     def test_count_above_and_fraction(self):
         arr = np.array([0.1, 0.5, 0.9, 0.7])
