@@ -2159,3 +2159,180 @@ class TestRankingLayoutUtils:
         results = batch_summarise_layout_scoring_entries(groups)
         assert len(results) == 2
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 13. ranking_validation_utils
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestRankingValidationUtils:
+
+    # RankingRunRecord tests
+
+    def test_make_ranking_record_basic(self):
+        r = make_ranking_record(n_fragments=10, n_pairs=45)
+        assert r.n_fragments == 10
+        assert r.n_pairs_ranked == 45
+        assert r.top_score == 0.0
+        assert r.has_results is True
+
+    def test_make_ranking_record_with_score(self):
+        r = make_ranking_record(10, 45, top_score=0.85, label="test_run")
+        assert r.top_score == pytest.approx(0.85)
+        assert r.label == "test_run"
+
+    def test_ranking_run_record_invalid_n_fragments(self):
+        with pytest.raises(ValueError):
+            RankingRunRecord(n_fragments=-1, n_pairs_ranked=0)
+
+    def test_ranking_run_record_invalid_top_score(self):
+        with pytest.raises(ValueError):
+            RankingRunRecord(n_fragments=5, n_pairs_ranked=10, top_score=1.5)
+
+    def test_ranking_run_record_has_results_false(self):
+        r = RankingRunRecord(n_fragments=5, n_pairs_ranked=0)
+        assert r.has_results is False
+
+    def test_ranking_run_record_defaults(self):
+        r = RankingRunRecord(n_fragments=5, n_pairs_ranked=10)
+        assert r.top_score == 0.0
+        assert r.mean_score == 0.0
+        assert r.label == ""
+
+    # CandidateSummary tests
+
+    def test_candidate_summary_basic(self):
+        c = CandidateSummary(fragment_id=0, n_candidates=5, best_score=0.8, best_partner=3)
+        assert c.fragment_id == 0
+        assert c.n_candidates == 5
+        assert c.has_candidates is True
+
+    def test_candidate_summary_no_candidates(self):
+        c = CandidateSummary(fragment_id=0, n_candidates=0)
+        assert c.has_candidates is False
+
+    def test_candidate_summary_invalid_fragment_id(self):
+        with pytest.raises(ValueError):
+            CandidateSummary(fragment_id=-1, n_candidates=5)
+
+    def test_candidate_summary_invalid_best_score(self):
+        with pytest.raises(ValueError):
+            CandidateSummary(fragment_id=0, n_candidates=5, best_score=2.0)
+
+    def test_candidate_summary_defaults(self):
+        c = CandidateSummary(fragment_id=2, n_candidates=3)
+        assert c.best_score == 0.0
+        assert c.best_partner is None
+
+    # ScoreVectorRecord tests
+
+    def test_score_vector_record_basic(self):
+        sv = ScoreVectorRecord(n_fragments=3, scores=[0.8, 0.6, 0.7])
+        assert sv.n_fragments == 3
+        assert sv.max_score == pytest.approx(0.8)
+        assert sv.mean_score == pytest.approx((0.8 + 0.6 + 0.7) / 3)
+
+    def test_score_vector_record_empty_scores(self):
+        sv = ScoreVectorRecord(n_fragments=5, scores=[])
+        assert sv.max_score == 0.0
+        assert sv.mean_score == 0.0
+
+    def test_score_vector_record_invalid_length(self):
+        with pytest.raises(ValueError):
+            ScoreVectorRecord(n_fragments=5, scores=[0.1, 0.2])
+
+    def test_score_vector_record_label(self):
+        sv = ScoreVectorRecord(n_fragments=2, scores=[0.5, 0.7], label="run_A")
+        assert sv.label == "run_A"
+
+    # ValidationRunRecord tests
+
+    def test_make_validation_record(self):
+        v = make_validation_record(step=0, n_pairs=10, n_violations=2, quality_score=0.8)
+        assert v.step == 0
+        assert v.n_pairs == 10
+        assert v.n_violations == 2
+        assert v.quality_score == pytest.approx(0.8)
+
+    def test_validation_run_record_violation_rate(self):
+        v = make_validation_record(0, 10, 4, 0.6)
+        assert v.violation_rate == pytest.approx(0.4)
+
+    def test_validation_run_record_violation_rate_zero_pairs(self):
+        v = make_validation_record(0, 0, 0, 1.0)
+        assert v.violation_rate == 0.0
+
+    def test_validation_run_record_is_clean_true(self):
+        v = make_validation_record(0, 10, 0, 1.0)
+        assert v.is_clean is True
+
+    def test_validation_run_record_is_clean_false(self):
+        v = make_validation_record(0, 10, 1, 0.9)
+        assert v.is_clean is False
+
+    def test_validation_run_record_invalid_quality(self):
+        with pytest.raises(ValueError):
+            ValidationRunRecord(step=0, n_pairs=5, n_violations=0, quality_score=1.5)
+
+    # BoundaryCheckSummary tests
+
+    def test_boundary_check_summary_basic(self):
+        s = BoundaryCheckSummary(
+            n_assemblies=5, mean_quality=0.8,
+            best_quality=0.95, worst_quality=0.5,
+            violation_types={"overlap": 3, "gap": 1}
+        )
+        assert s.n_assemblies == 5
+        assert s.dominant_violation == "overlap"
+
+    def test_boundary_check_summary_no_violations(self):
+        s = BoundaryCheckSummary(n_assemblies=3, mean_quality=0.9)
+        assert s.dominant_violation is None
+
+    def test_boundary_check_summary_defaults(self):
+        s = BoundaryCheckSummary(n_assemblies=2, mean_quality=0.75)
+        assert s.best_quality == pytest.approx(1.0)
+        assert s.worst_quality == pytest.approx(0.0)
+
+    # PaletteComparisonRecord tests
+
+    def test_palette_comparison_record_basic(self):
+        p = PaletteComparisonRecord(fragment_id_a=0, fragment_id_b=1, distance=50.0, n_colors=8)
+        assert p.fragment_id_a == 0
+        assert p.distance == pytest.approx(50.0)
+        # similarity = 1 - 50/255
+        assert p.similarity == pytest.approx(1.0 - 50.0/255.0)
+
+    def test_palette_comparison_record_zero_distance(self):
+        p = PaletteComparisonRecord(fragment_id_a=0, fragment_id_b=1, distance=0.0, n_colors=4)
+        assert p.similarity == pytest.approx(1.0)
+
+    def test_palette_comparison_record_large_distance(self):
+        p = PaletteComparisonRecord(fragment_id_a=0, fragment_id_b=1, distance=255.0, n_colors=4)
+        assert p.similarity == pytest.approx(0.0)
+
+    def test_palette_comparison_record_invalid_distance(self):
+        with pytest.raises(ValueError):
+            PaletteComparisonRecord(fragment_id_a=0, fragment_id_b=1, distance=-5.0, n_colors=4)
+
+    # PaletteRankingRecord tests
+
+    def test_palette_ranking_record_basic(self):
+        r = PaletteRankingRecord(
+            query_id=0,
+            ranked_ids=[1, 2, 3, 4],
+            similarities=[0.9, 0.8, 0.7, 0.6]
+        )
+        assert r.query_id == 0
+        top = r.top_k(2)
+        assert len(top) == 2
+        assert top[0] == (1, 0.9)
+
+    def test_palette_ranking_record_empty(self):
+        r = PaletteRankingRecord(query_id=0)
+        assert r.top_k(5) == []
+
+    def test_palette_ranking_record_k_larger_than_list(self):
+        r = PaletteRankingRecord(query_id=0, ranked_ids=[1, 2], similarities=[0.9, 0.8])
+        top = r.top_k(10)
+        assert len(top) == 2
+
