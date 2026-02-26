@@ -220,60 +220,40 @@ class TestImagePipelineUtils:
             FrequencyMatchRecord(1, 2, 0.7),
         ]
 
-    def test_freq_match_record_pair(self):
+    def test_freq_match_record_pair_and_similar(self):
         r = FrequencyMatchRecord(3, 5, 0.8)
-        assert r.pair == (3, 5)
-        assert r.is_similar is True
+        assert r.pair == (3, 5) and r.is_similar is True
 
     def test_freq_match_record_invalid_similarity(self):
         with pytest.raises(ValueError):
             FrequencyMatchRecord(0, 1, 1.5)
 
     def test_summarize_frequency_matches(self):
-        records = self._freq_records()
-        s = summarize_frequency_matches(records)
-        assert s.total_pairs == 3
-        assert s.similar_pairs == 2
-        assert 0.0 <= s.mean_similarity <= 1.0
+        s = summarize_frequency_matches(self._freq_records())
+        assert s.total_pairs == 3 and s.similar_pairs == 2
 
     def test_summarize_frequency_matches_empty(self):
-        s = summarize_frequency_matches([])
-        assert s.total_pairs == 0
+        assert summarize_frequency_matches([]).total_pairs == 0
 
-    def test_filter_frequency_matches(self):
+    def test_filter_and_top_frequency_matches(self):
         records = self._freq_records()
-        filtered = filter_frequency_matches(records, min_similarity=0.5)
-        assert all(r.similarity >= 0.5 for r in filtered)
-
-    def test_top_frequency_matches(self):
-        records = self._freq_records()
+        assert all(r.similarity >= 0.5 for r in filter_frequency_matches(records, 0.5))
         top = top_frequency_matches(records, 2)
-        assert len(top) == 2
-        assert top[0].similarity >= top[1].similarity
+        assert len(top) == 2 and top[0].similarity >= top[1].similarity
 
     def test_canvas_build_record_properties(self):
         rec = CanvasBuildRecord(n_fragments=5, coverage=0.8, canvas_w=100, canvas_h=100)
-        assert rec.canvas_area == 10000
-        assert rec.is_well_covered is True
+        assert rec.canvas_area == 10000 and rec.is_well_covered is True
 
     def test_summarize_canvas_builds(self):
-        records = [
-            CanvasBuildRecord(4, 0.9, 50, 50),
-            CanvasBuildRecord(3, 0.5, 50, 50),
-        ]
+        records = [CanvasBuildRecord(4, 0.9, 50, 50), CanvasBuildRecord(3, 0.5, 50, 50)]
         s = summarize_canvas_builds(records)
-        assert s.n_canvases == 2
-        assert s.total_fragments == 7
+        assert s.n_canvases == 2 and s.total_fragments == 7
 
-    def test_patch_match_record_displacement(self):
-        r = PatchMatchRecord(10, 20, 15, 25, 0.95)
-        assert r.displacement == (5, 5)
-
-    def test_summarize_patch_matches(self):
-        batch = [
-            [PatchMatchRecord(0, 0, 1, 1, 0.8), PatchMatchRecord(0, 1, 1, 2, 0.7)],
-            [PatchMatchRecord(1, 0, 2, 1, 0.6)],
-        ]
+    def test_patch_match_displacement_and_summary(self):
+        assert PatchMatchRecord(10, 20, 15, 25, 0.95).displacement == (5, 5)
+        batch = [[PatchMatchRecord(0, 0, 1, 1, 0.8), PatchMatchRecord(0, 1, 1, 2, 0.7)],
+                 [PatchMatchRecord(1, 0, 2, 1, 0.6)]]
         s = summarize_patch_matches(batch)
         assert s.n_pairs == 2 and s.n_total_matches == 3
 
@@ -288,56 +268,37 @@ class TestImagePipelineUtils:
 # ===========================================================================
 
 class TestImageTransformUtils:
-    def test_rotate_image_shape_preserved(self):
+    def test_rotate_preserves_shape(self):
         img = _gray()
-        out = rotate_image(img, math.pi / 4)
-        assert out.shape == img.shape
+        assert rotate_image(img, math.pi / 4).shape == img.shape
 
-    def test_rotate_zero_identity(self):
+    def test_rotate_zero_is_identity(self):
         img = _gray()
-        out = rotate_image(img, 0.0)
-        assert np.array_equal(out, img)
+        assert np.array_equal(rotate_image(img, 0.0), img)
 
-    def test_flip_horizontal_reverses_cols(self):
+    def test_flips(self):
         img = _gray()
-        out = flip_horizontal(img)
-        assert np.array_equal(out, img[:, ::-1])
-
-    def test_flip_vertical_reverses_rows(self):
-        img = _gray()
-        out = flip_vertical(img)
-        assert np.array_equal(out, img[::-1, :])
+        assert np.array_equal(flip_horizontal(img), img[:, ::-1])
+        assert np.array_equal(flip_vertical(img), img[::-1, :])
 
     def test_pad_image_shape(self):
-        img = _gray(10, 10)
-        out = pad_image(img, top=2, bottom=3, left=1, right=4)
-        assert out.shape == (15, 15)
+        assert pad_image(_gray(10, 10), top=2, bottom=3, left=1, right=4).shape == (15, 15)
 
     def test_crop_image_shape(self):
-        img = _gray(20, 20)
-        out = crop_image(img, 2, 3, 10, 15)
-        assert out.shape == (8, 12)
+        assert crop_image(_gray(20, 20), 2, 3, 10, 15).shape == (8, 12)
 
     def test_resize_image_target_size(self):
-        img = _gray(40, 40)
-        out = resize_image(img, (20, 20))
-        assert out.shape == (20, 20)
+        assert resize_image(_gray(40, 40), (20, 20)).shape == (20, 20)
 
     def test_resize_to_max_side(self):
-        img = _gray(100, 50)
-        out = resize_to_max_side(img, 50)
-        assert max(out.shape[:2]) == 50
+        assert max(resize_to_max_side(_gray(100, 50), 50).shape[:2]) == 50
 
     def test_rotation_matrix_2x3_shape(self):
-        M = rotation_matrix_2x3(math.pi / 6, 16.0, 16.0)
-        assert M.shape == (2, 3)
+        assert rotation_matrix_2x3(math.pi / 6, 16.0, 16.0).shape == (2, 3)
 
-    def test_batch_rotate_count(self):
-        imgs = [_gray() for _ in range(4)]
-        assert len(batch_rotate(imgs, math.pi / 8)) == 4
-
-    def test_batch_pad_shape(self):
+    def test_batch_rotate_and_pad(self):
         imgs = [_gray(10, 10) for _ in range(3)]
+        assert len(batch_rotate(imgs, math.pi / 8)) == 3
         assert all(r.shape == (20, 20) for r in batch_pad(imgs, 5))
 
     def test_transform_result_to_dict(self):

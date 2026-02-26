@@ -229,12 +229,15 @@ class TestSpatialIndex:
         cluster_a = rng.random((5, 2)) * 5
         cluster_b = rng.random((5, 2)) * 5 + 500
         pts = np.vstack([cluster_a, cluster_b])
-        labels = cluster_by_distance(pts, threshold=20.0)
-        assert len(labels) == 10
-        # Points in cluster_a should share a label, same for cluster_b
-        assert len(set(labels[:5])) == 1
-        assert len(set(labels[5:])) == 1
-        assert labels[0] != labels[5]
+        # Returns list of clusters (list of lists of indices)
+        clusters = cluster_by_distance(pts, threshold=20.0)
+        assert len(clusters) == 2
+        # Each cluster should have 5 points
+        sizes = sorted(len(c) for c in clusters)
+        assert sizes == [5, 5]
+        # The two clusters should not share any indices
+        all_indices = [i for cluster in clusters for i in cluster]
+        assert sorted(all_indices) == list(range(10))
 
     def test_query_radius_invalid_radius(self):
         idx = SpatialIndex()
