@@ -1,7 +1,7 @@
 # Текущий статус разработки — puzzle-reconstruction (meta2)
 
-> Дата формирования отчёта: 2026-02-26 (обновлено — v1.0.0 Stable, +76 property-tests для geometry, 54 392 тестов)
-> Предыдущие версии: 2026-02-23, 2026-02-24, 2026-02-25
+> Дата формирования отчёта: 2026-02-27 (обновлено — v1.0.0 Stable, +474 property-tests для 10 utils-модулей, 55 498 тестов)
+> Предыдущие версии: 2026-02-23, 2026-02-24, 2026-02-25, 2026-02-26
 > Версия: **1.0.0** (Production/Stable, тег `v1.0.0`)
 > Текущая ветка: `claude/puzzle-text-docs-3tcRj`
 
@@ -101,8 +101,8 @@
 |---|---|
 | Production .py файлов | **305** |
 | Utils-модулей | **131** |
-| Тестовых файлов | **1 018** (↑177: +91 utils + +30 новых модулей + +23 _extra + +1 properties_geometry) |
-| Всего тестов | **54 392** (↑11 418: +utils batch 1-9 + +assembly/verification + +_extra + +integration + +properties_geometry) |
+| Тестовых файлов | **1 022** (+4: array_bbox, sampling_sequence_smoothing, morph_edge_profile, blend_curvature property-tests) |
+| Всего тестов | **55 498** (+1 106: +474 property-tests для 9 utils-модулей, +632 ранних property-tests batch) |
 | Assembly methods в CLI | **10** (greedy, sa, beam, gamma, genetic, exhaustive, ant_colony, mcts, auto, all) |
 | Активных матчеров | **13+** (через `matcher_registry`) |
 | Активных preprocessing-модулей | **38 из 38** (через PreprocessingChain) |
@@ -1638,4 +1638,6 @@ python main.py --input scans/ --method all --research
 *Обновлён 2026-02-25 (итерация 5): bridge тесты для 5 реестров (+129 тестов, +5 файлов); итого 42 605 тестов.*
 *Обновлён 2026-02-25 (итерация 6): base тесты для 8 модулей scoring/matching (+329 тестов, +8 файлов); итого 42 974 тестов. Тестовых файлов: 840.*
 *Обновлён 2026-02-25 (итерация 7): _extra тесты для matcher_registry (+40 тестов, +1 файл); итого 42 974 тестов. Тестовых файлов: 841.*
+*Обновлён 2026-02-26: integration tests для low-coverage modules (utils + algorithms batches); property-based invariant tests для geometry (+76), normalization/distance/signal (+167), text_utils (+143), rotation/polygon/fractal/stats/histogram/interpolation/contour (+322); итого 55 024 тестов. Тестовых файлов: 1 018.*
+*Обновлён 2026-02-27: property-based invariant tests для 9 utils-модулей: array_utils+bbox_utils (+100), sampling_utils+sequence_utils+smoothing_utils (+191), morph_utils+edge_profile_utils (+100), blend_utils+curvature_utils (+83); итого +474 property-tests, всего 55 498 тестов. Тестовых файлов: 1 022.*
 *Методы: AST-анализ импортов, pytest --tb=short, wc -l, git diff origin/main..HEAD, анализ кода.*
