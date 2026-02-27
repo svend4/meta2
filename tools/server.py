@@ -527,6 +527,208 @@ def _int_or_none(s) -> int | None:
         return None
 
 
+
+# ─── GET /api/v1/health ───────────────────────────────────────────────────
+
+@app.get("/api/v1/health")
+def api_v1_health():
+    """Versioned health check: returns server status, version, and algorithm list."""
+    assembly_methods = [
+        "greedy", "sa", "beam", "gamma",
+        "genetic", "exhaustive", "ant_colony", "mcts", "auto", "all",
+    ]
+    matching_matchers = ["css", "dtw", "fd", "text", "affine", "geometric"]
+    preprocessing_ops = ["binarize", "denoise", "contrast", "orientation", "deskew"]
+
+    return jsonify({
+        "status":    "ok",
+        "version":   "1.0",
+        "algorithms": assembly_methods + matching_matchers + preprocessing_ops,
+    })
+
+
+# ─── GET /api/v1/algorithms ───────────────────────────────────────────────
+
+@app.get("/api/v1/algorithms")
+def api_v1_algorithms():
+    """Returns available algorithms grouped by category."""
+    return jsonify({
+        "assembly": [
+            "greedy", "sa", "beam", "gamma",
+            "genetic", "exhaustive", "ant_colony", "mcts", "auto", "all",
+        ],
+        "matching": [
+            "css", "dtw", "fd", "text",
+            "affine", "geometric", "icp", "graph",
+        ],
+        "preprocessing": [
+            "binarize", "denoise", "contrast",
+            "orientation", "deskew", "edge_detect",
+        ],
+    })
+
+
+# ─── POST /api/v1/threshold ───────────────────────────────────────────────
+
+@app.post("/api/v1/threshold")
+def api_v1_threshold():
+    """
+    Compute an adaptive threshold from a compatibility/score matrix.
+
+    Request JSON:
+        matrix      — 2-D list of floats (required)
+        method      — "otsu" | "percentile" (default: "otsu")
+        percentile  — integer 0-100, used only when method="percentile" (default: 75)
+
+    Response JSON:
+        threshold   — computed threshold in [0, 1]
+        method      — the method that was applied
+    """
+    body = request.get_json(force=True, silent=True) or {}
+
+    matrix_raw = body.get("matrix")
+    if matrix_raw is None:
+        return jsonify({"error": "Field 'matrix' is required"}), 400
+
+    try:
+        arr = np.asarray(matrix_raw, dtype=float).ravel()
+    except (ValueError, TypeError):
+        return jsonify({"error": "Field 'matrix' must be a 2-D list of numbers"}), 400
+
+    if arr.size == 0:
+        return jsonify({"error": "Matrix is empty"}), 400
+
+    method = body.get("method", "otsu")
+
+    if method == "otsu":
+        # Otsu binarisation on the flattened values
+        arr_u8 = np.clip(arr * 255, 0, 255).astype(np.uint8)
+        try:
+            from puzzle_reconstruction.preprocessing.adaptive_threshold import AdaptiveThreshold
+            at = AdaptiveThreshold()
+            # Use cv2 directly for Otsu on 1-D histogram
+            _, thresh_u8 = cv2.threshold(
+                arr_u8.reshape(-1, 1), 0, 255,
+                cv2.THRESH_BINARY + cv2.THRESH_OTSU,
+            )
+            threshold = float(thresh_u8) / 255.0
+        except Exception:
+            # Fallback: simple Otsu approximation
+            threshold = float(np.mean(arr))
+        used_method = "otsu"
+
+    elif method == "percentile":
+        pct = int(body.get("percentile", 75))
+        pct = max(0, min(100, pct))
+        threshold = float(np.percentile(arr, pct))
+        # Clamp to [0, 1]
+        threshold = max(0.0, min(1.0, threshold))
+        used_method = "percentile"
+
+    else:
+        return jsonify({"error": f"Unknown method '{method}'. Use 'otsu' or 'percentile'"}), 400
+
+    return jsonify({"threshold": round(threshold, 6), "method": used_method})
+
+
+# ─── GET /api/v1/config/default ───────────────────────────────────────────
+
+@app.get("/api/v1/config/default")
+def api_v1_config_default():
+    """Returns the default Config as a JSON dict."""
+    return jsonify(Config.default().to_dict())
+
+
+# ─── POST /api/v1/config/validate ─────────────────────────────────────────
+
+@app.post("/api/v1/config/validate")
+def api_v1_config_validate():
+    """
+    Validate a config dict.
+
+    Request JSON: config dict (may be partial or full)
+    Response JSON:
+        valid   — true if no validation errors
+        errors  — list of error strings (empty when valid)
+    """
+    body = request.get_json(force=True, silent=True)
+    if body is None:
+        body = {}
+
+    errors = []
+
+    # Section-level type checks
+    section_types = {
+        "segmentation":  dict,
+        "synthesis":     dict,
+        "fractal":       dict,
+        "matching":      dict,
+        "assembly":      dict,
+        "preprocessing": dict,
+        "verification":  dict,
+        "research":      dict,
+        "algorithms":    dict,
+        "utils":         dict,
+    }
+    for section, expected_type in section_types.items():
+        if section in body and not isinstance(body[section], expected_type):
+            errors.append(
+                f"Section '{section}' must be a dict, got {type(body[section]).__name__}"
+            )
+
+    # Try constructing a Config from the body to catch field-level errors
+    if not errors:
+        try:
+            Config.from_dict(body)
+        except (TypeError, ValueError, KeyError) as exc:
+            errors.append(str(exc))
+
+    # Numeric range checks on commonly used scalar fields
+    if isinstance(body.get("matching"), dict):
+        thr = body["matching"].get("threshold")
+        if thr is not None:
+            try:
+                thr_f = float(thr)
+                if not (0.0 <= thr_f <= 1.0):
+                    errors.append("matching.threshold must be in [0, 1]")
+            except (TypeError, ValueError):
+                errors.append("matching.threshold must be a number")
+
+    if isinstance(body.get("assembly"), dict):
+        method = body["assembly"].get("method")
+        valid_methods = {
+            "greedy", "sa", "beam", "gamma",
+            "genetic", "exhaustive", "ant_colony", "mcts", "auto", "all",
+        }
+        if method is not None and method not in valid_methods:
+            errors.append(
+                f"assembly.method '{method}' is not a recognised method. "
+                f"Valid: {sorted(valid_methods)}"
+            )
+
+    return jsonify({"valid": len(errors) == 0, "errors": errors})
+
+
+# ─── GET /api/v1/status ───────────────────────────────────────────────────
+
+@app.get("/api/v1/status")
+def api_v1_status():
+    """
+    Returns high-level system capabilities.
+
+    Response JSON:
+        n_fragments_supported  — list of supported perfect-square fragment counts
+        available_methods      — all assembly methods available
+    """
+    return jsonify({
+        "n_fragments_supported": [4, 9, 16, 25],
+        "available_methods": [
+            "greedy", "sa", "beam", "gamma",
+            "genetic", "exhaustive", "ant_colony", "mcts", "auto", "all",
+        ],
+    })
+
+
 # ─── CLI ──────────────────────────────────────────────────────────────────
 
 def main():

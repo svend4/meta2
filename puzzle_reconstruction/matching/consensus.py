@@ -122,7 +122,7 @@ def build_consensus(assemblies:     List[Assembly],
         # Фильтруем entries: оставляем только консенсусные пары,
         # повышая их score пропорционально числу голосов
         consensus_entries = _filter_entries_by_consensus(
-            entries, pair_votes, n_methods, threshold,
+            entries, pair_votes, n_methods, threshold, fragments=fragments,
         )
         try:
             sorted_entries = sorted(consensus_entries,
@@ -247,26 +247,37 @@ def consensus_score_matrix(result:    ConsensusResult,
 def _filter_entries_by_consensus(entries:    List[CompatEntry],
                                   pair_votes: Dict[Pair, int],
                                   n_methods:  int,
-                                  threshold:  float) -> List[CompatEntry]:
+                                  threshold:  float,
+                                  fragments:  Optional[List[Fragment]] = None,
+                                  ) -> List[CompatEntry]:
     """
     Повышает score консенсусных пар и оставляет их поверх остальных.
 
     Консенсусная пара: score += vote_fraction * 0.5 (бонус до 50%).
     Остальные пары: score *= 0.5 (штраф).
+
+    Args:
+        fragments: Если передан — используется точная карта id(edge_obj) → frag_id.
+                   Иначе фрагмент определяется по атрибуту edge_id (менее точно).
     """
-    edge_to_frag: Dict[int, int] = {}
-    # Строим карту edge_id → fragment_id из entries
-    for e in entries:
-        # Нет прямого доступа к fragment_id из EdgeSignature — используем
-        # имеющиеся данные (edge_id уникален для фрагмента)
-        pass
+    # Строим карту id(edge_obj) → fragment_id через fragments (если переданы),
+    # иначе используем порядковый номер EdgeSignature как прокси frag_id.
+    edge_obj_to_frag: Dict[int, int] = {}
+    if fragments is not None:
+        for frag in fragments:
+            for edge in frag.edges:
+                edge_obj_to_frag[id(edge)] = frag.fragment_id
 
     result = []
     for e in entries:
-        # Пробуем найти пару через edge_id
-        # Используем id рёбер как приближение пары фрагментов
-        fid_i = e.edge_i.edge_id // 10  # Предполагаем формат fid * 10 + side
-        fid_j = e.edge_j.edge_id // 10
+        # Определяем fragment_id обоих краёв: сначала по объектной ссылке,
+        # затем по позиции в отсортированном списке через edge_id (fallback).
+        if edge_obj_to_frag:
+            fid_i = edge_obj_to_frag.get(id(e.edge_i), getattr(e.edge_i, "edge_id", 0))
+            fid_j = edge_obj_to_frag.get(id(e.edge_j), getattr(e.edge_j, "edge_id", 0))
+        else:
+            fid_i = getattr(e.edge_i, "edge_id", 0)
+            fid_j = getattr(e.edge_j, "edge_id", 0)
         pair  = frozenset({fid_i, fid_j})
         votes = pair_votes.get(pair, 0)
         frac  = votes / max(1, n_methods)

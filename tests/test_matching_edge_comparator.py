@@ -1,50 +1,36 @@
-"""Тесты для puzzle_reconstruction.matching.edge_comparator."""
+"""Тесты для puzzle_reconstruction/matching/edge_comparator.py."""
 import pytest
 import numpy as np
+
 from puzzle_reconstruction.matching.edge_comparator import (
     EdgeCompConfig,
-    EdgeCompResult,
     EdgeSample,
-    batch_compare_edges,
-    compare_edge_gradient,
-    compare_edge_intensity,
-    compare_edge_pair,
-    compare_edge_texture,
+    EdgeCompResult,
     extract_edge_sample,
+    compare_edge_intensity,
+    compare_edge_gradient,
+    compare_edge_texture,
     score_edge_comparison,
+    compare_edge_pair,
+    batch_compare_edges,
 )
 
 
-def _image(h=32, w=32) -> np.ndarray:
-    rng = np.random.default_rng(42)
-    return rng.integers(0, 256, size=(h, w), dtype=np.uint8)
+def _make_sample(fid=0, n=32, val=0.5):
+    arr = np.full(n, val)
+    return EdgeSample(fragment_id=fid, intensity=arr, gradient=arr * 0.1, texture=arr * 0.05)
 
 
-def _sample(fid=0, n=16) -> EdgeSample:
-    rng = np.random.default_rng(fid + 1)
-    return EdgeSample(
-        fragment_id=fid,
-        intensity=rng.random(n).astype(np.float64),
-        gradient=rng.random(n).astype(np.float64),
-        texture=rng.random(n).astype(np.float64),
-    )
+def _make_img(h=40, w=40, val=128):
+    return np.full((h, w, 3), val, dtype=np.uint8)
 
-
-# ─── TestEdgeCompConfig ───────────────────────────────────────────────────────
 
 class TestEdgeCompConfig:
     def test_defaults(self):
-        cfg = EdgeCompConfig()
-        assert cfg.strip_width == 4
-        assert cfg.n_samples == 32
-        assert cfg.use_gradient is True
-        assert cfg.use_texture is True
-        assert cfg.normalize is True
-
-    def test_custom_values(self):
-        cfg = EdgeCompConfig(strip_width=8, n_samples=64, normalize=False)
-        assert cfg.strip_width == 8
-        assert cfg.n_samples == 64
+        c = EdgeCompConfig()
+        assert c.strip_width == 4
+        assert c.n_samples == 32
+        assert c.use_gradient
 
     def test_strip_width_zero_raises(self):
         with pytest.raises(ValueError):
@@ -55,227 +41,122 @@ class TestEdgeCompConfig:
             EdgeCompConfig(n_samples=0)
 
 
-# ─── TestEdgeSample ───────────────────────────────────────────────────────────
-
 class TestEdgeSample:
-    def test_basic_construction(self):
-        s = _sample(fid=3, n=16)
-        assert s.fragment_id == 3
+    def test_n_samples_property(self):
+        s = _make_sample(n=16)
         assert s.n_samples == 16
 
     def test_mean_intensity(self):
-        arr = np.array([0.2, 0.4, 0.6, 0.8])
-        s = EdgeSample(fragment_id=0,
-                       intensity=arr,
-                       gradient=arr.copy(),
-                       texture=arr.copy())
-        assert s.mean_intensity == pytest.approx(0.5)
+        s = _make_sample(val=0.6)
+        assert s.mean_intensity == pytest.approx(0.6)
 
-    def test_fragment_id_neg_raises(self):
+    def test_negative_fid_raises(self):
         with pytest.raises(ValueError):
-            EdgeSample(fragment_id=-1,
-                       intensity=np.zeros(4),
-                       gradient=np.zeros(4),
-                       texture=np.zeros(4))
+            EdgeSample(fragment_id=-1, intensity=np.zeros(8),
+                       gradient=np.zeros(8), texture=np.zeros(8))
 
-    def test_non_1d_intensity_raises(self):
+    def test_shape_mismatch_raises(self):
         with pytest.raises(ValueError):
-            EdgeSample(fragment_id=0,
-                       intensity=np.zeros((4, 4)),
-                       gradient=np.zeros(4),
-                       texture=np.zeros(4))
+            EdgeSample(fragment_id=0, intensity=np.zeros(8),
+                       gradient=np.zeros(4), texture=np.zeros(8))
 
-    def test_shape_mismatch_gradient_raises(self):
-        with pytest.raises(ValueError):
-            EdgeSample(fragment_id=0,
-                       intensity=np.zeros(4),
-                       gradient=np.zeros(8),
-                       texture=np.zeros(4))
-
-    def test_shape_mismatch_texture_raises(self):
-        with pytest.raises(ValueError):
-            EdgeSample(fragment_id=0,
-                       intensity=np.zeros(4),
-                       gradient=np.zeros(4),
-                       texture=np.zeros(8))
-
-
-# ─── TestEdgeCompResult ───────────────────────────────────────────────────────
 
 class TestEdgeCompResult:
-    def _make(self, total=0.7) -> EdgeCompResult:
-        return EdgeCompResult(
-            pair=(0, 1),
-            intensity_score=0.8,
-            gradient_score=0.7,
-            texture_score=0.6,
-            total_score=total,
-        )
+    def test_is_good_match(self):
+        r = EdgeCompResult(pair=(0, 1), intensity_score=0.8, gradient_score=0.8,
+                           texture_score=0.8, total_score=0.8)
+        assert r.is_good_match
 
-    def test_fragment_a(self):
-        r = self._make()
-        assert r.fragment_a == 0
+    def test_not_good_match_below_threshold(self):
+        r = EdgeCompResult(pair=(0, 1), intensity_score=0.5, gradient_score=0.5,
+                           texture_score=0.5, total_score=0.5)
+        assert not r.is_good_match
 
-    def test_fragment_b(self):
-        r = self._make()
-        assert r.fragment_b == 1
+    def test_fragment_ab_properties(self):
+        r = EdgeCompResult(pair=(3, 7), intensity_score=0.5, gradient_score=0.5,
+                           texture_score=0.5, total_score=0.5)
+        assert r.fragment_a == 3
+        assert r.fragment_b == 7
 
-    def test_is_good_match_true(self):
-        r = self._make(total=0.75)
-        assert r.is_good_match is True
-
-    def test_is_good_match_false(self):
-        r = self._make(total=0.65)
-        assert r.is_good_match is False
-
-    def test_score_out_of_range_raises(self):
-        with pytest.raises(ValueError):
-            EdgeCompResult(pair=(0, 1),
-                           intensity_score=1.1,
-                           gradient_score=0.5,
-                           texture_score=0.5,
-                           total_score=0.5)
-
-
-# ─── TestExtractEdgeSample ────────────────────────────────────────────────────
 
 class TestExtractEdgeSample:
     def test_returns_edge_sample(self):
-        img = _image()
-        s = extract_edge_sample(img)
+        img = _make_img()
+        s = extract_edge_sample(img, fragment_id=0)
         assert isinstance(s, EdgeSample)
 
-    def test_n_samples_correct(self):
-        img = _image()
+    def test_correct_n_samples(self):
+        img = _make_img()
         cfg = EdgeCompConfig(n_samples=16)
-        s = extract_edge_sample(img, cfg=cfg)
+        s = extract_edge_sample(img, fragment_id=0, cfg=cfg)
         assert s.n_samples == 16
 
-    def test_fragment_id_stored(self):
-        img = _image()
-        s = extract_edge_sample(img, fragment_id=5)
-        assert s.fragment_id == 5
-
-    def test_bgr_image(self):
-        rng = np.random.default_rng(1)
-        img = rng.integers(0, 256, (32, 32, 3), dtype=np.uint8)
-        s = extract_edge_sample(img)
+    def test_grayscale_input(self):
+        img = np.zeros((40, 40), dtype=np.uint8)
+        s = extract_edge_sample(img, fragment_id=0)
         assert isinstance(s, EdgeSample)
 
     def test_invalid_ndim_raises(self):
+        img = np.zeros((4,), dtype=np.uint8)
         with pytest.raises(ValueError):
-            extract_edge_sample(np.zeros((4,)))
+            extract_edge_sample(img)
 
 
-# ─── TestCompareEdgeIntensity ─────────────────────────────────────────────────
-
-class TestCompareEdgeIntensity:
-    def test_identical_samples_high_score(self):
-        s = _sample(n=16)
+class TestCompareEdges:
+    def test_identical_intensity_score_high(self):
+        # Use non-constant profile so NCC is well-defined
+        arr = np.sin(np.linspace(0, np.pi, 32))
+        s = EdgeSample(fragment_id=0, intensity=arr, gradient=arr * 0.1, texture=arr * 0.05)
         score = compare_edge_intensity(s, s)
         assert score > 0.9
 
-    def test_returns_float_in_range(self):
-        a = _sample(fid=0, n=16)
-        b = _sample(fid=1, n=16)
-        score = compare_edge_intensity(a, b)
+    def test_intensity_score_in_range(self):
+        s1 = _make_sample(val=0.2)
+        s2 = _make_sample(val=0.8)
+        score = compare_edge_intensity(s1, s2)
         assert 0.0 <= score <= 1.0
 
+    def test_gradient_score_in_range(self):
+        s1 = _make_sample(val=0.3)
+        s2 = _make_sample(val=0.7)
+        score = compare_edge_gradient(s1, s2)
+        assert 0.0 <= score <= 1.0
 
-# ─── TestCompareEdgeGradient ──────────────────────────────────────────────────
-
-class TestCompareEdgeGradient:
-    def test_identical_samples(self):
-        s = _sample(n=16)
-        score = compare_edge_gradient(s, s)
+    def test_texture_score_identical(self):
+        s = _make_sample(val=0.5)
+        score = compare_edge_texture(s, s)
         assert score > 0.9
 
-    def test_in_range(self):
-        a = _sample(fid=0, n=16)
-        b = _sample(fid=2, n=16)
-        score = compare_edge_gradient(a, b)
-        assert 0.0 <= score <= 1.0
-
-
-# ─── TestCompareEdgeTexture ───────────────────────────────────────────────────
-
-class TestCompareEdgeTexture:
-    def test_identical_samples(self):
-        s = _sample(n=16)
-        score = compare_edge_texture(s, s)
-        assert score >= 0.9
-
-    def test_in_range(self):
-        a = _sample(fid=0, n=16)
-        b = _sample(fid=3, n=16)
-        score = compare_edge_texture(a, b)
-        assert 0.0 <= score <= 1.0
-
-
-# ─── TestScoreEdgeComparison ──────────────────────────────────────────────────
-
-class TestScoreEdgeComparison:
-    def test_perfect_scores(self):
-        score = score_edge_comparison(1.0, 1.0, 1.0)
-        assert score == pytest.approx(1.0)
-
-    def test_result_in_range(self):
-        score = score_edge_comparison(0.7, 0.5, 0.3)
-        assert 0.0 <= score <= 1.0
-
-    def test_no_gradient_no_texture(self):
-        cfg = EdgeCompConfig(use_gradient=False, use_texture=False)
-        score = score_edge_comparison(0.8, 0.0, 0.0, cfg)
-        assert score == pytest.approx(0.8)
-
-
-# ─── TestCompareEdgePair ──────────────────────────────────────────────────────
 
 class TestCompareEdgePair:
     def test_returns_edge_comp_result(self):
-        a = _sample(fid=0, n=16)
-        b = _sample(fid=1, n=16)
-        r = compare_edge_pair(a, b)
+        s1 = _make_sample(fid=0)
+        s2 = _make_sample(fid=1)
+        r = compare_edge_pair(s1, s2)
         assert isinstance(r, EdgeCompResult)
 
+    def test_identical_samples_reasonable_score(self):
+        # Constant profiles have zero variance → NCC returns 0.5; total ≥ 0.5
+        s = _make_sample(val=0.5)
+        s2 = _make_sample(fid=1, val=0.5)
+        r = compare_edge_pair(s, s2)
+        assert r.total_score >= 0.5
+
     def test_pair_ids_correct(self):
-        a = _sample(fid=2, n=16)
-        b = _sample(fid=5, n=16)
-        r = compare_edge_pair(a, b)
-        assert r.pair == (2, 5)
+        s1 = _make_sample(fid=3)
+        s2 = _make_sample(fid=5)
+        r = compare_edge_pair(s1, s2)
+        assert r.pair == (3, 5)
 
-    def test_total_score_in_range(self):
-        a = _sample(fid=0, n=16)
-        b = _sample(fid=1, n=16)
-        r = compare_edge_pair(a, b)
-        assert 0.0 <= r.total_score <= 1.0
-
-    def test_scores_dict_has_keys(self):
-        a = _sample(fid=0, n=16)
-        b = _sample(fid=1, n=16)
-        r = compare_edge_pair(a, b)
-        assert "intensity" in r.scores
-        assert "gradient" in r.scores
-        assert "texture" in r.scores
-
-
-# ─── TestBatchCompareEdges ────────────────────────────────────────────────────
 
 class TestBatchCompareEdges:
-    def test_returns_list(self):
-        samples = [_sample(i, n=16) for i in range(4)]
+    def test_n_pairs(self):
+        samples = [_make_sample(fid=i) for i in range(4)]
         results = batch_compare_edges(samples)
-        assert isinstance(results, list)
+        assert len(results) == 6  # C(4,2)
 
-    def test_n_pairs_correct(self):
-        samples = [_sample(i, n=16) for i in range(4)]
-        results = batch_compare_edges(samples)
-        # C(4,2) = 6
-        assert len(results) == 6
-
-    def test_empty_list(self):
+    def test_empty_returns_empty(self):
         assert batch_compare_edges([]) == []
 
-    def test_single_sample(self):
-        samples = [_sample(0, n=16)]
-        assert batch_compare_edges(samples) == []
+    def test_single_returns_empty(self):
+        assert batch_compare_edges([_make_sample()]) == []

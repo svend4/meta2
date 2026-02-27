@@ -127,3 +127,98 @@ class Assembly:
     total_score:   float = 0.0
     ocr_score:     float = 0.0
     method:        str = ""
+
+
+@dataclass
+class MatchingState:
+    """Full state of a matching run, suitable for pause/resume."""
+    compat_matrix: np.ndarray          # N×N float32
+    entries: list                       # List[CompatEntry] — filtered pairs
+    threshold: float                    # Selected threshold
+    n_fragments: int                    # Number of fragments
+    timestamp: str                      # ISO timestamp when created
+    config_dict: dict                   # Config as dict (for serialisation)
+    method: str = "auto"               # Threshold method used
+
+    def to_dict(self) -> dict:
+        """Serialise to JSON-compatible dict (matrix as list)."""
+        return {
+            "compat_matrix": self.compat_matrix.tolist(),
+            "threshold": self.threshold,
+            "n_fragments": self.n_fragments,
+            "timestamp": self.timestamp,
+            "config_dict": self.config_dict,
+            "method": self.method,
+            "n_entries": len(self.entries),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "MatchingState":
+        """Reconstruct from dict (entries will be empty — matrix only)."""
+        return cls(
+            compat_matrix=np.array(d["compat_matrix"], dtype=np.float32),
+            entries=[],
+            threshold=d["threshold"],
+            n_fragments=d["n_fragments"],
+            timestamp=d["timestamp"],
+            config_dict=d.get("config_dict", {}),
+            method=d.get("method", "auto"),
+        )
+
+    def save(self, path: str) -> None:
+        """Save to JSON file."""
+        import json, pathlib
+        pathlib.Path(path).write_text(json.dumps(self.to_dict(), indent=2))
+
+    @classmethod
+    def load(cls, path: str) -> "MatchingState":
+        """Load from JSON file."""
+        import json, pathlib
+        return cls.from_dict(json.loads(pathlib.Path(path).read_text()))
+
+
+@dataclass
+class AssemblySession:
+    """Saveable session for long-running assembly algorithms (SA, genetic)."""
+    method: str                        # Algorithm name
+    iteration: int                     # Current iteration number
+    best_score: float                  # Best score achieved so far
+    score_history: list                # List[float] — score per iteration
+    best_placement: dict               # fragment_id → (x, y, angle) dict
+    n_fragments: int
+    config_dict: dict = field(default_factory=dict)
+    random_seed: int = 42
+
+    def to_dict(self) -> dict:
+        return {
+            "method": self.method,
+            "iteration": self.iteration,
+            "best_score": self.best_score,
+            "score_history": self.score_history,
+            "best_placement": self.best_placement,
+            "n_fragments": self.n_fragments,
+            "config_dict": self.config_dict,
+            "random_seed": self.random_seed,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "AssemblySession":
+        return cls(**d)
+
+    def checkpoint(self, path: str) -> None:
+        """Save current state to JSON."""
+        import json, pathlib
+        pathlib.Path(path).write_text(json.dumps(self.to_dict(), indent=2))
+
+    @classmethod
+    def resume(cls, path: str) -> "AssemblySession":
+        """Load from checkpoint file."""
+        import json, pathlib
+        return cls.from_dict(json.loads(pathlib.Path(path).read_text()))
+
+    @property
+    def is_converged(self) -> bool:
+        """True if score hasn't improved in last 100 iterations."""
+        if len(self.score_history) < 100:
+            return False
+        return max(self.score_history[-100:]) <= self.best_score + 1e-6

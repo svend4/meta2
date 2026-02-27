@@ -187,18 +187,29 @@ def render_heatmap(assembly: Assembly,
     offset_x = -int(x_min) + margin + max_frag_size // 2
     offset_y = -int(y_min) + margin + max_frag_size // 2
 
-    # Находим пары смежных фрагментов и их score
-    edge_scores: dict[int, float] = {}  # frag_id → средний score смежных стыков
+    # Строим карту: глобальный индекс ребра → frag_id.
+    # Порядок рёбер в матрице совпадает с порядком обхода fragments→edges
+    # в build_compat_matrix (тот же порядок итерации).
+    frag_of_edge: list[int] = []
+    for _frag in assembly.fragments:
+        for _ in _frag.edges:
+            frag_of_edge.append(_frag.fragment_id)
 
-    # Собираем из матрицы совместимости top-N связей
-    if assembly.compat_matrix.size > 0:
-        mat = assembly.compat_matrix
-        # Находим лучшие пары
-        for i in range(min(mat.shape[0], 500)):
-            for j in range(i + 1, min(mat.shape[1], 500)):
-                if mat[i, j] > 0.1:
-                    # Найдём, каким фрагментам принадлежат edge i и j
-                    pass  # Заглушка — реальный маппинг сложнее
+    # frag_id → максимальный score среди его смежных рёбер
+    edge_scores: dict[int, float] = {}
+
+    mat = assembly.compat_matrix
+    if mat is not None and mat.size > 0:
+        n_edges = min(mat.shape[0], len(frag_of_edge), 500)
+        for i in range(n_edges):
+            for j in range(i + 1, n_edges):
+                s = float(mat[i, j])
+                if s > 0.1:
+                    fid_i = frag_of_edge[i]
+                    fid_j = frag_of_edge[j]
+                    # Обновляем максимальный score для каждого из фрагментов
+                    edge_scores[fid_i] = max(edge_scores.get(fid_i, 0.0), s)
+                    edge_scores[fid_j] = max(edge_scores.get(fid_j, 0.0), s)
 
     # Рисуем Gaussian-пятна в центре каждого фрагмента с уверенностью
     for fid, (pos, _) in assembly.placements.items():
@@ -207,7 +218,8 @@ def render_heatmap(assembly: Assembly,
             continue
         cx = int(pos[0]) + offset_x
         cy = int(pos[1]) + offset_y
-        score = float(assembly.total_score)  # Используем общий score
+        # Per-fragment score из матрицы; fallback — общий score сборки
+        score = edge_scores.get(fid, float(assembly.total_score))
 
         # Рисуем Gaussian-пятно
         h_f = frag.image.shape[0] if frag.image is not None else 50

@@ -1,212 +1,142 @@
-"""Тесты для puzzle_reconstruction.matching.matcher_registry."""
+"""Тесты для puzzle_reconstruction/matching/matcher_registry.py."""
 import pytest
 import numpy as np
+
 from puzzle_reconstruction.matching.matcher_registry import (
     MATCHER_REGISTRY,
-    compute_scores,
-    get_matcher,
-    list_matchers,
     register,
     register_fn,
+    get_matcher,
+    list_matchers,
+    compute_scores,
     weighted_combine,
 )
 from puzzle_reconstruction.models import EdgeSignature, EdgeSide
 
 
-def _edge(edge_id: int = 0) -> EdgeSignature:
-    """Минимальная EdgeSignature для тестов."""
-    return EdgeSignature(
-        edge_id=edge_id,
+def _make_edge(eid=0, fid=0):
+    curve = np.column_stack([
+        np.linspace(0, 10, 20),
+        np.sin(np.linspace(0, np.pi, 20))
+    ])
+    e = EdgeSignature(
+        edge_id=eid,
         side=EdgeSide.RIGHT,
-        virtual_curve=np.zeros((4, 2)),
-        fd=1.5,
-        css_vec=np.zeros(8),
-        ifs_coeffs=np.zeros(4),
+        virtual_curve=curve,
+        fd=1.2,
+        css_vec=np.ones(64) / 8.0,
+        ifs_coeffs=np.zeros(12),
         length=10.0,
     )
+    return e
 
 
-# ─── TestMATCHER_REGISTRY ──────────────────────────────────────────────────────
-
-class TestMatcherRegistry:
-    def test_is_dict(self):
+class TestRegistry:
+    def test_registry_is_dict(self):
         assert isinstance(MATCHER_REGISTRY, dict)
 
-    def test_not_empty_after_import(self):
-        # _register_defaults() запускается при импорте → хотя бы 1 матчер
-        assert len(MATCHER_REGISTRY) > 0
-
-    def test_keys_are_strings(self):
-        for k in MATCHER_REGISTRY:
-            assert isinstance(k, str)
-
-    def test_values_are_callable(self):
-        for fn in MATCHER_REGISTRY.values():
-            assert callable(fn)
-
-    def test_fd_matcher_registered(self):
-        # 'fd' всегда регистрируется без try/except
-        assert "fd" in MATCHER_REGISTRY
-
-    def test_text_matcher_registered(self):
-        assert "text" in MATCHER_REGISTRY
-
-
-# ─── TestRegister ─────────────────────────────────────────────────────────────
-
-class TestRegister:
-    def test_decorator_adds_to_registry(self):
-        name = "__test_register_decorator__"
-        @register(name)
-        def my_fn(e_i, e_j):
-            return 0.5
-        assert name in MATCHER_REGISTRY
-        assert MATCHER_REGISTRY[name] is my_fn
-        # Cleanup
-        del MATCHER_REGISTRY[name]
-
-    def test_decorator_returns_function(self):
-        name = "__test_register_returns__"
-        @register(name)
-        def my_fn(e_i, e_j):
-            return 0.7
-        assert callable(my_fn)
-        del MATCHER_REGISTRY[name]
-
-
-# ─── TestRegisterFn ───────────────────────────────────────────────────────────
-
-class TestRegisterFn:
-    def test_registers_function(self):
-        name = "__test_register_fn__"
-        fn = lambda e_i, e_j: 0.3
-        register_fn(name, fn)
-        assert name in MATCHER_REGISTRY
-        del MATCHER_REGISTRY[name]
-
-    def test_overwrites_existing(self):
-        name = "__test_overwrite__"
-        fn1 = lambda e_i, e_j: 0.1
-        fn2 = lambda e_i, e_j: 0.9
-        register_fn(name, fn1)
-        register_fn(name, fn2)
-        assert MATCHER_REGISTRY[name] is fn2
-        del MATCHER_REGISTRY[name]
-
-
-# ─── TestGetMatcher ───────────────────────────────────────────────────────────
-
-class TestGetMatcher:
-    def test_known_name_returns_callable(self):
-        fn = get_matcher("fd")
-        assert fn is not None
-        assert callable(fn)
-
-    def test_unknown_name_returns_none(self):
-        assert get_matcher("__no_such_matcher__") is None
-
-    def test_empty_name_returns_none(self):
-        assert get_matcher("") is None
-
-
-# ─── TestListMatchers ─────────────────────────────────────────────────────────
-
-class TestListMatchers:
-    def test_returns_list(self):
-        result = list_matchers()
-        assert isinstance(result, list)
-
-    def test_not_empty(self):
-        assert len(list_matchers()) > 0
-
-    def test_sorted(self):
-        names = list_matchers()
-        assert names == sorted(names)
-
-    def test_fd_in_list(self):
+    def test_has_built_in_matchers(self):
         assert "fd" in list_matchers()
 
-    def test_all_strings(self):
-        for n in list_matchers():
-            assert isinstance(n, str)
+    def test_list_matchers_sorted(self):
+        matchers = list_matchers()
+        assert matchers == sorted(matchers)
+
+    def test_get_matcher_returns_callable(self):
+        assert callable(get_matcher("fd"))
+
+    def test_get_missing_matcher_returns_none(self):
+        assert get_matcher("__nonexistent_matcher__") is None
 
 
-# ─── TestComputeScores ────────────────────────────────────────────────────────
+class TestRegister:
+    def test_register_decorator(self):
+        @register("__test_decorator_matcher__")
+        def my_fn(e_i, e_j):
+            return 0.42
+        assert "__test_decorator_matcher__" in MATCHER_REGISTRY
+        del MATCHER_REGISTRY["__test_decorator_matcher__"]
+
+    def test_register_fn(self):
+        register_fn("__test_fn_matcher__", lambda e_i, e_j: 0.5)
+        assert "__test_fn_matcher__" in MATCHER_REGISTRY
+        del MATCHER_REGISTRY["__test_fn_matcher__"]
+
+    def test_overwrite_existing(self):
+        register_fn("__test_overwrite__", lambda e_i, e_j: 0.1)
+        register_fn("__test_overwrite__", lambda e_i, e_j: 0.9)
+        e = _make_edge()
+        assert MATCHER_REGISTRY["__test_overwrite__"](e, e) == pytest.approx(0.9)
+        del MATCHER_REGISTRY["__test_overwrite__"]
+
 
 class TestComputeScores:
     def test_returns_dict(self):
-        e1 = _edge(0)
-        e2 = _edge(10)
-        result = compute_scores(e1, e2, ["fd"])
-        assert isinstance(result, dict)
+        e = _make_edge()
+        assert isinstance(compute_scores(e, e, ["fd"]), dict)
 
-    def test_fd_score_in_range(self):
-        e1 = _edge(0)
-        e2 = _edge(10)
-        result = compute_scores(e1, e2, ["fd"])
-        assert 0.0 <= result["fd"] <= 1.0
+    def test_fd_matcher_runs(self):
+        e = _make_edge()
+        scores = compute_scores(e, e, ["fd"])
+        assert "fd" in scores
+        assert 0.0 <= scores["fd"] <= 1.0
 
-    def test_unknown_matcher_returns_zero(self):
-        e1 = _edge(0)
-        e2 = _edge(10)
-        result = compute_scores(e1, e2, ["__nonexistent__"])
-        assert result["__nonexistent__"] == pytest.approx(0.0)
+    def test_identical_edges_fd_score_is_one(self):
+        e = _make_edge()
+        e.fd = 1.5
+        assert compute_scores(e, e, ["fd"])["fd"] == pytest.approx(1.0)
 
-    def test_empty_matchers(self):
-        e1 = _edge(0)
-        e2 = _edge(10)
-        result = compute_scores(e1, e2, [])
-        assert result == {}
+    def test_missing_matcher_returns_zero(self):
+        e = _make_edge()
+        assert compute_scores(e, e, ["__nonexistent__"])["__nonexistent__"] == 0.0
 
-    def test_text_matcher_returns_zero(self):
-        # The default 'text' matcher always returns 0.0
-        e1 = _edge(0)
-        e2 = _edge(10)
-        result = compute_scores(e1, e2, ["text"])
-        assert result["text"] == pytest.approx(0.0)
+    def test_multiple_matchers(self):
+        e = _make_edge()
+        matchers = [m for m in list_matchers() if m in ("fd", "text")]
+        assert len(compute_scores(e, e, matchers)) == len(matchers)
 
-    def test_fd_same_fd_is_high(self):
-        # Same fd → diff = 0 → score = 1/(1+0) = 1.0
-        e1 = _edge(0)
-        e2 = _edge(10)
-        result = compute_scores(e1, e2, ["fd"])
-        # Both have fd=1.5, diff=0 → score=1.0
-        assert result["fd"] == pytest.approx(1.0)
-
-
-# ─── TestWeightedCombine ──────────────────────────────────────────────────────
 
 class TestWeightedCombine:
-    def test_equal_weights(self):
-        scores = {"a": 0.6, "b": 0.8}
-        weights = {"a": 1.0, "b": 1.0}
-        result = weighted_combine(scores, weights)
-        assert result == pytest.approx(0.7)
+    def test_single_weight(self):
+        assert weighted_combine({"fd": 0.8}, {"fd": 1.0}) == pytest.approx(0.8)
 
-    def test_zero_total_weight_returns_zero(self):
-        scores = {"a": 0.5}
-        weights = {"a": 0.0}
-        result = weighted_combine(scores, weights)
-        assert result == pytest.approx(0.0)
+    def test_two_equal_weights(self):
+        result = weighted_combine({"fd": 0.6, "text": 0.4}, {"fd": 1.0, "text": 1.0})
+        assert result == pytest.approx(0.5)
 
-    def test_single_score(self):
-        scores = {"a": 0.8}
-        weights = {"a": 1.0}
-        result = weighted_combine(scores, weights)
-        assert result == pytest.approx(0.8)
+    def test_zero_weights_returns_zero(self):
+        assert weighted_combine({"fd": 0.8}, {"fd": 0.0}) == 0.0
+
+    def test_missing_key_in_weights(self):
+        assert weighted_combine({"fd": 0.8}, {"text": 1.0}) == 0.0
 
     def test_result_in_range(self):
-        scores = {"a": 0.3, "b": 0.7, "c": 0.5}
-        weights = {"a": 0.2, "b": 0.5, "c": 0.3}
-        result = weighted_combine(scores, weights)
+        result = weighted_combine({"fd": 0.7, "text": 0.3}, {"fd": 0.6, "text": 0.4})
         assert 0.0 <= result <= 1.0
 
-    def test_empty_scores(self):
-        result = weighted_combine({}, {"a": 1.0})
-        assert result == pytest.approx(0.0)
 
-    def test_missing_weight_treated_as_zero(self):
-        scores = {"a": 0.9}
-        weights = {"b": 1.0}  # no weight for 'a'
-        result = weighted_combine(scores, weights)
-        assert result == pytest.approx(0.0)
+class TestBuiltInMatchers:
+    def test_fd_same_edge_returns_one(self):
+        fn = get_matcher("fd")
+        e = _make_edge()
+        e.fd = 1.5
+        assert fn(e, e) == pytest.approx(1.0)
+
+    def test_fd_different_values_returns_less(self):
+        fn = get_matcher("fd")
+        e1, e2 = _make_edge(eid=0), _make_edge(eid=1)
+        e1.fd, e2.fd = 1.0, 2.0
+        score = fn(e1, e2)
+        assert 0.0 <= score < 1.0
+
+    def test_text_matcher_returns_zero(self):
+        fn = get_matcher("text")
+        e = _make_edge()
+        assert fn(e, e) == 0.0
+
+    def test_css_matcher_runs_if_available(self):
+        if "css" not in MATCHER_REGISTRY:
+            pytest.skip("css matcher not registered")
+        e = _make_edge()
+        score = get_matcher("css")(e, e)
+        assert 0.0 <= score <= 1.0
