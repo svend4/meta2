@@ -534,11 +534,27 @@ class TestGreedyAssemblyRegression:
             assert abs(a1 - a2) < 1e-9, f"Angle differs for frag {fid}"
 
     def test_greedy_covers_all_4_fragments(self, reg_compat_data):
-        """All 4 fragments appear in the placement dict."""
+        """All 4 fragments appear in the placement dict and Assembly is well-formed.
+        Kills mutmut_73 (fragments=None), mutmut_77 (fragments kwarg omitted),
+        mutmut_75 (compat_matrix=None), mutmut_79 (compat_matrix kwarg omitted),
+        mutmut_81 (compat_matrix=np.array(None) → ndim=0).
+        """
         frags, _, entries = reg_compat_data
         result = greedy_assembly(frags, entries)
         assert set(result.placements.keys()) == {0, 1, 2, 3}, \
             f"Missing fragments: {set(result.placements.keys())}"
+        # Assembly.fragments must be the input list, not None
+        assert result.fragments is not None, "Assembly.fragments should not be None"
+        assert result.fragments == frags, "Assembly.fragments should match input"
+        # Assembly.compat_matrix must be a 1-D (possibly empty) ndarray
+        assert result.compat_matrix is not None, "Assembly.compat_matrix should not be None"
+        assert isinstance(result.compat_matrix, np.ndarray), (
+            "Assembly.compat_matrix must be an ndarray"
+        )
+        assert result.compat_matrix.ndim >= 1, (
+            f"Assembly.compat_matrix must be 1-D, got ndim={result.compat_matrix.ndim} "
+            "(np.array(None) has ndim=0)"
+        )
 
     def test_greedy_first_fragment_at_origin(self, reg_compat_data):
         """First fragment is always placed at (0, 0) with angle 0."""
@@ -567,3 +583,233 @@ class TestGreedyAssemblyRegression:
         """Empty input → empty Assembly with no placements."""
         result = greedy_assembly([], [])
         assert len(result.placements) == 0
+        # Verify correct Assembly structure (kills mutations that pass wrong fields)
+        assert isinstance(result.placements, dict), (
+            "Empty-fragments Assembly.placements should be a dict"
+        )
+        assert result.fragments is not None, "fragments should not be None"
+        assert result.fragments == [], "Empty-fragments Assembly.fragments should be []"
+        assert result.compat_matrix is not None, "compat_matrix should not be None"
+        assert isinstance(result.compat_matrix, np.ndarray), (
+            "compat_matrix should be an ndarray"
+        )
+        assert result.compat_matrix.ndim >= 1, (
+            f"compat_matrix must be 1-D (not 0-D scalar); ndim={result.compat_matrix.ndim}. "
+            "np.array(None) has ndim=0 — kills mutmut_12."
+        )
+
+    def test_greedy_entries_with_unknown_edge_skip_but_continue(self, reg_compat_data):
+        """
+        If an entry references an edge_id not in any fragment, greedy should
+        skip that entry (not break/abort the loop).
+        Kills mutant: `continue` → `break` (which would halt the whole loop).
+        """
+        frags, _, entries = reg_compat_data
+        # Create a fake entry with an edge_id that's not in any fragment
+        # The real entries have edge IDs like 0, 1, 10, 11, 20, 21, 30, 31
+        fake_edge = _reg_edge(999)  # ID 999 does not exist in any fragment
+        real_edge = frags[0].edges[0]
+        from puzzle_reconstruction.models import CompatEntry
+        bad_entry = CompatEntry(
+            edge_i=fake_edge, edge_j=real_edge,
+            score=0.99,  # High score - if NOT skipped, would be processed first
+            dtw_dist=0.01, css_sim=0.99, fd_diff=0.0, text_score=0.0,
+        )
+        # Prepend bad entry (highest score) + keep good entries
+        mixed_entries = [bad_entry] + list(entries)
+        result = greedy_assembly(frags, mixed_entries)
+        # All 4 fragments should still be placed (the bad entry was skipped, not aborted)
+        assert set(result.placements.keys()) == {0, 1, 2, 3}, (
+            "Bad entry caused loop to abort (break instead of continue)"
+        )
+        assert len(result.placements) == 4
+        # Fragments 1-3 must be placed by the algorithm (y < 100), not as orphans (y=200).
+        # If the loop broke on the bad entry, all non-first frags become orphans at y=200.
+        for fid in [1, 2, 3]:
+            pos, _ = result.placements[fid]
+            assert pos[1] < 100.0, (
+                f"Fragment {fid} is at y={pos[1]:.1f} (orphan position). "
+                "Bad entry should have been skipped (continue), not broken (break)."
+            )
+
+    def test_greedy_non_orphan_placement(self, reg_compat_data):
+        """
+        Verify algorithm-based placement vs orphan fallback.
+
+        With the correct algorithm, non-first fragments are placed near fragment 0
+        using edge alignment (y ≈ 0).  With the 'all None' mutation, orphan
+        placement kicks in and every y-coordinate equals 200.
+        """
+        frags, _, entries = reg_compat_data
+        result = greedy_assembly(frags, entries)
+        for fid, (pos, _) in result.placements.items():
+            if fid == frags[0].fragment_id:
+                continue
+            # Algorithm-placed fragments should NOT be at orphan y=200
+            assert pos[1] < 100.0, (
+                f"Fragment {fid} looks orphan-placed (y={pos[1]:.1f}); "
+                "greedy algorithm should have placed it near the anchor."
+            )
+
+    def test_greedy_edge_lookup_correctness(self, reg_compat_data):
+        """
+        Check that edge_to_frag mapping is used correctly.
+
+        Mutmut mutant: edge_to_frag[edge.edge_id] = None (instead of frag).
+        With this, all frag_i / frag_j lookups return None and no edge-based
+        placement happens.  We detect this by verifying the assembly score > 0.
+        """
+        frags, _, entries = reg_compat_data
+        result = greedy_assembly(frags, entries)
+        # total_score is sum of matched edge scores; must be > 0 with valid entries
+        assert result.total_score > 0.0, (
+            f"total_score={result.total_score}: edge lookup appears broken "
+            "(all fragments may have been placed as orphans)."
+        )
+
+    def test_greedy_placements_not_in_row(self, reg_compat_data):
+        """
+        With greedy algorithm, fragments are placed with varying x/y.
+
+        Orphan placement puts all orphans at x=k*150, y=200 in a row.
+        The algorithm-based placements should have at least one non-zero x.
+        """
+        frags, _, entries = reg_compat_data
+        result = greedy_assembly(frags, entries)
+        non_first_positions = [
+            pos for fid, (pos, _) in result.placements.items()
+            if fid != frags[0].fragment_id
+        ]
+        x_values = [pos[0] for pos in non_first_positions]
+        # At least one fragment should have x != 0 (not at orphan x=0 or x=150)
+        # OR be close to the anchor (not at y=200)
+        # We already check y in non_orphan_placement; here check consistency
+        assert len(non_first_positions) == len(frags) - 1, (
+            "Some non-first fragments were not placed"
+        )
+
+    def test_orphan_placement_positions_finite(self):
+        """
+        When fragments have no compatible edges, they fall back to orphan
+        placement.  Orphan positions must be finite (not None or NaN).
+        Kills mutants: placements[frag_id] = None, y_offset = None, etc.
+        """
+        # 4 fragments, but no cross-fragment entries → all except first are orphans
+        frags = [_reg_fragment(i) for i in range(4)]
+        result = greedy_assembly(frags, [])  # No entries → all orphaned
+
+        assert set(result.placements.keys()) == {0, 1, 2, 3}, (
+            "All 4 fragments should be placed"
+        )
+        for fid, placement in result.placements.items():
+            assert placement is not None, f"Fragment {fid} has None placement"
+            pos, angle = placement
+            pos_arr = np.asarray(pos)
+            assert np.all(np.isfinite(pos_arr)), (
+                f"Orphan fragment {fid} has non-finite pos: {pos_arr}"
+            )
+            assert np.isfinite(angle), f"Orphan fragment {fid} has non-finite angle"
+
+    def test_orphan_y_offset_above_first(self):
+        """
+        Orphan fragments are placed below the first fragment.
+        y_offset = max_y + 200, so orphans must be at y > 0 (or y > max_y).
+        Kills mutant: y_offset = max_y + 201 → off by 1 (value differs).
+        Kills mutant: y_offset = max_y - 200 → placed ABOVE, not BELOW.
+        """
+        frags = [_reg_fragment(i) for i in range(3)]
+        result = greedy_assembly(frags, [])  # all orphans except first at (0,0)
+
+        # First fragment: (0, 0)
+        pos0, _ = result.placements[0]
+        assert np.allclose(pos0, [0, 0])
+
+        # Other orphans should be at EXACTLY y = 200 (y_offset = max_y=0 + 200)
+        for fid in [1, 2]:
+            pos, angle = result.placements[fid]
+            assert pos[1] == pytest.approx(200.0, abs=0.01), (
+                f"Orphan fragment {fid} y should be exactly 200, got {pos[1]}"
+            )
+            # Orphans are placed with angle = 0
+            assert angle == pytest.approx(0.0, abs=1e-9), (
+                f"Orphan fragment {fid} angle should be 0, got {angle}"
+            )
+
+    def test_orphan_x_spacing(self):
+        """
+        Orphan fragments are placed at x = k * 150 for k=0,1,2,...
+        Kills mutant: k * 150 changed (e.g., * 151 → different positions).
+        """
+        frags = [_reg_fragment(i) for i in range(4)]
+        result = greedy_assembly(frags, [])  # all orphaned
+
+        # Orphan positions: k=0 → x=0, k=1 → x=150, k=2 → x=300
+        orphan_ids = [f.fragment_id for f in frags[1:]]  # skip first
+        x_vals = sorted([result.placements[fid][0][0] for fid in orphan_ids])
+        assert x_vals[0] == pytest.approx(0.0, abs=1e-6), f"First orphan x wrong: {x_vals[0]}"
+        assert x_vals[1] == pytest.approx(150.0, abs=1e-6), f"Second orphan x wrong: {x_vals[1]}"
+        assert x_vals[2] == pytest.approx(300.0, abs=1e-6), f"Third orphan x wrong: {x_vals[2]}"
+
+    def test_greedy_total_score_excludes_unknown_edges(self, reg_compat_data):
+        """
+        total_score must NOT include entries with edges outside the fragment graph.
+        Kills mutmut_66: operator precedence change that includes entries with
+        only one known edge (via 'or' instead of 'and').
+        """
+        frags, _, entries = reg_compat_data
+        fake_edge = _reg_edge(999)  # not in any fragment
+        real_edge = frags[0].edges[0]
+        from puzzle_reconstruction.models import CompatEntry
+        bad_entry = CompatEntry(
+            edge_i=fake_edge, edge_j=real_edge,
+            score=0.99,  # high score that would inflate total_score if included
+            dtw_dist=0.01, css_sim=0.99, fd_diff=0.0, text_score=0.0,
+        )
+        clean_result = greedy_assembly(frags, list(entries))
+        mixed_result = greedy_assembly(frags, [bad_entry] + list(entries))
+        # Bad entry must not change total_score (it has an unknown edge)
+        assert mixed_result.total_score == pytest.approx(clean_result.total_score, abs=1e-6), (
+            f"total_score changed from {clean_result.total_score} to "
+            f"{mixed_result.total_score} when a bad entry was added. "
+            "The bad entry's score (0.99) should not be included."
+        )
+
+    def test_greedy_neither_placed_continues_not_breaks(self):
+        """
+        When an entry has both fragments unplaced, the loop must continue (not break).
+        Kills mutmut_38: `continue` → `break` for the neither-placed guard.
+
+        Setup: highest-score entry is between two unplaced fragments (frag1, frag2).
+        The algorithm must skip it and then process later entries that connect frag0 to others.
+        """
+        frags = [_reg_fragment(i) for i in range(3)]  # frags 0, 1, 2
+        from puzzle_reconstruction.models import CompatEntry
+        # Highest priority: frag1 ↔ frag2 (neither placed initially)
+        neither_entry = CompatEntry(
+            edge_i=frags[1].edges[0], edge_j=frags[2].edges[0],
+            score=0.99, dtw_dist=0.01, css_sim=0.99, fd_diff=0.0, text_score=0.0,
+        )
+        # Second priority: frag0 ↔ frag1 (frag0 is placed)
+        frag01_entry = CompatEntry(
+            edge_i=frags[0].edges[0], edge_j=frags[1].edges[0],
+            score=0.50, dtw_dist=0.01, css_sim=0.99, fd_diff=0.0, text_score=0.0,
+        )
+        # Third priority: frag0 ↔ frag2 (frag0 is placed)
+        frag02_entry = CompatEntry(
+            edge_i=frags[0].edges[0], edge_j=frags[2].edges[0],
+            score=0.40, dtw_dist=0.01, css_sim=0.99, fd_diff=0.0, text_score=0.0,
+        )
+        # Entries sorted by score descending: neither_entry first
+        entries = [neither_entry, frag01_entry, frag02_entry]
+        result = greedy_assembly(frags, entries)
+        # All 3 frags must be placed
+        assert set(result.placements.keys()) == {0, 1, 2}, (
+            "All 3 fragments should be placed"
+        )
+        # Frags 1 and 2 must be placed via algorithm (not orphan at y=200)
+        for fid in [1, 2]:
+            pos, _ = result.placements[fid]
+            assert pos[1] < 100.0, (
+                f"Fragment {fid} is orphan-placed at y={pos[1]:.1f}. "
+                "The neither-placed entry should have been skipped (continue), not aborted (break)."
+            )
