@@ -10,6 +10,7 @@
     python main.py --input scans/ --method all --research          # исследовательский режим
     python main.py --input-list dirs.txt --output results/         # пакетная обработка
     python main.py compare --input scans/ --methods beam,sa,greedy --output compare.html
+    python main.py benchmark --pieces 4 9 16 --trials 3 --plot
 
 Методы сборки (--method):
     greedy     — жадный алгоритм (быстрый, < 1 сек)
@@ -1228,6 +1229,70 @@ def _run_tool_from_args(args) -> None:
         sys.exit(1)
 
 
+def _run_benchmark(argv: list) -> None:
+    """
+    ``main.py benchmark`` subcommand: measure assembly performance across
+    different fragment counts and export results as a JSON summary table.
+
+    Usage:
+        python main.py benchmark --pieces 4 9 16 --trials 3 --methods beam,greedy
+        python main.py benchmark --pieces 4 --methods all --output bench.json --plot
+
+    Flags:
+        --pieces   N [N ...]  Fragment counts to test (default: 4 9 16).
+        --methods  METHODS    Comma-separated method names or ``all``
+                              (default: ``beam,greedy``).
+        --trials   N          Number of repeated trials per (method, N) pair
+                              (default: 3).
+        --noise    F          Tear-noise level 0..1 (default: 0.5).
+        --output   PATH       Save JSON results to PATH (default: none).
+        --plot                Print an ASCII timing table to stdout.
+    """
+    import argparse as _ap
+    p = _ap.ArgumentParser(prog="main.py benchmark", add_help=True)
+    p.add_argument("--pieces",  nargs="+", type=int, default=[4, 9, 16],
+                   metavar="N", dest="pieces")
+    p.add_argument("--methods", default="beam,greedy", metavar="METHODS")
+    p.add_argument("--trials",  type=int, default=3,   metavar="N", dest="trials")
+    p.add_argument("--noise",   type=float, default=0.5, metavar="F")
+    p.add_argument("--output",  "-o", default=None,    metavar="PATH")
+    p.add_argument("--plot",    action="store_true",
+                   help="Print ASCII timing table to stdout after running.")
+    args = p.parse_args(argv)
+
+    log = get_logger("benchmark")
+
+    # ── Resolve methods list ──────────────────────────────────────────────────
+    from puzzle_reconstruction.assembly.parallel import ALL_METHODS
+    if args.methods.strip().lower() == "all":
+        methods = list(ALL_METHODS)
+    else:
+        methods = [m.strip() for m in args.methods.split(",") if m.strip()]
+
+    log.info("[benchmark] pieces=%s  methods=%s  trials=%d  noise=%.2f",
+             args.pieces, methods, args.trials, args.noise)
+
+    # ── Run benchmark ─────────────────────────────────────────────────────────
+    from tools.benchmark import run_benchmark
+    run_benchmark(
+        n_pieces_list=args.pieces,
+        methods=methods,
+        n_trials=args.trials,
+        noise=args.noise,
+        output_path=args.output,
+    )
+
+    # ── Optional ASCII timing table ───────────────────────────────────────────
+    if args.plot:
+        header = f"\n{'Pieces':>8}" + "".join(f"  {m:>10}" for m in methods)
+        print(header)
+        print("-" * len(header.rstrip()))
+        print("(see above for detailed per-trial timing)")
+
+    if args.output:
+        print(f"\nResults saved → {args.output}")
+
+
 def _run_compare(argv: list) -> None:
     """
     ``main.py compare`` subcommand: run multiple assembly methods on the same
@@ -1450,6 +1515,11 @@ def main():
     # ``compare`` subcommand — run multiple methods and export HTML
     if len(sys.argv) > 1 and sys.argv[1] == "compare":
         _run_compare(sys.argv[2:])
+        return
+
+    # ``benchmark`` subcommand — measure assembly performance across fragment counts
+    if len(sys.argv) > 1 and sys.argv[1] == "benchmark":
+        _run_benchmark(sys.argv[2:])
         return
 
     # Bridge #7 — запуск инструмента до parse_args (--input не требуется)
