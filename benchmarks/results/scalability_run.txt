@@ -1,0 +1,16 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-9.0.2, pluggy-1.6.0
+rootdir: /home/user/meta2/benchmarks
+configfile: pytest.ini
+plugins: hypothesis-6.151.9
+collected 22 items / 21 deselected / 1 selected
+
+benchmarks/bench_scalability.py .
+
+=============================== warnings summary ===============================
+benchmarks/utils.py:127
+  /home/user/meta2/benchmarks/utils.py:127: PytestCollectionWarning: cannot collect test class 'BenchResult' because it has a __init__ constructor (from: bench_scalability.py)
+    class BenchResult:
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================= 1 passed, 21 deselected, 1 warning in 14.40s =================
