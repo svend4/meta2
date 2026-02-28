@@ -210,3 +210,23 @@ check_untyped_defs    = true
 [[tool.mypy.overrides]]
 module = "tools.*"
 disallow_untyped_defs = false
+
+# ── mutmut (mutation testing) ──────────────────────────────────────────────
+[tool.mutmut]
+paths_to_mutate = [
+    "puzzle_reconstruction/algorithms/fractal/box_counting.py",
+    "puzzle_reconstruction/algorithms/fractal/css.py",
+    "puzzle_reconstruction/matching/dtw.py",
+    "puzzle_reconstruction/assembly/greedy.py",
+]
+also_copy = [
+    "puzzle_reconstruction/",
+    "tools/",
+]
+tests_dir = [
+    "tests/test_regression.py",
+    "tests/test_mutation_killers.py",
+    "tests/test_properties_algorithms_fractal.py",
+]
+pytest_add_cli_args = ["--timeout=60"]
+debug = false

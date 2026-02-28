@@ -841,3 +841,150 @@ def _draw_line(
         if e2 < dx:
             err += dx
             y0  += sy
+
+
+# ---------------------------------------------------------------------------
+# Assembly animation
+# ---------------------------------------------------------------------------
+
+def _show_assembly_animated_impl(
+    self: "AssemblyViewer",
+    history: List[Assembly],
+    fps: int = 10,
+    output: Optional[str] = None,
+) -> None:
+    """Play back assembly evolution as a frame-by-frame animation.
+
+    Loops through each Assembly snapshot in *history*, renders it with the
+    viewer's own ``_render_frame`` logic (temporarily swapping
+    ``self.assembly``), and either shows the result in a cv2 window or writes
+    it to a video file — or both.
+
+    A green progress bar is drawn along the bottom edge of each frame, and a
+    ``Step N/M  score=…`` overlay is printed in the bottom-left corner.
+
+    Parameters
+    ----------
+    history:
+        Ordered list of Assembly snapshots (e.g. one per SA/genetic iteration).
+        Each entry must have ``.placements`` and ``.fragments`` populated.
+    fps:
+        Display / recording frame rate.  Sensible range: 1–60.
+    output:
+        Optional path for a video file (``.avi`` or ``.mp4``).  When given the
+        animation is written to disk; the cv2 preview window is still shown.
+        Pass ``output="animation.mp4"`` to save an MP4.
+    """
+    if not history:
+        return
+
+    saved_assembly = self.assembly
+    delay = max(1, int(1000 / fps))          # milliseconds per frame
+
+    win_title = "Assembly Animation  |  Space=pause  Q=stop"
+    writer: Optional[object] = None
+
+    try:
+        cv2.namedWindow(win_title, cv2.WINDOW_NORMAL)
+        cv2.resizeWindow(win_title, self.canvas_w, self.canvas_h)
+
+        if output:
+            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+            writer = cv2.VideoWriter(
+                output, fourcc, float(fps),
+                (self.canvas_w, self.canvas_h),
+            )
+
+        paused = False
+        idx = 0
+        total = len(history)
+
+        while idx < total:
+            self.assembly = history[idx]
+            self._cache.clear()
+            frame = self._render_frame()
+
+            # Progress bar (green, bottom 6 px)
+            bar_w = max(1, int(self.canvas_w * (idx + 1) / total))
+            cv2.rectangle(
+                frame,
+                (0, self.canvas_h - 6),
+                (bar_w, self.canvas_h),
+                (0, 200, 80), -1,
+            )
+            # Step / score overlay
+            label = (
+                f"Step {idx + 1}/{total}"
+                f"  score={history[idx].total_score:.4f}"
+            )
+            cv2.putText(
+                frame, label,
+                (10, self.canvas_h - 10),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.4,
+                (220, 220, 220), 1, cv2.LINE_AA,
+            )
+            if paused:
+                cv2.putText(
+                    frame, "PAUSED",
+                    (self.canvas_w // 2 - 40, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8,
+                    (0, 200, 255), 2, cv2.LINE_AA,
+                )
+
+            cv2.imshow(win_title, frame)
+
+            if writer is not None:
+                writer.write(frame)
+
+            key = cv2.waitKey(delay if not paused else 50) & 0xFF
+            if key in (ord('q'), ord('Q'), 27):
+                break
+            elif key == ord(' '):
+                paused = not paused
+
+            if not paused:
+                idx += 1
+
+    finally:
+        self.assembly = saved_assembly
+        self._cache.clear()
+        if writer is not None:
+            writer.release()
+        cv2.destroyWindow(win_title)
+
+
+# Attach show_assembly_animated to AssemblyViewer
+AssemblyViewer.show_assembly_animated = _show_assembly_animated_impl
+
+
+def animate_assembly(
+    history: List[Assembly],
+    fps: int = 10,
+    canvas_size: Tuple[int, int] = (1400, 900),
+    output: Optional[str] = None,
+) -> None:
+    """Convenience wrapper: animate an assembly history without a pre-built viewer.
+
+    Creates a temporary :class:`AssemblyViewer` and delegates to
+    :meth:`AssemblyViewer.show_assembly_animated`.
+
+    Parameters
+    ----------
+    history:
+        Ordered list of Assembly snapshots (e.g. from an SA/genetic run).
+    fps:
+        Playback frame rate.
+    canvas_size:
+        ``(width, height)`` of the display window in pixels.
+    output:
+        Optional path for saving the animation as a video file.
+
+    Example
+    -------
+    >>> from puzzle_reconstruction.ui.viewer import animate_assembly
+    >>> animate_assembly(sa_history, fps=15, output="sa_evolution.mp4")
+    """
+    if not history:
+        return
+    viewer = AssemblyViewer(history[0], canvas_size=canvas_size)
+    viewer.show_assembly_animated(history, fps=fps, output=output)

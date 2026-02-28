@@ -484,3 +484,276 @@ def comparison_strip(fragments_imgs: list[np.ndarray],
         result = np.hstack([result, sep, panel])
 
     return result
+
+
+# ─── SVG экспорт ──────────────────────────────────────────────────────────────
+
+def export_svg(
+    assembly: Assembly,
+    path: str,
+    width: int = 800,
+    height: int = 600,
+) -> None:
+    """Export assembled fragments as an SVG file.
+
+    Each placed fragment is rendered as a ``<rect>`` (or ``<polygon>`` if a
+    contour is available) with colour encoding the per-fragment score.
+    Requires no external dependencies — pure string generation.
+
+    Args:
+        assembly: Fully assembled document (``placements`` must be non-empty).
+        path:     Output file path (should end in ``.svg``).
+        width:    SVG viewport width in pixels.
+        height:   SVG viewport height in pixels.
+    """
+    placements = assembly.placements   # {fid: (pos, angle)}
+    fragments  = assembly.fragments or []
+
+    if not placements:
+        svg_empty = (
+            f'<svg xmlns="http://www.w3.org/2000/svg" '
+            f'width="{width}" height="{height}">\n</svg>\n'
+        )
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(svg_empty)
+        return
+
+    # ── World-space bounding box ──────────────────────────────────────────────
+    all_x = [float(pos[0]) for pos, _ in placements.values()]
+    all_y = [float(pos[1]) for pos, _ in placements.values()]
+    world_x_min, world_x_max = min(all_x), max(all_x)
+    world_y_min, world_y_max = min(all_y), max(all_y)
+
+    pad = 40
+    world_span_x = max(world_x_max - world_x_min, 1.0)
+    world_span_y = max(world_y_max - world_y_min, 1.0)
+    scale_x = (width  - 2 * pad) / world_span_x
+    scale_y = (height - 2 * pad) / world_span_y
+    svg_scale = min(scale_x, scale_y)
+
+    def _w2s(wx: float, wy: float):
+        sx = pad + (wx - world_x_min) * svg_scale
+        sy = pad + (wy - world_y_min) * svg_scale
+        return sx, sy
+
+    default_size = max(world_span_x, world_span_y) * 0.06 + 1.0
+    rect_side = default_size * svg_scale
+
+    def _score_color(score: float) -> str:
+        """Interpolate from red (low) through yellow to green (high)."""
+        score = float(np.clip(score, 0.0, 1.0))
+        if score >= 0.5:
+            t = (score - 0.5) * 2.0
+            r, g, b = int((1.0 - t) * 220), 200, 0
+        else:
+            t = score * 2.0
+            r, g, b = 220, int(t * 200), 0
+        return f"#{r:02x}{g:02x}{b:02x}"
+
+    frag_map = {f.fragment_id: f for f in fragments}
+
+    # Per-fragment confidence from compat matrix (or fallback)
+    frag_of_edge: list = []
+    for frag in fragments:
+        for _ in frag.edges:
+            frag_of_edge.append(frag.fragment_id)
+
+    mat = assembly.compat_matrix
+    edge_scores: dict = {}
+    if mat is not None and mat.size > 0:
+        n_edges = min(mat.shape[0], len(frag_of_edge))
+        for i in range(n_edges):
+            for j in range(i + 1, n_edges):
+                s = float(mat[i, j])
+                if s > 0.05:
+                    fi, fj = frag_of_edge[i], frag_of_edge[j]
+                    edge_scores[fi] = max(edge_scores.get(fi, 0.0), s)
+                    edge_scores[fj] = max(edge_scores.get(fj, 0.0), s)
+
+    lines: list[str] = []
+    lines.append(
+        f'<svg xmlns="http://www.w3.org/2000/svg" '
+        f'width="{width}" height="{height}" '
+        f'viewBox="0 0 {width} {height}">'
+    )
+    lines.append(
+        f'  <rect x="0" y="0" width="{width}" height="{height}" fill="#1e1e1e"/>'
+    )
+
+    for fid, (pos, angle) in placements.items():
+        px, py = float(pos[0]), float(pos[1])
+        sx, sy = _w2s(px, py)
+
+        frag = frag_map.get(fid)
+        score = edge_scores.get(fid, float(assembly.total_score))
+        fill  = _score_color(score)
+        angle_deg = float(np.degrees(angle))
+
+        if frag is not None and frag.contour is not None and len(frag.contour) >= 3:
+            # Render fragment outline as a scaled polygon
+            pts = frag.contour * svg_scale
+            pts_shifted = pts - pts.mean(axis=0) + np.array([sx, sy])
+            pts_str = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts_shifted)
+            cx_str = f"{float(sx):.1f}"
+            cy_str = f"{float(sy):.1f}"
+            lines.append(
+                f'  <polygon points="{pts_str}" '
+                f'fill="{fill}" fill-opacity="0.7" '
+                f'stroke="#ffffff" stroke-width="0.8" '
+                f'transform="rotate({angle_deg:.1f} {cx_str} {cy_str})"/>'
+            )
+        else:
+            # Fallback rectangle
+            fw = fh_size = rect_side
+            if frag is not None and frag.image is not None:
+                img_h, img_w = frag.image.shape[:2]
+                fw = img_w * svg_scale
+                fh_size = img_h * svg_scale
+            rx, ry = sx - fw / 2, sy - fh_size / 2
+            cx_str = f"{float(sx):.1f}"
+            cy_str = f"{float(sy):.1f}"
+            lines.append(
+                f'  <rect x="{rx:.1f}" y="{ry:.1f}" '
+                f'width="{fw:.1f}" height="{fh_size:.1f}" '
+                f'fill="{fill}" fill-opacity="0.7" '
+                f'stroke="#ffffff" stroke-width="0.5" '
+                f'transform="rotate({angle_deg:.1f} {cx_str} {cy_str})"/>'
+            )
+
+        # Text label
+        lines.append(
+            f'  <text x="{sx:.1f}" y="{sy + 4:.1f}" '
+            f'font-family="monospace" font-size="9" '
+            f'fill="white" text-anchor="middle">#{fid} {score:.0%}</text>'
+        )
+
+    lines.append("</svg>")
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(lines) + "\n")
+
+
+# ─── HTML сравнение методов ───────────────────────────────────────────────────
+
+def export_comparison_html(
+    results: "dict[str, Assembly]",
+    path: str,
+    title: str = "Assembly Method Comparison",
+) -> None:
+    """Export a side-by-side HTML comparison of multiple assembly results.
+
+    Generates a self-contained HTML file with a summary table (method, score,
+    OCR score, fragment count, placement count) and a visual card per method
+    showing all placed fragments.
+
+    Args:
+        results: Mapping from method name to ``Assembly`` object.
+        path:    Output ``.html`` file path.
+        title:   Page title / heading.
+    """
+    def _method_card(method: str, assembly: Assembly) -> str:
+        n_frags    = len(assembly.fragments or [])
+        n_placed   = len(assembly.placements or {})
+        score      = float(assembly.total_score)
+        ocr        = float(assembly.ocr_score)
+
+        # Build a tiny text-based placement grid
+        placement_lines: list[str] = []
+        for fid, (pos, angle) in list((assembly.placements or {}).items())[:8]:
+            px, py = float(pos[0]), float(pos[1])
+            ang_deg = float(np.degrees(angle)) % 360
+            placement_lines.append(
+                f"  #{fid}  ({px:.0f}, {py:.0f})  ∠{ang_deg:.0f}°"
+            )
+        if len(assembly.placements or {}) > 8:
+            placement_lines.append(f"  … {len(assembly.placements) - 8} more")
+
+        placement_text = "\n".join(placement_lines) or "  (no placements)"
+
+        bar_width = int(score * 180)
+        ocr_width = int(ocr * 180)
+
+        return f"""
+        <div class="card">
+          <h2>{method}</h2>
+          <table class="meta">
+            <tr><td>Fragments</td><td>{n_frags}</td></tr>
+            <tr><td>Placed</td><td>{n_placed}</td></tr>
+            <tr><td>Score</td><td>{score:.4f}</td></tr>
+            <tr><td>OCR</td><td>{ocr:.1%}</td></tr>
+          </table>
+          <div class="bar-label">Score</div>
+          <div class="bar-bg"><div class="bar-fill" style="width:{bar_width}px;background:#4a9"></div></div>
+          <div class="bar-label">OCR</div>
+          <div class="bar-bg"><div class="bar-fill" style="width:{ocr_width}px;background:#49a"></div></div>
+          <pre class="placements">{placement_text}</pre>
+        </div>"""
+
+    # Summary table
+    table_rows: list[str] = []
+    for method, asm in results.items():
+        n_placed = len(asm.placements or {})
+        n_frags  = len(asm.fragments or [])
+        score    = float(asm.total_score)
+        ocr      = float(asm.ocr_score)
+        table_rows.append(
+            f"<tr><td>{method}</td><td>{n_frags}</td><td>{n_placed}</td>"
+            f"<td>{score:.4f}</td><td>{ocr:.1%}</td></tr>"
+        )
+
+    best_method = max(results, key=lambda m: results[m].total_score) if results else "-"
+    best_score_str = f"{results[best_method].total_score:.4f}" if results else "0.0000"
+    cards_html  = "\n".join(_method_card(m, a) for m, a in results.items())
+
+    html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{title}</title>
+  <style>
+    body {{ font-family: monospace; background: #181818; color: #ddd; margin: 0; padding: 20px; }}
+    h1   {{ color: #aef; margin-bottom: 8px; }}
+    .summary {{ color: #aaa; margin-bottom: 24px; font-size: 13px; }}
+    table {{ border-collapse: collapse; width: 100%; max-width: 700px; margin-bottom: 32px; }}
+    th, td {{ padding: 6px 12px; border: 1px solid #333; text-align: left; }}
+    th {{ background: #222; color: #ccc; }}
+    tr:hover {{ background: #222; }}
+    .cards {{ display: flex; flex-wrap: wrap; gap: 20px; }}
+    .card {{ background: #222; border: 1px solid #333; border-radius: 6px;
+              padding: 16px; min-width: 240px; max-width: 320px; }}
+    .card h2 {{ margin: 0 0 10px; color: #9df; font-size: 15px; }}
+    .meta {{ border: none; width: auto; margin-bottom: 10px; font-size: 12px; }}
+    .meta td {{ border: none; padding: 2px 8px 2px 0; }}
+    .bar-label {{ font-size: 11px; color: #888; margin-top: 6px; }}
+    .bar-bg {{ background: #333; height: 8px; border-radius: 4px; width: 180px; margin: 2px 0 4px; }}
+    .bar-fill {{ height: 8px; border-radius: 4px; }}
+    .placements {{ background: #181818; padding: 8px; border-radius: 4px;
+                   font-size: 11px; color: #bbb; white-space: pre; overflow: auto; max-height: 120px; }}
+  </style>
+</head>
+<body>
+  <h1>{title}</h1>
+  <div class="summary">
+    Methods compared: {len(results)} &nbsp;|&nbsp;
+    Best method: <strong style="color:#9df">{best_method}</strong> &nbsp;|&nbsp;
+    Score: {best_score_str}
+  </div>
+
+  <h3>Summary</h3>
+  <table>
+    <thead>
+      <tr><th>Method</th><th>Fragments</th><th>Placed</th><th>Score</th><th>OCR</th></tr>
+    </thead>
+    <tbody>
+      {"".join(table_rows)}
+    </tbody>
+  </table>
+
+  <h3>Per-method details</h3>
+  <div class="cards">
+    {cards_html}
+  </div>
+</body>
+</html>
+"""
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write(html)

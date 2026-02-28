@@ -147,6 +147,81 @@ jobs:
             --check-untyped-defs
         continue-on-error: true   # предупреждения не блокируют, ошибки — блокируют
 
+  # ── Property-based tests ─────────────────────────────────────────────────
+  property-tests:
+    name: "Property-based tests (Hypothesis)"
+    runs-on: ubuntu-latest
+    needs: [test]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libgl1-mesa-glx libglib2.0-0
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install hypothesis pytest scikit-learn scipy || true
+
+      - name: Run property-based tests
+        run: |
+          pytest tests/test_properties_*.py \
+            -v --tb=short -q \
+            --timeout=120
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        continue-on-error: false   # property tests are mandatory
+
+  # ── Integration tests (dedicated job) ────────────────────────────────────
+  integration-tests:
+    name: "Deep integration tests"
+    runs-on: ubuntu-latest
+    needs: [test]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libgl1-mesa-glx libglib2.0-0
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          pip install scikit-learn scipy || true
+
+      - name: Run deep integration tests
+        run: |
+          pytest tests/test_integration_pipeline_class.py \
+            tests/test_integration_assembly_methods.py \
+            tests/test_integration_error_recovery.py \
+            tests/test_integration_matching_full.py \
+            tests/test_integration_verification_full.py \
+            -v --tb=short -q \
+            --timeout=180 \
+            -m "not slow"
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        continue-on-error: true   # informational until all pass reliably
+
   # ── Бенчмарки (опциональные, только на ubuntu) ───────────────────────────
   benchmarks:
     name: "Benchmarks (smoke test)"
@@ -172,7 +247,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev]"
-          pip install scikit-learn scipy || true
+          pip install scikit-learn scipy hypothesis || true
 
       - name: Run benchmark smoke tests
         run: |
@@ -184,6 +259,16 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}
         continue-on-error: true   # benchmarks are informational, not blocking
+
+      - name: Run scalability benchmarks (small N only)
+        run: |
+          python -m pytest benchmarks/bench_scalability.py \
+            -k "n4 or n9 or greedy_scaling_trend" \
+            -q --tb=short \
+            --timeout=180
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        continue-on-error: true
 
   # ── Сборка пакета ───────────────────────────────────────────────────────
   build:
