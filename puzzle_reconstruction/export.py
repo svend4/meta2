@@ -701,6 +701,7 @@ def export_comparison_html(
         )
 
     best_method = max(results, key=lambda m: results[m].total_score) if results else "-"
+    best_score_str = f"{results[best_method].total_score:.4f}" if results else "0.0000"
     cards_html  = "\n".join(_method_card(m, a) for m, a in results.items())
 
     html = f"""<!DOCTYPE html>
@@ -734,7 +735,7 @@ def export_comparison_html(
   <div class="summary">
     Methods compared: {len(results)} &nbsp;|&nbsp;
     Best method: <strong style="color:#9df">{best_method}</strong> &nbsp;|&nbsp;
-    Score: {results[best_method].total_score:.4f if results else 0}
+    Score: {best_score_str}
   </div>
 
   <h3>Summary</h3>

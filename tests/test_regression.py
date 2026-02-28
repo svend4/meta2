@@ -38,6 +38,12 @@ from puzzle_reconstruction.scoring.threshold_selector import (
     select_percentile_threshold,
     apply_threshold,
 )
+from puzzle_reconstruction.matching.dtw import dtw_distance
+from puzzle_reconstruction.matching.compat_matrix import build_compat_matrix
+from puzzle_reconstruction.assembly.greedy import greedy_assembly
+from puzzle_reconstruction.models import (
+    Fragment, EdgeSignature, EdgeSide, CompatEntry, Assembly,
+)
 
 
 # ── Contour fixtures ──────────────────────────────────────────────────────────
@@ -310,3 +316,254 @@ class TestPipelineConfigRegression:
         cfg = Config.default()
         p = Pipeline(cfg=cfg, n_workers=1)
         assert p is not None
+
+
+# ── Koch-curve fractal dimension regression ────────────────────────────────────
+
+def _make_koch_curve(n_iter: int = 4, n_pts: int = 256) -> np.ndarray:
+    """Generate a Koch snowflake edge (one side)."""
+    def _pts(p1: np.ndarray, p2: np.ndarray, depth: int) -> list:
+        if depth == 0:
+            return [p1]
+        d = (p2 - p1) / 3.0
+        p3 = p1 + d
+        p5 = p2 - d
+        angle = np.pi / 3.0
+        rot = np.array([[np.cos(angle), -np.sin(angle)],
+                        [np.sin(angle),  np.cos(angle)]])
+        p4 = p3 + rot @ d
+        result: list = []
+        for a, b in [(p1, p3), (p3, p4), (p4, p5), (p5, p2)]:
+            result.extend(_pts(a, b, depth - 1))
+        return result
+
+    raw = np.array(_pts(np.array([0.0, 0.0]), np.array([1.0, 0.0]), n_iter))
+    t_old = np.linspace(0, 1, len(raw))
+    t_new = np.linspace(0, 1, n_pts)
+    x = np.interp(t_new, t_old, raw[:, 0])
+    y = np.interp(t_new, t_old, raw[:, 1])
+    return np.column_stack([x, y])
+
+
+@pytest.fixture(scope="module")
+def koch_256() -> np.ndarray:
+    return _make_koch_curve(n_iter=4, n_pts=256)
+
+
+@pytest.fixture(scope="module")
+def square_64() -> np.ndarray:
+    side = 16
+    top    = np.column_stack([np.linspace(0, 100, side), np.full(side, 100.0)])
+    right  = np.column_stack([np.full(side, 100.0), np.linspace(100, 0, side)])
+    bottom = np.column_stack([np.linspace(100, 0, side), np.zeros(side)])
+    left   = np.column_stack([np.zeros(side), np.linspace(0, 100, side)])
+    return np.vstack([top, right, bottom, left]).astype(np.float64)
+
+
+class TestKochCurveFDRegression:
+    """Fractal dimension of Koch curve must exceed 1.0 (it's not smooth)."""
+
+    def test_koch_fd_above_circle(self, circle_64, koch_256):
+        """Koch FD > circle FD (Koch is fractal; circle is smooth)."""
+        fd_circle = box_counting_fd(circle_64)
+        fd_koch   = box_counting_fd(koch_256)
+        assert fd_koch > fd_circle, \
+            f"Koch FD ({fd_koch:.4f}) should exceed circle FD ({fd_circle:.4f})"
+
+    def test_koch_fd_above_1(self, koch_256):
+        """Koch curve FD > 1.0 (has fractal structure)."""
+        fd = box_counting_fd(koch_256)
+        assert fd > 1.0, f"Koch FD ({fd:.4f}) should be > 1.0"
+
+    def test_koch_fd_below_2(self, koch_256):
+        """Koch curve FD < 2.0 (it's a curve, not a surface)."""
+        fd = box_counting_fd(koch_256)
+        assert fd < 2.0, f"Koch FD ({fd:.4f}) should be < 2.0"
+
+    def test_circle_fd_near_1(self, circle_64):
+        """Smooth circle: FD ≈ 1.0."""
+        fd = box_counting_fd(circle_64)
+        assert fd == pytest.approx(1.0, abs=0.02), f"Circle FD={fd:.4f}"
+
+    def test_square_fd_near_1(self, square_64):
+        """Square (piecewise linear): FD ≈ 1.0."""
+        fd = box_counting_fd(square_64)
+        assert fd == pytest.approx(1.0, abs=0.05), f"Square FD={fd:.4f}"
+
+    def test_css_circle_vs_square_similarity_below_1(self, circle_64, square_64):
+        """Circle and square have dissimilar CSS signatures (sim < 1)."""
+        vec_c = css_to_feature_vector(curvature_scale_space(circle_64))
+        vec_s = css_to_feature_vector(curvature_scale_space(square_64))
+        sim = css_similarity(vec_c, vec_s)
+        assert 0.0 <= sim < 1.0, f"Unexpected sim={sim:.4f}"
+
+    def test_css_same_shape_similarity_one(self, circle_64):
+        """css_similarity(v, v) == 1.0 exactly."""
+        vec = css_to_feature_vector(curvature_scale_space(circle_64))
+        assert css_similarity(vec, vec) == pytest.approx(1.0, abs=1e-12)
+
+
+# ── DTW regression ─────────────────────────────────────────────────────────────
+
+class TestDTWRegression:
+    """Fixed DTW values for standard curve pairs."""
+
+    @pytest.fixture(scope="class")
+    def half_circle(self) -> np.ndarray:
+        t = np.linspace(0, np.pi, 32, endpoint=False)
+        return np.column_stack([100 * np.cos(t), 100 * np.sin(t)])
+
+    def test_dtw_self_is_zero(self, half_circle):
+        """DTW(A, A) must be exactly 0."""
+        assert dtw_distance(half_circle, half_circle) == 0.0
+
+    def test_dtw_non_negative(self, half_circle, zigzag_128):
+        """DTW is always >= 0."""
+        assert dtw_distance(half_circle, zigzag_128[:32]) >= 0.0
+
+    def test_dtw_symmetric(self, half_circle):
+        """DTW(A, B) == DTW(B, A)."""
+        t = np.linspace(0, 2 * np.pi, 20, endpoint=False)
+        b = np.column_stack([50 * np.cos(t), 50 * np.sin(t)])
+        d_ab = dtw_distance(half_circle, b)
+        d_ba = dtw_distance(b, half_circle)
+        assert d_ab == pytest.approx(d_ba, abs=1e-9)
+
+    def test_dtw_empty_returns_inf(self):
+        """DTW with empty sequence returns inf."""
+        a = np.zeros((10, 2))
+        d = dtw_distance(a, np.zeros((0, 2)))
+        assert d == float("inf")
+
+    def test_dtw_two_identical_points(self):
+        """DTW(single repeated point, same) = 0."""
+        a = np.ones((5, 2)) * 42.0
+        assert dtw_distance(a, a) == 0.0
+
+    def test_dtw_scale_monotone(self):
+        """Closer curves have smaller DTW distance."""
+        base = np.column_stack([np.linspace(0, 1, 32), np.zeros(32)])
+        near = np.column_stack([np.linspace(0, 1, 32), np.full(32, 0.01)])
+        far  = np.column_stack([np.linspace(0, 1, 32), np.ones(32)])
+        d_near = dtw_distance(base, near)
+        d_far  = dtw_distance(base, far)
+        assert d_near < d_far, f"d_near={d_near:.4f} should be < d_far={d_far:.4f}"
+
+
+# ── Compat matrix regression ───────────────────────────────────────────────────
+
+def _reg_edge(eid: int) -> EdgeSignature:
+    t = np.linspace(0, 2 * np.pi, 16)
+    curve = np.column_stack([np.cos(t) * 50, np.sin(t) * 10])
+    return EdgeSignature(
+        edge_id=eid, side=EdgeSide.TOP, virtual_curve=curve,
+        fd=1.5, css_vec=np.zeros(8), ifs_coeffs=np.zeros(4), length=80.0,
+    )
+
+
+def _reg_fragment(fid: int) -> Fragment:
+    frag = Fragment(fragment_id=fid, image=np.zeros((32, 32, 3), dtype=np.uint8))
+    frag.edges = [_reg_edge(fid * 10 + i) for i in range(2)]
+    return frag
+
+
+@pytest.fixture(scope="module")
+def reg_compat_data():
+    """Reproducible 4-fragment dataset + compat matrix."""
+    frags = [_reg_fragment(i) for i in range(4)]
+    matrix, entries = build_compat_matrix(frags)
+    return frags, matrix, entries
+
+
+class TestCompatMatrixRegression:
+    """Regression tests: compat matrix structural invariants."""
+
+    def test_matrix_shape_8x8(self, reg_compat_data):
+        """4 fragments × 2 edges each → 8×8 matrix."""
+        _, matrix, _ = reg_compat_data
+        assert matrix.shape == (8, 8), f"Expected (8,8), got {matrix.shape}"
+
+    def test_matrix_symmetric(self, reg_compat_data):
+        """Matrix is symmetric."""
+        _, matrix, _ = reg_compat_data
+        np.testing.assert_allclose(matrix, matrix.T, atol=1e-9)
+
+    def test_matrix_diagonal_zero(self, reg_compat_data):
+        """Same-fragment edges have score 0 (blocked)."""
+        _, matrix, _ = reg_compat_data
+        assert np.all(np.diag(matrix) == 0.0), "Diagonal not all zero"
+
+    def test_matrix_values_in_0_1(self, reg_compat_data):
+        """All values in [0, 1]."""
+        _, matrix, _ = reg_compat_data
+        assert np.all(matrix >= 0.0), "Negative values in matrix"
+        assert np.all(matrix <= 1.0), "Values > 1 in matrix"
+
+    def test_same_fragment_edges_score_zero(self, reg_compat_data):
+        """Edges from the same fragment must have score 0."""
+        _, matrix, _ = reg_compat_data
+        # Fragment 0 → edges at indices 0, 1
+        assert matrix[0, 1] == 0.0, "Within-fragment edges should be 0"
+        assert matrix[1, 0] == 0.0
+
+    def test_entries_sorted_descending(self, reg_compat_data):
+        """entries list is sorted by score descending."""
+        _, _, entries = reg_compat_data
+        if len(entries) > 1:
+            scores = [e.score for e in entries]
+            assert scores == sorted(scores, reverse=True), "Entries not sorted"
+
+
+# ── Greedy assembly regression ─────────────────────────────────────────────────
+
+class TestGreedyAssemblyRegression:
+    """Regression: greedy assembly must be deterministic and cover all fragments."""
+
+    def test_greedy_deterministic_two_runs(self, reg_compat_data):
+        """greedy_assembly(same data) × 2 → identical placements."""
+        frags, _, entries = reg_compat_data
+        r1 = greedy_assembly(frags, entries)
+        r2 = greedy_assembly(frags, entries)
+        assert set(r1.placements.keys()) == set(r2.placements.keys()), \
+            "Non-deterministic fragment coverage"
+        for fid in r1.placements:
+            p1, a1 = r1.placements[fid]
+            p2, a2 = r2.placements[fid]
+            np.testing.assert_allclose(p1, p2, atol=1e-9,
+                                       err_msg=f"Position differs for frag {fid}")
+            assert abs(a1 - a2) < 1e-9, f"Angle differs for frag {fid}"
+
+    def test_greedy_covers_all_4_fragments(self, reg_compat_data):
+        """All 4 fragments appear in the placement dict."""
+        frags, _, entries = reg_compat_data
+        result = greedy_assembly(frags, entries)
+        assert set(result.placements.keys()) == {0, 1, 2, 3}, \
+            f"Missing fragments: {set(result.placements.keys())}"
+
+    def test_greedy_first_fragment_at_origin(self, reg_compat_data):
+        """First fragment is always placed at (0, 0) with angle 0."""
+        frags, _, entries = reg_compat_data
+        result = greedy_assembly(frags, entries)
+        pos, angle = result.placements[frags[0].fragment_id]
+        np.testing.assert_allclose(pos, [0.0, 0.0], atol=1e-9)
+        assert angle == pytest.approx(0.0, abs=1e-9)
+
+    def test_greedy_returns_assembly_type(self, reg_compat_data):
+        """greedy_assembly returns an Assembly instance."""
+        frags, _, entries = reg_compat_data
+        result = greedy_assembly(frags, entries)
+        assert isinstance(result, Assembly)
+
+    def test_greedy_placement_positions_finite(self, reg_compat_data):
+        """All placement positions are finite floats."""
+        frags, _, entries = reg_compat_data
+        result = greedy_assembly(frags, entries)
+        for fid, (pos, angle) in result.placements.items():
+            assert np.all(np.isfinite(np.asarray(pos))), \
+                f"Non-finite position for fragment {fid}: {pos}"
+            assert np.isfinite(angle), f"Non-finite angle for fragment {fid}"
+
+    def test_greedy_empty_fragments(self):
+        """Empty input → empty Assembly with no placements."""
+        result = greedy_assembly([], [])
+        assert len(result.placements) == 0

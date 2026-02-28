@@ -9,6 +9,7 @@
     python main.py --input scans/ --output result.png --visualize
     python main.py --input scans/ --method all --research          # исследовательский режим
     python main.py --input-list dirs.txt --output results/         # пакетная обработка
+    python main.py compare --input scans/ --methods beam,sa,greedy --output compare.html
 
 Методы сборки (--method):
     greedy     — жадный алгоритм (быстрый, < 1 сек)
@@ -1227,6 +1228,117 @@ def _run_tool_from_args(args) -> None:
         sys.exit(1)
 
 
+def _run_compare(argv: list) -> None:
+    """
+    ``main.py compare`` subcommand: run multiple assembly methods on the same
+    input and export a side-by-side HTML comparison.
+
+    Usage:
+        python main.py compare --input DIR --methods beam,sa,greedy \\
+                               --output compare.html [--n-pieces N]
+
+    Flags:
+        --input    DIR        Directory with fragment images (required).
+        --methods  METHODS    Comma-separated method names or ``all``
+                              (default: ``beam,greedy``).
+        --output   PATH       Output HTML file (default: ``compare.html``).
+        --n-pieces N          Override: generate N synthetic pieces if no real
+                              images are available (default: 4).
+    """
+    import argparse as _ap
+    p = _ap.ArgumentParser(prog="main.py compare", add_help=True)
+    p.add_argument("--input",    "-i", default=None, metavar="DIR")
+    p.add_argument("--methods",        default="beam,greedy", metavar="METHODS")
+    p.add_argument("--output",   "-o", default="compare.html", metavar="PATH")
+    p.add_argument("--n-pieces",       type=int, default=4, dest="n_pieces")
+    args = p.parse_args(argv)
+
+    log = get_logger("compare")
+
+    # ── Resolve methods list ──────────────────────────────────────────────────
+    from puzzle_reconstruction.assembly.parallel import ALL_METHODS
+    if args.methods.strip().lower() == "all":
+        methods = list(ALL_METHODS)
+    else:
+        methods = [m.strip() for m in args.methods.split(",") if m.strip()]
+
+    # ── Load / generate fragments ─────────────────────────────────────────────
+    from puzzle_reconstruction.config import Config
+    from puzzle_reconstruction.pipeline import Pipeline
+
+    cfg = Config.default()
+    pipeline = Pipeline(cfg=cfg, n_workers=1)
+
+    if args.input and Path(args.input).is_dir():
+        log.info(f"[compare] loading images from {args.input}")
+        frags_raw = load_fragments(Path(args.input), log)
+        images = [f.image for f in frags_raw if f.image is not None]
+    else:
+        log.info(f"[compare] generating {args.n_pieces} synthetic fragments")
+        from tools.tear_generator import generate_test_document, tear_document
+        doc = generate_test_document(seed=42)
+        images = tear_document(doc, n_pieces=args.n_pieces, seed=42)
+
+    if not images:
+        log.error("[compare] no images available — exiting")
+        return
+
+    log.info(f"[compare] preprocessing {len(images)} images …")
+    try:
+        fragments = pipeline.preprocess(images)
+    except Exception as exc:
+        log.error(f"[compare] preprocessing failed: {exc}")
+        return
+
+    if not fragments:
+        log.error("[compare] preprocessing produced 0 fragments — exiting")
+        return
+
+    log.info(f"[compare] building compat matrix …")
+    try:
+        compat_matrix, entries = pipeline.match(fragments)
+    except Exception as exc:
+        log.error(f"[compare] matching failed: {exc}")
+        return
+
+    # ── Run each method ───────────────────────────────────────────────────────
+    results: dict = {}
+    for method in methods:
+        log.info(f"[compare] assembling with method={method!r} …")
+        try:
+            pipeline.cfg.assembly.method = method
+            assembly = pipeline.assemble(fragments, entries)
+            assembly.fragments = fragments
+            assembly.compat_matrix = compat_matrix
+            results[method] = assembly
+            log.info(f"[compare]   {method}: score={assembly.total_score:.4f}")
+        except Exception as exc:
+            log.warning(f"[compare]   {method} failed: {exc}")
+
+    if not results:
+        log.error("[compare] all methods failed — exiting")
+        return
+
+    # ── Export HTML comparison ────────────────────────────────────────────────
+    out_path = args.output
+    log.info(f"[compare] exporting HTML comparison → {out_path}")
+    try:
+        from puzzle_reconstruction.export import export_comparison_html
+        export_comparison_html(results, out_path, title="Assembly Method Comparison")
+        log.info(f"[compare] done: {out_path}")
+    except Exception as exc:
+        log.error(f"[compare] HTML export failed: {exc}")
+        return
+
+    # Summary table to stdout
+    print(f"\n{'Method':<16}  {'Score':>8}  {'OCR':>6}  {'Placed':>6}")
+    print("-" * 44)
+    for method, asm in sorted(results.items(), key=lambda kv: -kv[1].total_score):
+        print(f"  {method:<14}  {asm.total_score:>8.4f}  "
+              f"{asm.ocr_score:>5.1%}  {len(asm.placements):>6}")
+    print(f"\nComparison saved → {out_path}")
+
+
 def main():
     # --list-validators не требует --input, поэтому обрабатываем до parse_args
     if "--list-validators" in sys.argv:
@@ -1333,6 +1445,11 @@ def main():
         print("Использование:")
         print("  from puzzle_reconstruction.assembly.bridge import get_assembly_fn")
         print("  fn = get_assembly_fn('analyze_all_gaps')")
+        return
+
+    # ``compare`` subcommand — run multiple methods and export HTML
+    if len(sys.argv) > 1 and sys.argv[1] == "compare":
+        _run_compare(sys.argv[2:])
         return
 
     # Bridge #7 — запуск инструмента до parse_args (--input не требуется)
